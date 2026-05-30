@@ -91,6 +91,9 @@ outputs/latest/
 |   +-- 09_mvp_spec_ja.md
 |   +-- 10_demo_storyboard_ja.md
 |   +-- 11_implementation_notes_ja.md
+|   +-- 12_azure_cloud_requirements_ja.md
+|   +-- 13_azure_basic_design_ja.md
+|   +-- 14_github_cicd_azure_ja.md
 +-- data/
 |   +-- README.md
 |   +-- samples/
