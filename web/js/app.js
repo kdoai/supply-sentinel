@@ -8,6 +8,42 @@ const VIEW_TITLES = {
   response: "初動対応",
 };
 
+const MATERIAL_PROFILES = {
+  naphtha: {
+    label: "ナフサ",
+    region: "Asia",
+    headline: "ナフサ供給リスク",
+    normalScore: 34,
+    inventoryDays: 12,
+  },
+  "packaging-film": {
+    label: "包装フィルム",
+    region: "East Asia",
+    headline: "包装フィルム供給リスク",
+    normalScore: 24,
+    inventoryDays: 18,
+    inventory: [
+      { material: "packaging-film", plant: "千葉工場", stock_qty: 1260, daily_usage: 70, unit: "roll", days_of_supply: 18 },
+    ],
+    alternatives: [
+      { material: "packaging-film", alternative_material: "PKG-ALT-02", approved: true, lead_time_days: 9, constraints: "標準包装材のみ承認済み。高防湿グレードは品質確認が必要。" },
+    ],
+  },
+  "semiconductor-adhesive": {
+    label: "半導体接着材",
+    region: "Europe",
+    headline: "半導体接着材供給リスク",
+    normalScore: 31,
+    inventoryDays: 14,
+    inventory: [
+      { material: "semiconductor-adhesive", plant: "名古屋工場", stock_qty: 420, daily_usage: 30, unit: "kg", days_of_supply: 14 },
+    ],
+    alternatives: [
+      { material: "semiconductor-adhesive", alternative_material: "ADH-ALT-01", approved: false, lead_time_days: 28, constraints: "顧客認定待ち。量産品への適用は未承認。" },
+    ],
+  },
+};
+
 let dashboardData = null;
 let currentDashboardData = null;
 let demoConfig = { stages: [], data_sources: [], interval_ms: 1800 };
@@ -17,6 +53,7 @@ let demoPlaying = false;
 let worldGeojson = null;
 let mapInstance = null;
 let mapControlsBound = false;
+let activeMaterial = "naphtha";
 
 function showFatalError(message) {
   const banner = document.createElement("div");
@@ -83,10 +120,7 @@ function routeStatusLabel(status) {
 }
 
 function materialLabel(material) {
-  if (material === "naphtha") return "ナフサ";
-  if (material === "packaging-film") return "包装フィルム";
-  if (material === "semiconductor-adhesive") return "半導体接着材";
-  return material || "不明";
+  return MATERIAL_PROFILES[material]?.label || material || "不明";
 }
 
 function esc(value) {
@@ -104,14 +138,14 @@ function renderMapInsight(detail) {
 
   if (!detail) {
     const routes = (((currentDashboardData || {}).route_intel || {}).routes || [])
-      .filter((route) => route.material === "naphtha");
+      .filter((route) => route.material === activeMaterial);
     const affectedShare = routes
       .filter((route) => route.affected)
       .reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
     el.innerHTML = `
       <span class="map-insight-kicker">MAP INTELLIGENCE</span>
-      <strong>ナフサ供給網の要注意地点</strong>
-      <p>赤いルートは割当制限・遅延の可能性がある調達経路です。地図を拡大し、ルートまたは工場を選択してください。</p>
+      <strong>${esc(materialLabel(activeMaterial))}供給網の要注意地点</strong>
+      <p>赤いルートは割当制限・遅延の可能性がある調達経路です。監視対象を切り替えると、同じ仕組みで他の重要物資も確認できます。</p>
       <dl>
         <div><dt>影響調達比率</dt><dd class="route-risk">${esc(affectedShare)}%</dd></div>
         <div><dt>要対応ルート</dt><dd>${esc(routes.filter((route) => route.affected).length)}件</dd></div>
@@ -172,6 +206,27 @@ function bindMapControls(canvasEl) {
   canvasEl.addEventListener("supply-map-select", (event) => renderMapInsight(event.detail));
 }
 
+function bindMaterialSwitch() {
+  const el = document.getElementById("material-switch");
+  if (!el) return;
+  const materials = Object.keys(MATERIAL_PROFILES);
+  el.innerHTML = materials
+    .map((material) => `<button type="button" class="material-chip${material === activeMaterial ? " is-active" : ""}" data-material="${esc(material)}">${esc(materialLabel(material))}</button>`)
+    .join("");
+  el.querySelectorAll("[data-material]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const next = button.getAttribute("data-material");
+      if (!MATERIAL_PROFILES[next] || next === activeMaterial) return;
+      activeMaterial = next;
+      stopDemo();
+      demoStep = activeMaterial === "naphtha" ? Math.max(0, (demoConfig.stages || []).length - 1) : 0;
+      mapInstance?.resetView();
+      bindMaterialSwitch();
+      renderCurrentDashboard();
+    });
+  });
+}
+
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -193,8 +248,12 @@ function sourceTimeToIso(stageIndex) {
   return base.toISOString();
 }
 
-function updateRouteState(route, stage) {
-  if (!route || route.material !== "naphtha") return route;
+function updateRouteState(route, stage, material = activeMaterial) {
+  if (!route || route.material !== material) {
+    route.affected = false;
+    route.status = route.baseline_status || "normal";
+    return route;
+  }
   const affected = stage.affected_route_ids.includes(route.route_id);
   const resilient = stage.resilient_route_ids.includes(route.route_id);
   route.affected = affected;
@@ -202,8 +261,8 @@ function updateRouteState(route, stage) {
   return route;
 }
 
-function recalcSourcing(model) {
-  const routes = ((model.route_intel || {}).routes || []).filter((route) => route.material === "naphtha");
+function recalcSourcing(model, material = activeMaterial) {
+  const routes = ((model.route_intel || {}).routes || []).filter((route) => route.material === material);
   const affectedRoutes = routes.filter((route) => route.affected);
   const affectedShare = affectedRoutes.reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
   const affectedSpend = affectedRoutes.reduce((sum, route) => sum + (Number(route.monthly_spend_usd) || 0), 0);
@@ -222,7 +281,7 @@ function recalcSourcing(model) {
   }));
 
   const focal = {
-    material: "naphtha",
+    material,
     total_share: 100,
     total_spend: totalSpend,
     affected_share: affectedShare,
@@ -235,7 +294,7 @@ function recalcSourcing(model) {
   model.route_intel.sourcing = model.route_intel.sourcing || {};
   model.route_intel.sourcing.focal = focal;
   model.route_intel.sourcing.by_material = model.route_intel.sourcing.by_material || {};
-  model.route_intel.sourcing.by_material.naphtha = focal;
+  model.route_intel.sourcing.by_material[material] = focal;
   model.route_intel.kpis = {
     ...(model.route_intel.kpis || {}),
     total_routes: routes.length,
@@ -247,6 +306,14 @@ function recalcSourcing(model) {
 }
 
 function updateMapNodes(model) {
+  const routeLabels = new Set();
+  for (const route of (model.route_intel || {}).routes || []) {
+    if (route.origin && route.origin.name) routeLabels.add(route.origin.name);
+    if (route.port && route.port.name) routeLabels.add(route.port.name);
+    if (route.plant && route.plant.name) routeLabels.add(route.plant.name);
+  }
+  model.route_intel.map_nodes = ((model.route_intel || {}).map_nodes || []).filter((node) => routeLabels.has(node.label));
+
   const affectedLabels = new Set();
   for (const route of (model.route_intel || {}).routes || []) {
     if (!route.affected) continue;
@@ -259,7 +326,36 @@ function updateMapNodes(model) {
   }
 }
 
+function buildRouteFlow(routes) {
+  const nodes = [];
+  const edges = [];
+  const seen = new Set();
+
+  function addNode(id, stage, label, sublabel, type, value, status = "normal") {
+    if (seen.has(id)) return;
+    seen.add(id);
+    nodes.push({ id, stage, label, sublabel, type, value, status });
+  }
+
+  for (const route of routes || []) {
+    const status = route.affected ? "disrupted" : route.status || "normal";
+    const originId = `o:${route.origin?.name}`;
+    const supplierId = `m:${route.supplier}`;
+    const plantId = `p:${route.plant?.name}`;
+    addNode(originId, 0, route.origin?.name, route.region, "origin", route.share_percent, status);
+    addNode(supplierId, 1, route.supplier, route.port?.name || route.transport_mode, "supplier", route.share_percent, status);
+    addNode(plantId, 2, route.plant?.name, "plant", "plant", route.share_percent, status);
+    edges.push({ source: originId, target: supplierId, value: route.share_percent, status });
+    edges.push({ source: supplierId, target: plantId, value: route.share_percent, status });
+  }
+
+  return { nodes, edges };
+}
+
 function updateFlow(model) {
+  if (activeMaterial !== "naphtha") {
+    model.route_intel.flow = buildRouteFlow((model.route_intel || {}).routes || []);
+  }
   const affectedIds = new Set();
   for (const route of (model.route_intel || {}).routes || []) {
     if (!route.affected) continue;
@@ -281,49 +377,78 @@ function applyDemoStage(base, step) {
   const stageIndex = Math.max(0, Math.min(stages.length - 1, step));
   const stage = stages[stageIndex] || {};
   const model = cloneJson(base);
+  const profile = MATERIAL_PROFILES[activeMaterial] || MATERIAL_PROFILES.naphtha;
+  const isNaphtha = activeMaterial === "naphtha";
   stage.affected_route_ids = Array.isArray(stage.affected_route_ids) ? stage.affected_route_ids : [];
   stage.resilient_route_ids = Array.isArray(stage.resilient_route_ids) ? stage.resilient_route_ids : [];
+  const effectiveStage = isNaphtha
+    ? stage
+    : {
+        ...stage,
+        title: `${profile.label}を通常監視`,
+        source: "Supply Sentinel Agent",
+        source_type: "agent",
+        detail: "外部シグナルと社内データを照合しましたが、現時点で初動対応が必要な供給リスクはありません。",
+        score: profile.normalScore,
+        severity: "low",
+        inventory_days_min: profile.inventoryDays,
+        affected_route_ids: [],
+        resilient_route_ids: [],
+        evidence_count: 0,
+        recommended_count: 0,
+        approval_count: 0,
+        impacted_product_count: 0,
+        impacted_customer_count: 0,
+        impacted_order_count: 0,
+      };
 
   model.meta = model.meta || {};
   model.meta.generated_at = sourceTimeToIso(stageIndex);
 
   model.risk_event = model.risk_event || {};
-  model.risk_event.severity = stage.severity || scoreSeverity(stage.score);
-  model.risk_event.evidence = visibleSlice(base.risk_event && base.risk_event.evidence, stage.evidence_count);
+  model.risk_event.material = activeMaterial;
+  model.risk_event.region = profile.region;
+  model.risk_event.summary = isNaphtha ? model.risk_event.summary : `${profile.label}は通常監視中。要対応シグナルなし。`;
+  model.risk_event.severity = effectiveStage.severity || scoreSeverity(effectiveStage.score);
+  model.risk_event.evidence = isNaphtha ? visibleSlice(base.risk_event && base.risk_event.evidence, effectiveStage.evidence_count) : [];
 
   model.assessment = model.assessment || {};
-  model.assessment.risk_score = stage.score ?? model.assessment.risk_score;
-  model.assessment.severity = stage.severity || scoreSeverity(model.assessment.risk_score);
-  model.assessment.inventory_days_min = stage.inventory_days_min ?? model.assessment.inventory_days_min;
-  model.assessment.evidence = visibleSlice(base.assessment && base.assessment.evidence, stage.evidence_count);
-  model.assessment.recommended_actions = visibleSlice(base.assessment && base.assessment.recommended_actions, stage.recommended_count);
-  model.assessment.approval_required = visibleSlice(base.assessment && base.assessment.approval_required, stage.approval_count);
-  model.assessment.impacted_products = visibleSlice(base.assessment && base.assessment.impacted_products, stage.impacted_product_count);
-  model.assessment.impacted_customers = visibleSlice(base.assessment && base.assessment.impacted_customers, stage.impacted_customer_count);
-  model.assessment.impacted_orders = visibleSlice(base.assessment && base.assessment.impacted_orders, stage.impacted_order_count);
-  model.assessment.impacted_plants = stage.impacted_product_count > 0
-    ? visibleSlice(base.assessment && base.assessment.impacted_plants, stage.impacted_product_count > 2 ? 2 : 1)
+  model.assessment.material = activeMaterial;
+  model.assessment.risk_score = effectiveStage.score ?? model.assessment.risk_score;
+  model.assessment.severity = effectiveStage.severity || scoreSeverity(model.assessment.risk_score);
+  model.assessment.inventory_days_min = effectiveStage.inventory_days_min ?? model.assessment.inventory_days_min;
+  model.assessment.evidence = isNaphtha ? visibleSlice(base.assessment && base.assessment.evidence, effectiveStage.evidence_count) : [];
+  model.assessment.recommended_actions = isNaphtha ? visibleSlice(base.assessment && base.assessment.recommended_actions, effectiveStage.recommended_count) : [];
+  model.assessment.approval_required = isNaphtha ? visibleSlice(base.assessment && base.assessment.approval_required, effectiveStage.approval_count) : [];
+  model.assessment.impacted_products = isNaphtha ? visibleSlice(base.assessment && base.assessment.impacted_products, effectiveStage.impacted_product_count) : [];
+  model.assessment.impacted_customers = isNaphtha ? visibleSlice(base.assessment && base.assessment.impacted_customers, effectiveStage.impacted_customer_count) : [];
+  model.assessment.impacted_orders = isNaphtha ? visibleSlice(base.assessment && base.assessment.impacted_orders, effectiveStage.impacted_order_count) : [];
+  model.assessment.impacted_plants = isNaphtha && effectiveStage.impacted_product_count > 0
+    ? visibleSlice(base.assessment && base.assessment.impacted_plants, effectiveStage.impacted_product_count > 2 ? 2 : 1)
     : [];
+  model.assessment.inventory = isNaphtha ? model.assessment.inventory : cloneJson(profile.inventory || []);
+  model.assessment.alternatives = isNaphtha ? model.assessment.alternatives : cloneJson(profile.alternatives || []);
   model.assessment.generated_at = model.meta.generated_at;
   for (const item of model.assessment.inventory || []) {
-    if (item.plant === "千葉工場") item.days_of_supply = stage.inventory_days_min ?? item.days_of_supply;
-    if (item.plant === "大阪工場") item.days_of_supply = Math.max(10, (stage.inventory_days_min ?? 5) + 5);
+    if (isNaphtha && item.plant === "千葉工場") item.days_of_supply = effectiveStage.inventory_days_min ?? item.days_of_supply;
+    if (isNaphtha && item.plant === "大阪工場") item.days_of_supply = Math.max(10, (effectiveStage.inventory_days_min ?? 5) + 5);
   }
 
   for (const route of (model.route_intel || {}).routes || []) {
-    updateRouteState(route, stage);
+    updateRouteState(route, effectiveStage, activeMaterial);
   }
-  recalcSourcing(model);
+  recalcSourcing(model, activeMaterial);
+  model.route_intel.routes = (model.route_intel.routes || []).filter((route) => route.material === activeMaterial);
   updateMapNodes(model);
   updateFlow(model);
 
   model.demo = {
-    ...stage,
+    ...effectiveStage,
     step_index: stageIndex,
     total_steps: stages.length,
     is_playing: demoPlaying,
-    active_events: stages.slice(0, stageIndex + 1),
-    score_trend: stages.slice(0, stageIndex + 1).map((event) => ({
+    active_events: isNaphtha ? stages.slice(0, stageIndex + 1) : [effectiveStage],
+    score_trend: (isNaphtha ? stages.slice(0, stageIndex + 1) : [effectiveStage]).map((event) => ({
       time_label: event.time_label,
       score: event.score,
     })),
@@ -460,14 +585,19 @@ async function init() {
     fetchJson("./demo_events.json").catch(() => demoConfig),
   ]);
 
+  const params = new URLSearchParams(window.location.search);
+  const materialParam = params.get("material");
+  if (MATERIAL_PROFILES[materialParam]) {
+    activeMaterial = materialParam;
+  }
   demoStep = Math.max(0, (demoConfig.stages || []).length - 1);
+  bindMaterialSwitch();
   renderCurrentDashboard();
 
   bindNavigation();
   bindSidebarToggle();
   bindDemoControls();
   applyInitialSidebarState();
-  const params = new URLSearchParams(window.location.search);
   const initialView = params.get("view") || "dashboard";
   setActiveView(initialView);
   if (params.get("demo") === "play") {

@@ -227,13 +227,14 @@ function renderKpiGrid(data) {
   const assessment = data.assessment || {};
   const kpis = (data.route_intel && data.route_intel.kpis) || {};
   const invDays = Number(assessment.inventory_days_min);
+  const material = materialLabel(assessment.material || kpis.focal_material || (data.risk_event || {}).material);
 
   setHtml(
     "kpi-grid",
     [
-      kpiCard(`${kpis.affected_share_percent ?? 0}%`, "影響を受ける調達比率", "ナフサ調達量ベース", true),
-      kpiCard(compactUsdJa(kpis.monthly_spend_at_risk), "影響を受ける月間調達額", `全体 ${compactUsdJa(kpis.total_monthly_spend)}`, true),
-      kpiCard(`${kpis.affected_routes ?? 0}/${kpis.total_routes ?? 0}`, "要対応ルート", "供給ルート数", true),
+      kpiCard(`${kpis.affected_share_percent ?? 0}%`, "影響を受ける調達比率", `${material}調達量ベース`, (kpis.affected_routes ?? 0) > 0),
+      kpiCard(compactUsdJa(kpis.monthly_spend_at_risk), "影響を受ける月間調達額", `全体 ${compactUsdJa(kpis.total_monthly_spend)}`, Number(kpis.monthly_spend_at_risk || 0) > 0),
+      kpiCard(`${kpis.affected_routes ?? 0}/${kpis.total_routes ?? 0}`, "要対応ルート", "供給ルート数", (kpis.affected_routes ?? 0) > 0),
       kpiCard(Number.isFinite(invDays) ? `${invDays}日` : "不明", "最短在庫残日数", "工場別在庫から算出", invDays <= 7),
       kpiCard(asArray(assessment.impacted_products).length, "影響製品", "BOM照合結果"),
       kpiCard(asArray(assessment.impacted_customers).length, "影響顧客", "受注照合結果"),
@@ -353,6 +354,7 @@ function renderEventLog(data) {
             <div class="source-chip">
               <strong>${esc(source.name)}</strong>
               <span>${esc(source.candidate)}</span>
+              <em>${esc(source.status || "監視中")} / ${esc(source.freshness || "鮮度不明")} / 確度 ${esc(source.confidence || "-")}</em>
             </div>`,
         )
         .join("")}
@@ -453,6 +455,8 @@ function renderManagementReport(data) {
   const assessment = data.assessment || {};
   const kpis = (data.route_intel && data.route_intel.kpis) || {};
   const demo = data.demo || {};
+  const material = materialLabel(assessment.material || kpis.focal_material || (data.risk_event || {}).material);
+  const hasImpact = Number(kpis.affected_routes || 0) > 0;
   setHtml(
     "management-report",
     `
@@ -461,7 +465,7 @@ function renderManagementReport(data) {
           <span>Supply Sentinel 自動生成</span>
           <strong>${esc(demo.time_label || formatDateTime(assessment.generated_at))}</strong>
         </header>
-        <h4>ナフサ供給リスクにより、最短${esc(assessment.inventory_days_min ?? "-")}日で生産影響の可能性</h4>
+        <h4>${esc(material)}供給リスク: ${hasImpact ? `最短${esc(assessment.inventory_days_min ?? "-")}日で生産影響の可能性` : "現時点で要対応シグナルなし"}</h4>
         <dl>
           <div><dt>リスクスコア</dt><dd>${esc(assessment.risk_score)}/100</dd></div>
           <div><dt>影響調達額</dt><dd>${esc(compactUsdJa(kpis.monthly_spend_at_risk))}/月</dd></div>

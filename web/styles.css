@@ -261,6 +261,42 @@ button {
   min-width: 0;
 }
 
+.material-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+
+.material-chip {
+  min-height: 24px;
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 9px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.material-chip:hover,
+.material-chip:focus-visible {
+  color: var(--blue-700);
+  background: #eaf2fb;
+  outline: none;
+}
+
+.material-chip.is-active {
+  color: #fff;
+  background: var(--blue-700);
+}
+
 #scenario,
 #generated-at {
   display: inline-flex;
@@ -804,7 +840,8 @@ button {
 }
 
 .source-chip strong,
-.source-chip span {
+.source-chip span,
+.source-chip em {
   display: block;
 }
 
@@ -816,6 +853,14 @@ button {
 .source-chip span {
   color: var(--muted);
   font-size: 10px;
+}
+
+.source-chip em {
+  margin-top: 3px;
+  color: var(--green);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
 }
 
 .event-list {
@@ -1404,6 +1449,17 @@ li {
     width: min(calc(100vw - 28px), 362px);
     max-width: min(calc(100vw - 28px), 362px);
     gap: 6px;
+  }
+
+  .material-switch {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .material-chip {
+    flex: 1 0 auto;
+    padding: 4px 8px;
+    font-size: 11px;
   }
 
   #scenario,

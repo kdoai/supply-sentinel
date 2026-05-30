@@ -101,22 +101,34 @@
     {
       "name": "外部ニュース",
       "candidate": "GDELT / 業界紙RSS",
-      "role": "供給不安・事故・規制・地政学リスクの早期検知"
+      "role": "供給不安・事故・規制・地政学リスクの早期検知",
+      "freshness": "5分前",
+      "confidence": "中",
+      "status": "取得済"
     },
     {
       "name": "サプライヤ通知",
       "candidate": "メール / PDF / ポータル通知",
-      "role": "出荷遅延、割当制限、停止予定の確度確認"
+      "role": "出荷遅延、割当制限、停止予定の確度確認",
+      "freshness": "2分前",
+      "confidence": "高",
+      "status": "取得済"
     },
     {
       "name": "物流・災害",
       "candidate": "港湾混雑 / 気象庁防災情報",
-      "role": "輸送遅延と地域リスクの補助シグナル"
+      "role": "輸送遅延と地域リスクの補助シグナル",
+      "freshness": "15分前",
+      "confidence": "中",
+      "status": "監視中"
     },
     {
       "name": "社内データ",
       "candidate": "在庫 / BOM / 代替材 / 受注",
-      "role": "世の中のリスクを自社影響へ翻訳"
+      "role": "世の中のリスクを自社影響へ翻訳",
+      "freshness": "1分前",
+      "confidence": "高",
+      "status": "照合済"
     }
   ]
 }
