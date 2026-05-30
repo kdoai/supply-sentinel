@@ -3,11 +3,9 @@ import { renderFlow } from "./flow.js";
 import { renderPanels } from "./panels.js";
 
 const VIEW_TITLES = {
-  overview: "概況",
-  map: "供給網",
-  flow: "業務フロー",
-  orders: "影響受注",
-  actions: "根拠と初動",
+  dashboard: "監視ダッシュボード",
+  analysis: "影響分析",
+  response: "初動対応",
 };
 
 let dashboardData = null;
@@ -45,7 +43,7 @@ function setActiveView(viewName) {
   const title = document.getElementById("view-title");
   if (title) title.textContent = VIEW_TITLES[viewName] || viewName;
 
-  if (viewName === "map") {
+  if (viewName === "dashboard") {
     ensureMap();
   }
 }
@@ -95,7 +93,7 @@ async function init() {
   }
 
   bindNavigation();
-  const initialView = new URLSearchParams(window.location.search).get("view") || "overview";
+  const initialView = new URLSearchParams(window.location.search).get("view") || "dashboard";
   setActiveView(initialView);
 }
 

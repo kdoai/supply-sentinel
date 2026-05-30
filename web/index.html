@@ -18,11 +18,9 @@
       </div>
 
       <nav class="side-nav">
-        <button class="nav-item is-active" type="button" data-view="overview">概況</button>
-        <button class="nav-item" type="button" data-view="map">供給網</button>
-        <button class="nav-item" type="button" data-view="flow">業務フロー</button>
-        <button class="nav-item" type="button" data-view="orders">影響受注</button>
-        <button class="nav-item" type="button" data-view="actions">根拠と初動</button>
+        <button class="nav-item is-active" type="button" data-view="dashboard">監視ダッシュボード</button>
+        <button class="nav-item" type="button" data-view="analysis">影響分析</button>
+        <button class="nav-item" type="button" data-view="response">初動対応</button>
       </nav>
 
       <div class="sidebar-footer">
@@ -35,7 +33,7 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">供給リスク監視</p>
-          <h2 id="view-title">概況</h2>
+          <h2 id="view-title">監視ダッシュボード</h2>
         </div>
         <div class="topbar-meta">
           <span id="scenario"></span>
@@ -43,26 +41,40 @@
         </div>
       </header>
 
-      <section class="view is-active" id="view-overview" data-view-panel="overview">
-        <div class="overview-grid">
-          <section class="panel risk-panel">
-            <div class="panel-head">
-              <h3>リスク判定</h3>
-              <span class="panel-note">AI抽出 + 業務ルール</span>
+      <section class="view is-active" id="view-dashboard" data-view-panel="dashboard">
+        <div class="dashboard-grid">
+          <section class="panel map-panel">
+            <div class="panel-head map-head">
+              <div>
+                <h3>グローバル供給網</h3>
+                <p>外部リスクを自社の調達・工場・顧客影響に接続</p>
+              </div>
+              <div id="map-legend"></div>
             </div>
-            <div id="risk-gauge"></div>
+            <canvas id="world-map"></canvas>
+            <div id="map-tooltip" hidden></div>
           </section>
 
-          <section class="panel kpi-panel">
-            <div class="panel-head">
-              <h3>業務影響</h3>
-              <span class="panel-note">在庫・BOM・受注照合</span>
-            </div>
-            <div id="kpi-grid"></div>
-          </section>
+          <aside class="dashboard-side">
+            <section class="panel risk-panel">
+              <div class="panel-head compact-head">
+                <h3>リスク判定</h3>
+                <span class="panel-note">AI抽出 + 業務ルール</span>
+              </div>
+              <div id="risk-gauge"></div>
+            </section>
+
+            <section class="panel kpi-panel">
+              <div class="panel-head compact-head">
+                <h3>業務影響</h3>
+                <span class="panel-note">在庫・BOM・受注照合</span>
+              </div>
+              <div id="kpi-grid"></div>
+            </section>
+          </aside>
 
           <section class="panel mix-panel">
-            <div class="panel-head">
+            <div class="panel-head compact-head">
               <h3>調達構成</h3>
               <span class="panel-note">影響を受ける供給ルート</span>
             </div>
@@ -70,7 +82,7 @@
           </section>
 
           <section class="panel summary-panel">
-            <div class="panel-head">
+            <div class="panel-head compact-head">
               <h3>初動サマリ</h3>
               <span class="panel-note">人の承認前提</span>
             </div>
@@ -79,39 +91,28 @@
         </div>
       </section>
 
-      <section class="view" id="view-map" data-view-panel="map">
-        <section class="panel map-panel">
-          <div class="panel-head">
-            <h3>供給網マップ</h3>
-            <div id="map-legend"></div>
-          </div>
-          <canvas id="world-map"></canvas>
-          <div id="map-tooltip" hidden></div>
-        </section>
+      <section class="view" id="view-analysis" data-view-panel="analysis">
+        <div class="analysis-grid">
+          <section class="panel flow-panel">
+            <div class="panel-head">
+              <h3>業務フロー</h3>
+              <span class="panel-note">原材料から顧客影響まで</span>
+            </div>
+            <div id="flow-graph"></div>
+          </section>
+
+          <section class="panel orders-panel">
+            <div class="panel-head">
+              <h3>影響受注一覧</h3>
+              <span class="panel-note">優先度順に確認</span>
+            </div>
+            <div id="orders-table"></div>
+          </section>
+        </div>
       </section>
 
-      <section class="view" id="view-flow" data-view-panel="flow">
-        <section class="panel flow-panel">
-          <div class="panel-head">
-            <h3>業務フロー</h3>
-            <span class="panel-note">原材料から顧客影響まで</span>
-          </div>
-          <div id="flow-graph"></div>
-        </section>
-      </section>
-
-      <section class="view" id="view-orders" data-view-panel="orders">
-        <section class="panel orders-panel">
-          <div class="panel-head">
-            <h3>影響受注一覧</h3>
-            <span class="panel-note">優先度順に確認</span>
-          </div>
-          <div id="orders-table"></div>
-        </section>
-      </section>
-
-      <section class="view" id="view-actions" data-view-panel="actions">
-        <div class="action-grid">
+      <section class="view" id="view-response" data-view-panel="response">
+        <div class="response-grid">
           <section class="panel">
             <div class="panel-head">
               <h3>検知根拠</h3>
