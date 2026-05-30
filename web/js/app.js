@@ -16,6 +16,7 @@ let demoTimer = null;
 let demoPlaying = false;
 let worldGeojson = null;
 let mapInstance = null;
+let mapControlsBound = false;
 
 function showFatalError(message) {
   const banner = document.createElement("div");
@@ -41,6 +42,7 @@ function ensureMap() {
 
   if (!mapInstance) {
     mapInstance = createMap(canvasEl, worldGeojson);
+    bindMapControls(canvasEl);
     window.addEventListener("resize", () => {
       try {
         mapInstance.resize();
@@ -58,6 +60,116 @@ function ensureMap() {
       // Ignore resize races.
     }
   });
+}
+
+function compactUsdJa(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0ドル";
+  if (Math.abs(n) >= 1_000_000) return `${trim1(n / 1_000_000)}百万ドル`;
+  if (Math.abs(n) >= 1_000) return `${trim1(n / 1_000)}千ドル`;
+  return `${Math.round(n).toLocaleString("ja-JP")}ドル`;
+}
+
+function trim1(num) {
+  const s = num.toFixed(1);
+  return s.endsWith(".0") ? s.slice(0, -2) : s;
+}
+
+function routeStatusLabel(status) {
+  if (status === "disrupted") return "要対応";
+  if (status === "resilient") return "代替可";
+  if (status === "exposed") return "監視";
+  return "通常";
+}
+
+function materialLabel(material) {
+  if (material === "naphtha") return "ナフサ";
+  if (material === "packaging-film") return "包装フィルム";
+  if (material === "semiconductor-adhesive") return "半導体接着材";
+  return material || "不明";
+}
+
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function renderMapInsight(detail) {
+  const el = document.getElementById("map-insight");
+  if (!el) return;
+
+  if (!detail) {
+    const routes = (((currentDashboardData || {}).route_intel || {}).routes || [])
+      .filter((route) => route.material === "naphtha");
+    const affectedShare = routes
+      .filter((route) => route.affected)
+      .reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
+    el.innerHTML = `
+      <span class="map-insight-kicker">MAP INTELLIGENCE</span>
+      <strong>ナフサ供給網の要注意地点</strong>
+      <p>赤いルートは割当制限・遅延の可能性がある調達経路です。地図を拡大し、ルートまたは工場を選択してください。</p>
+      <dl>
+        <div><dt>影響調達比率</dt><dd class="route-risk">${esc(affectedShare)}%</dd></div>
+        <div><dt>要対応ルート</dt><dd>${esc(routes.filter((route) => route.affected).length)}件</dd></div>
+      </dl>`;
+    return;
+  }
+
+  if (detail.type === "route" && detail.route) {
+    const route = detail.route;
+    const status = routeStatusLabel(route.status);
+    const riskClass = route.status === "disrupted" ? "route-risk" : "";
+    el.innerHTML = `
+      <span class="map-insight-kicker">SELECTED ROUTE</span>
+      <strong>${esc(route.origin?.name)} → ${esc(route.plant?.name)}</strong>
+      <p>${esc(route.supplier)} / ${esc(materialLabel(route.material))}。調達比率とリードタイムを見ながら、どの工場に波及するか確認できます。</p>
+      <dl>
+        <div><dt>状態</dt><dd class="${riskClass}">${esc(status)}</dd></div>
+        <div><dt>調達比率</dt><dd>${esc(route.share_percent)}%</dd></div>
+        <div><dt>月間調達額</dt><dd>${esc(compactUsdJa(route.monthly_spend_usd))}</dd></div>
+        <div><dt>リードタイム</dt><dd>${esc(route.lead_time_days)}日</dd></div>
+      </dl>`;
+    return;
+  }
+
+  if (detail.type === "node" && detail.node) {
+    const node = detail.node;
+    const related = (((currentDashboardData || {}).route_intel || {}).routes || []).filter((route) => {
+      return route.origin?.name === node.label || route.port?.name === node.label || route.plant?.name === node.label;
+    });
+    const affected = related.filter((route) => route.affected);
+    el.innerHTML = `
+      <span class="map-insight-kicker">SELECTED NODE</span>
+      <strong>${esc(node.label)}</strong>
+      <p>${esc(node.sublabel || "供給網ノード")}。関連ルートの状態から、自社影響の有無を確認します。</p>
+      <dl>
+        <div><dt>関連ルート</dt><dd>${esc(related.length)}件</dd></div>
+        <div><dt>要対応</dt><dd class="${affected.length ? "route-risk" : ""}">${esc(affected.length)}件</dd></div>
+      </dl>`;
+  }
+}
+
+function bindMapControls(canvasEl) {
+  if (mapControlsBound) return;
+  mapControlsBound = true;
+
+  document.getElementById("map-zoom-in")?.addEventListener("click", () => mapInstance?.zoomIn());
+  document.getElementById("map-zoom-out")?.addEventListener("click", () => mapInstance?.zoomOut());
+  document.getElementById("map-reset")?.addEventListener("click", () => {
+    mapInstance?.resetView();
+    renderMapInsight(null);
+  });
+  document.querySelectorAll("[data-map-focus]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.dataset.mapFocus === "japan") mapInstance?.focusJapan();
+      else mapInstance?.focusAsia();
+    });
+  });
+  canvasEl.addEventListener("supply-map-select", (event) => renderMapInsight(event.detail));
 }
 
 function cloneJson(value) {
@@ -247,6 +359,7 @@ function renderCurrentDashboard() {
   renderPanels(currentDashboardData);
   renderFlowPanel(currentDashboardData);
   updateDemoControls();
+  renderMapInsight(null);
   ensureMap();
 }
 

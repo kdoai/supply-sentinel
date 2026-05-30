@@ -53,7 +53,23 @@
               </div>
               <div id="map-legend"></div>
             </div>
+            <div class="map-toolbar" aria-label="地図操作">
+              <div class="map-tool-group" role="group" aria-label="ズーム">
+                <button type="button" class="map-tool" id="map-zoom-in" aria-label="拡大">+</button>
+                <button type="button" class="map-tool" id="map-zoom-out" aria-label="縮小">−</button>
+                <button type="button" class="map-tool wide" id="map-reset" aria-label="全体表示">全体</button>
+              </div>
+              <div class="map-tool-group" role="group" aria-label="表示範囲">
+                <button type="button" class="map-tool wide" data-map-focus="asia">アジア</button>
+                <button type="button" class="map-tool wide" data-map-focus="japan">日本</button>
+              </div>
+            </div>
             <canvas id="world-map"></canvas>
+            <aside class="map-insight" id="map-insight" aria-live="polite">
+              <span class="map-insight-kicker">MAP INTELLIGENCE</span>
+              <strong>要対応ルートを選択</strong>
+              <p>地図上の供給元・工場・輸送ルートをクリックすると、調達比率、リードタイム、業務影響を確認できます。</p>
+            </aside>
             <div class="demo-console" aria-label="デモ操作">
               <div>
                 <span class="demo-kicker">Agentic demo</span>
