@@ -94,6 +94,7 @@ outputs/latest/
 |   +-- 12_azure_cloud_requirements_ja.md
 |   +-- 13_azure_basic_design_ja.md
 |   +-- 14_github_cicd_azure_ja.md
+|   +-- 15_azure_cloud_plan_summary_ja.html
 +-- data/
 |   +-- README.md
 |   +-- samples/
