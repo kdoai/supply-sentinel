@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Supply Sentinel - 供給リスク早期警戒</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell" id="app-shell">
+    <aside class="sidebar" aria-label="画面切り替え">
+      <button class="sidebar-toggle" type="button" id="sidebar-toggle" aria-label="サイドバーを閉じる" aria-expanded="true">‹</button>
+
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">S</div>
+        <div class="brand-text">
+          <h1>Supply Sentinel</h1>
+          <p>供給リスク早期警戒</p>
+        </div>
+      </div>
+
+      <nav class="side-nav">
+        <button class="nav-item is-active" type="button" data-view="dashboard"><span>監視ダッシュボード</span></button>
+        <button class="nav-item" type="button" data-view="analysis"><span>影響分析</span></button>
+        <button class="nav-item" type="button" data-view="response"><span>初動対応</span></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>定期監視中</span>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">供給リスク監視</p>
+          <h2 id="view-title">監視ダッシュボード</h2>
+        </div>
+        <div class="topbar-meta">
+          <span id="scenario"></span>
+          <span id="generated-at"></span>
+        </div>
+      </header>
+
+      <section class="view is-active" id="view-dashboard" data-view-panel="dashboard">
+        <div class="dashboard-grid">
+          <section class="panel map-panel">
+            <div class="panel-head map-head">
+              <div>
+                <h3>グローバル供給網</h3>
+                <p>外部リスクを自社の調達・工場・顧客影響に接続</p>
+              </div>
+              <div id="map-legend"></div>
+            </div>
+            <canvas id="world-map"></canvas>
+            <div class="demo-console" aria-label="デモ操作">
+              <div>
+                <span class="demo-kicker">Agentic demo</span>
+                <strong id="demo-stage-title">巡回デモ待機中</strong>
+                <p id="demo-stage-detail">外部シグナルと社内データを順に照合します。</p>
+              </div>
+              <div class="demo-controls">
+                <button class="primary-action" type="button" id="demo-play">巡回デモ開始</button>
+                <button class="ghost-action" type="button" id="demo-reset">リセット</button>
+              </div>
+              <div class="demo-progress" aria-hidden="true"><span id="demo-progress-bar"></span></div>
+            </div>
+            <div id="map-tooltip" hidden></div>
+          </section>
+
+          <aside class="dashboard-side">
+            <section class="panel risk-panel">
+              <div class="panel-head compact-head">
+                <h3>リスク判定</h3>
+                <span class="panel-note">AI抽出 + 業務ルール</span>
+              </div>
+              <div id="risk-gauge"></div>
+            </section>
+
+            <section class="panel kpi-panel">
+              <div class="panel-head compact-head">
+                <h3>業務影響</h3>
+                <span class="panel-note">在庫・BOM・受注照合</span>
+              </div>
+              <div id="kpi-grid"></div>
+            </section>
+          </aside>
+
+          <section class="panel mix-panel">
+            <div class="panel-head compact-head">
+              <h3>調達構成</h3>
+              <span class="panel-note">影響を受ける供給ルート</span>
+            </div>
+            <div id="sourcing-mix"></div>
+          </section>
+
+          <section class="panel summary-panel">
+            <div class="panel-head compact-head">
+              <h3>監視イベント</h3>
+              <span class="panel-note">データが流れる順序</span>
+            </div>
+            <div id="event-log"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-analysis" data-view-panel="analysis">
+        <div class="analysis-grid">
+          <section class="panel flow-panel">
+            <div class="panel-head">
+              <h3>業務フロー</h3>
+              <span class="panel-note">原材料から顧客影響まで</span>
+            </div>
+            <div id="flow-graph"></div>
+          </section>
+
+          <section class="panel orders-panel">
+            <div class="panel-head">
+              <h3>影響受注一覧</h3>
+              <span class="panel-note">優先度順に確認</span>
+            </div>
+            <div id="orders-table"></div>
+          </section>
+
+          <section class="panel inventory-panel">
+            <div class="panel-head">
+              <h3>BOM・在庫照合</h3>
+              <span class="panel-note">残日在庫順</span>
+            </div>
+            <div id="inventory-ranking"></div>
+          </section>
+
+          <section class="panel alternatives-panel">
+            <div class="panel-head">
+              <h3>代替材候補</h3>
+              <span class="panel-note">承認状態と制約</span>
+            </div>
+            <div id="alternatives-table"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-response" data-view-panel="response">
+        <div class="response-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h3>検知根拠</h3>
+              <span class="panel-note">外部情報</span>
+            </div>
+            <ul id="evidence-list"></ul>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h3>推奨初動</h3>
+              <span class="panel-note">担当者が確認</span>
+            </div>
+            <ul id="actions-list"></ul>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h3>担当タスク</h3>
+              <span class="panel-note">部門別に着手</span>
+            </div>
+            <div id="task-board"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h3>承認が必要な判断</h3>
+              <span class="panel-note">人が最終承認</span>
+            </div>
+            <ul id="approval-list"></ul>
+          </section>
+
+          <section class="panel report-panel">
+            <div class="panel-head">
+              <h3>管理職レポート</h3>
+              <span class="panel-note">自動生成モック</span>
+            </div>
+            <div id="management-report"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

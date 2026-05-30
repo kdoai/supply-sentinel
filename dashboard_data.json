@@ -1,0 +1,980 @@
+{
+  "meta": {
+    "app": "Supply Sentinel",
+    "scenario": "naphtha supply risk",
+    "generated_at": "2026-05-30T22:04:09.152Z"
+  },
+  "risk_event": {
+    "material": "naphtha",
+    "risk_type": "allocation",
+    "region": "Asia",
+    "affected_period": "next two to three weeks",
+    "delay_days_min": 5,
+    "delay_days_max": 7,
+    "allocation_rate_percent": 70,
+    "severity": "high",
+    "confidence": "high",
+    "evidence": [
+      "News headline: Naphtha supply tightens after refinery disruption in Asia",
+      "Supplier notice indicates 5-7 day shipment delay.",
+      "Supplier notice indicates allocation may be limited to 70% of normal volume.",
+      "Supplier notice subject: Temporary allocation control for naphtha-derived feedstock"
+    ],
+    "summary": "naphtha supply risk detected; expected delay 5-7 days; allocation may be 70% of normal volume.",
+    "sources": {
+      "news_id": "news-2026-001",
+      "supplier_notice_id": "notice-2026-001"
+    }
+  },
+  "assessment": {
+    "alert_id": "alert-20260530-naphtha",
+    "material": "naphtha",
+    "risk_type": "allocation",
+    "risk_score": 82,
+    "severity": "high",
+    "source_severity": "high",
+    "confidence": "high",
+    "scoring_factors": {
+      "external_event_severity": 25,
+      "supplier_notice_confidence": 18,
+      "inventory_days_risk": 25,
+      "customer_order_priority": 14,
+      "alternative_availability_risk": 0
+    },
+    "affected_period": "next two to three weeks",
+    "delay_days_min": 5,
+    "delay_days_max": 7,
+    "allocation_rate_percent": 70,
+    "inventory_days_min": 5,
+    "inventory": [
+      {
+        "material": "naphtha",
+        "plant": "千葉工場",
+        "stock_qty": 500,
+        "daily_usage": 100,
+        "unit": "ton",
+        "days_of_supply": 5
+      },
+      {
+        "material": "naphtha",
+        "plant": "大阪工場",
+        "stock_qty": 900,
+        "daily_usage": 90,
+        "unit": "ton",
+        "days_of_supply": 10
+      }
+    ],
+    "impacted_products": [
+      "樹脂A",
+      "溶剤B",
+      "コーティングC"
+    ],
+    "impacted_customers": [
+      "自動車部品A社",
+      "包装材B社",
+      "化学品C社"
+    ],
+    "impacted_plants": [
+      "千葉工場",
+      "大阪工場"
+    ],
+    "impacted_orders": [
+      {
+        "order_id": "SO-1001",
+        "customer": "自動車部品A社",
+        "product": "樹脂A",
+        "plant": "千葉工場",
+        "due_date": "2026-05-22",
+        "quantity": 120,
+        "priority": "high"
+      },
+      {
+        "order_id": "SO-1002",
+        "customer": "包装材B社",
+        "product": "溶剤B",
+        "plant": "千葉工場",
+        "due_date": "2026-05-24",
+        "quantity": 80,
+        "priority": "high"
+      },
+      {
+        "order_id": "SO-1003",
+        "customer": "化学品C社",
+        "product": "コーティングC",
+        "plant": "大阪工場",
+        "due_date": "2026-05-29",
+        "quantity": 60,
+        "priority": "medium"
+      }
+    ],
+    "alternatives": [
+      {
+        "material": "naphtha",
+        "alternative_material": "NAP-ALT-01",
+        "approved": true,
+        "lead_time_days": 10,
+        "constraints": "樹脂Aのみ承認済み。溶剤Bへの適用には品質確認が必要。"
+      },
+      {
+        "material": "naphtha",
+        "alternative_material": "NAP-ALT-02",
+        "approved": false,
+        "lead_time_days": 21,
+        "constraints": "評価中。顧客出荷品には未承認。"
+      }
+    ],
+    "approved_alternatives": [
+      {
+        "material": "naphtha",
+        "alternative_material": "NAP-ALT-01",
+        "approved": true,
+        "lead_time_days": 10,
+        "constraints": "樹脂Aのみ承認済み。溶剤Bへの適用には品質確認が必要。"
+      }
+    ],
+    "evidence": [
+      "News headline: Naphtha supply tightens after refinery disruption in Asia",
+      "Supplier notice indicates 5-7 day shipment delay.",
+      "Supplier notice indicates allocation may be limited to 70% of normal volume.",
+      "Supplier notice subject: Temporary allocation control for naphtha-derived feedstock"
+    ],
+    "recommended_actions": [
+      "Confirm latest allocation volume and shipment schedule with the supplier.",
+      "Reserve available inventory for high-priority orders and plants.",
+      "Check applicability of approved alternative material: NAP-ALT-01.",
+      "Prepare customer communication draft for high-priority customers.",
+      "Assess production schedule exposure against the 5-7 day delay window."
+    ],
+    "approval_required": [
+      "Purchase order changes",
+      "Supplier switching",
+      "Formal customer notification",
+      "Major production plan changes"
+    ],
+    "generated_at": "2026-05-30T22:04:09.152Z"
+  },
+  "route_intel": {
+    "focal_material": "naphtha",
+    "event_region": "Asia",
+    "routes": [
+      {
+        "route_id": "R-NAP-01",
+        "material": "naphtha",
+        "region": "Middle East",
+        "origin": {
+          "name": "ヤンブー製油所",
+          "country": "サウジアラビア",
+          "type": "refinery",
+          "lat": 24.09,
+          "lng": 38.06
+        },
+        "supplier": "ガルフ石化",
+        "port": {
+          "name": "ジュバイル港",
+          "lat": 27,
+          "lng": 49.66
+        },
+        "transport_mode": "sea",
+        "plant": {
+          "name": "千葉工場",
+          "lat": 35.6,
+          "lng": 140.12
+        },
+        "share_percent": 35,
+        "monthly_spend_usd": 4200000,
+        "lead_time_days": 24,
+        "baseline_status": "normal",
+        "focal": true,
+        "affected": false,
+        "status": "resilient"
+      },
+      {
+        "route_id": "R-NAP-02",
+        "material": "naphtha",
+        "region": "Southeast Asia",
+        "origin": {
+          "name": "ジュロン製油所",
+          "country": "シンガポール",
+          "type": "refinery",
+          "lat": 1.27,
+          "lng": 103.7
+        },
+        "supplier": "デモ石化サプライヤ",
+        "port": {
+          "name": "シンガポール港",
+          "lat": 1.26,
+          "lng": 103.83
+        },
+        "transport_mode": "sea",
+        "plant": {
+          "name": "千葉工場",
+          "lat": 35.6,
+          "lng": 140.12
+        },
+        "share_percent": 30,
+        "monthly_spend_usd": 3600000,
+        "lead_time_days": 12,
+        "baseline_status": "normal",
+        "focal": true,
+        "affected": true,
+        "status": "disrupted"
+      },
+      {
+        "route_id": "R-NAP-03",
+        "material": "naphtha",
+        "region": "East Asia",
+        "origin": {
+          "name": "蔚山製油所",
+          "country": "韓国",
+          "type": "refinery",
+          "lat": 35.54,
+          "lng": 129.31
+        },
+        "supplier": "韓美ケム",
+        "port": {
+          "name": "蔚山港",
+          "lat": 35.5,
+          "lng": 129.38
+        },
+        "transport_mode": "sea",
+        "plant": {
+          "name": "大阪工場",
+          "lat": 34.69,
+          "lng": 135.5
+        },
+        "share_percent": 20,
+        "monthly_spend_usd": 2400000,
+        "lead_time_days": 6,
+        "baseline_status": "normal",
+        "focal": true,
+        "affected": true,
+        "status": "disrupted"
+      },
+      {
+        "route_id": "R-NAP-04",
+        "material": "naphtha",
+        "region": "Southeast Asia",
+        "origin": {
+          "name": "マプタプット石化団地",
+          "country": "タイ",
+          "type": "refinery",
+          "lat": 12.68,
+          "lng": 101.15
+        },
+        "supplier": "サイアム原料",
+        "port": {
+          "name": "レムチャバン港",
+          "lat": 13.08,
+          "lng": 100.88
+        },
+        "transport_mode": "sea",
+        "plant": {
+          "name": "大阪工場",
+          "lat": 34.69,
+          "lng": 135.5
+        },
+        "share_percent": 15,
+        "monthly_spend_usd": 1800000,
+        "lead_time_days": 10,
+        "baseline_status": "normal",
+        "focal": true,
+        "affected": true,
+        "status": "disrupted"
+      },
+      {
+        "route_id": "R-PKG-01",
+        "material": "packaging-film",
+        "region": "East Asia",
+        "origin": {
+          "name": "桃園フィルム工場",
+          "country": "台湾",
+          "type": "film mill",
+          "lat": 24.99,
+          "lng": 121.3
+        },
+        "supplier": "フィルムテック",
+        "port": {
+          "name": "高雄港",
+          "lat": 22.61,
+          "lng": 120.3
+        },
+        "transport_mode": "sea",
+        "plant": {
+          "name": "千葉工場",
+          "lat": 35.6,
+          "lng": 140.12
+        },
+        "share_percent": 70,
+        "monthly_spend_usd": 900000,
+        "lead_time_days": 14,
+        "baseline_status": "normal",
+        "focal": false,
+        "affected": false,
+        "status": "normal"
+      },
+      {
+        "route_id": "R-PKG-02",
+        "material": "packaging-film",
+        "region": "East Asia",
+        "origin": {
+          "name": "釜山フィルム工場",
+          "country": "韓国",
+          "type": "film mill",
+          "lat": 35.18,
+          "lng": 129.08
+        },
+        "supplier": "Kフィルム",
+        "port": {
+          "name": "釜山港",
+          "lat": 35.1,
+          "lng": 129.04
+        },
+        "transport_mode": "sea",
+        "plant": {
+          "name": "千葉工場",
+          "lat": 35.6,
+          "lng": 140.12
+        },
+        "share_percent": 30,
+        "monthly_spend_usd": 400000,
+        "lead_time_days": 8,
+        "baseline_status": "normal",
+        "focal": false,
+        "affected": false,
+        "status": "normal"
+      },
+      {
+        "route_id": "R-ADH-01",
+        "material": "semiconductor-adhesive",
+        "region": "Europe",
+        "origin": {
+          "name": "フランクフルト特殊材工場",
+          "country": "ドイツ",
+          "type": "adhesive plant",
+          "lat": 50.11,
+          "lng": 8.68
+        },
+        "supplier": "ユーロボンド",
+        "port": {
+          "name": "フランクフルト空港",
+          "lat": 50.04,
+          "lng": 8.56
+        },
+        "transport_mode": "air",
+        "plant": {
+          "name": "名古屋工場",
+          "lat": 35.18,
+          "lng": 136.91
+        },
+        "share_percent": 55,
+        "monthly_spend_usd": 1100000,
+        "lead_time_days": 9,
+        "baseline_status": "normal",
+        "focal": false,
+        "affected": false,
+        "status": "normal"
+      },
+      {
+        "route_id": "R-ADH-02",
+        "material": "semiconductor-adhesive",
+        "region": "Japan",
+        "origin": {
+          "name": "堺接着材工場",
+          "country": "日本",
+          "type": "adhesive plant",
+          "lat": 34.57,
+          "lng": 135.48
+        },
+        "supplier": "日本アドヘシブ",
+        "port": {
+          "name": "堺ハブ",
+          "lat": 34.57,
+          "lng": 135.48
+        },
+        "transport_mode": "road",
+        "plant": {
+          "name": "名古屋工場",
+          "lat": 35.18,
+          "lng": 136.91
+        },
+        "share_percent": 45,
+        "monthly_spend_usd": 800000,
+        "lead_time_days": 3,
+        "baseline_status": "normal",
+        "focal": false,
+        "affected": false,
+        "status": "normal"
+      }
+    ],
+    "map_nodes": [
+      {
+        "id": "origin:ヤンブー製油所",
+        "type": "origin",
+        "label": "ヤンブー製油所",
+        "sublabel": "サウジアラビア · refinery",
+        "lat": 24.09,
+        "lng": 38.06,
+        "affected": false
+      },
+      {
+        "id": "port:ジュバイル港",
+        "type": "port",
+        "label": "ジュバイル港",
+        "sublabel": "sea",
+        "lat": 27,
+        "lng": 49.66,
+        "affected": false
+      },
+      {
+        "id": "plant:千葉工場",
+        "type": "plant",
+        "label": "千葉工場",
+        "sublabel": "Our plant",
+        "lat": 35.6,
+        "lng": 140.12,
+        "affected": true
+      },
+      {
+        "id": "origin:ジュロン製油所",
+        "type": "origin",
+        "label": "ジュロン製油所",
+        "sublabel": "シンガポール · refinery",
+        "lat": 1.27,
+        "lng": 103.7,
+        "affected": true
+      },
+      {
+        "id": "port:シンガポール港",
+        "type": "port",
+        "label": "シンガポール港",
+        "sublabel": "sea",
+        "lat": 1.26,
+        "lng": 103.83,
+        "affected": true
+      },
+      {
+        "id": "origin:蔚山製油所",
+        "type": "origin",
+        "label": "蔚山製油所",
+        "sublabel": "韓国 · refinery",
+        "lat": 35.54,
+        "lng": 129.31,
+        "affected": true
+      },
+      {
+        "id": "port:蔚山港",
+        "type": "port",
+        "label": "蔚山港",
+        "sublabel": "sea",
+        "lat": 35.5,
+        "lng": 129.38,
+        "affected": true
+      },
+      {
+        "id": "plant:大阪工場",
+        "type": "plant",
+        "label": "大阪工場",
+        "sublabel": "Our plant",
+        "lat": 34.69,
+        "lng": 135.5,
+        "affected": true
+      },
+      {
+        "id": "origin:マプタプット石化団地",
+        "type": "origin",
+        "label": "マプタプット石化団地",
+        "sublabel": "タイ · refinery",
+        "lat": 12.68,
+        "lng": 101.15,
+        "affected": true
+      },
+      {
+        "id": "port:レムチャバン港",
+        "type": "port",
+        "label": "レムチャバン港",
+        "sublabel": "sea",
+        "lat": 13.08,
+        "lng": 100.88,
+        "affected": true
+      },
+      {
+        "id": "origin:桃園フィルム工場",
+        "type": "origin",
+        "label": "桃園フィルム工場",
+        "sublabel": "台湾 · film mill",
+        "lat": 24.99,
+        "lng": 121.3,
+        "affected": false
+      },
+      {
+        "id": "port:高雄港",
+        "type": "port",
+        "label": "高雄港",
+        "sublabel": "sea",
+        "lat": 22.61,
+        "lng": 120.3,
+        "affected": false
+      },
+      {
+        "id": "origin:釜山フィルム工場",
+        "type": "origin",
+        "label": "釜山フィルム工場",
+        "sublabel": "韓国 · film mill",
+        "lat": 35.18,
+        "lng": 129.08,
+        "affected": false
+      },
+      {
+        "id": "port:釜山港",
+        "type": "port",
+        "label": "釜山港",
+        "sublabel": "sea",
+        "lat": 35.1,
+        "lng": 129.04,
+        "affected": false
+      },
+      {
+        "id": "origin:フランクフルト特殊材工場",
+        "type": "origin",
+        "label": "フランクフルト特殊材工場",
+        "sublabel": "ドイツ · adhesive plant",
+        "lat": 50.11,
+        "lng": 8.68,
+        "affected": false
+      },
+      {
+        "id": "port:フランクフルト空港",
+        "type": "port",
+        "label": "フランクフルト空港",
+        "sublabel": "air",
+        "lat": 50.04,
+        "lng": 8.56,
+        "affected": false
+      },
+      {
+        "id": "plant:名古屋工場",
+        "type": "plant",
+        "label": "名古屋工場",
+        "sublabel": "Our plant",
+        "lat": 35.18,
+        "lng": 136.91,
+        "affected": false
+      },
+      {
+        "id": "origin:堺接着材工場",
+        "type": "origin",
+        "label": "堺接着材工場",
+        "sublabel": "日本 · adhesive plant",
+        "lat": 34.57,
+        "lng": 135.48,
+        "affected": false
+      },
+      {
+        "id": "port:堺ハブ",
+        "type": "port",
+        "label": "堺ハブ",
+        "sublabel": "road",
+        "lat": 34.57,
+        "lng": 135.48,
+        "affected": false
+      }
+    ],
+    "sourcing": {
+      "by_material": {
+        "naphtha": {
+          "material": "naphtha",
+          "total_share": 100,
+          "total_spend": 12000000,
+          "affected_share": 65,
+          "affected_spend": 7800000,
+          "route_count": 4,
+          "affected_count": 3,
+          "routes": [
+            {
+              "route_id": "R-NAP-01",
+              "origin": "ヤンブー製油所",
+              "region": "Middle East",
+              "supplier": "ガルフ石化",
+              "share_percent": 35,
+              "monthly_spend_usd": 4200000,
+              "lead_time_days": 24,
+              "status": "resilient"
+            },
+            {
+              "route_id": "R-NAP-02",
+              "origin": "ジュロン製油所",
+              "region": "Southeast Asia",
+              "supplier": "デモ石化サプライヤ",
+              "share_percent": 30,
+              "monthly_spend_usd": 3600000,
+              "lead_time_days": 12,
+              "status": "disrupted"
+            },
+            {
+              "route_id": "R-NAP-03",
+              "origin": "蔚山製油所",
+              "region": "East Asia",
+              "supplier": "韓美ケム",
+              "share_percent": 20,
+              "monthly_spend_usd": 2400000,
+              "lead_time_days": 6,
+              "status": "disrupted"
+            },
+            {
+              "route_id": "R-NAP-04",
+              "origin": "マプタプット石化団地",
+              "region": "Southeast Asia",
+              "supplier": "サイアム原料",
+              "share_percent": 15,
+              "monthly_spend_usd": 1800000,
+              "lead_time_days": 10,
+              "status": "disrupted"
+            }
+          ]
+        },
+        "packaging-film": {
+          "material": "packaging-film",
+          "total_share": 100,
+          "total_spend": 1300000,
+          "affected_share": 0,
+          "affected_spend": 0,
+          "route_count": 2,
+          "affected_count": 0,
+          "routes": [
+            {
+              "route_id": "R-PKG-01",
+              "origin": "桃園フィルム工場",
+              "region": "East Asia",
+              "supplier": "フィルムテック",
+              "share_percent": 70,
+              "monthly_spend_usd": 900000,
+              "lead_time_days": 14,
+              "status": "normal"
+            },
+            {
+              "route_id": "R-PKG-02",
+              "origin": "釜山フィルム工場",
+              "region": "East Asia",
+              "supplier": "Kフィルム",
+              "share_percent": 30,
+              "monthly_spend_usd": 400000,
+              "lead_time_days": 8,
+              "status": "normal"
+            }
+          ]
+        },
+        "semiconductor-adhesive": {
+          "material": "semiconductor-adhesive",
+          "total_share": 100,
+          "total_spend": 1900000,
+          "affected_share": 0,
+          "affected_spend": 0,
+          "route_count": 2,
+          "affected_count": 0,
+          "routes": [
+            {
+              "route_id": "R-ADH-01",
+              "origin": "フランクフルト特殊材工場",
+              "region": "Europe",
+              "supplier": "ユーロボンド",
+              "share_percent": 55,
+              "monthly_spend_usd": 1100000,
+              "lead_time_days": 9,
+              "status": "normal"
+            },
+            {
+              "route_id": "R-ADH-02",
+              "origin": "堺接着材工場",
+              "region": "Japan",
+              "supplier": "日本アドヘシブ",
+              "share_percent": 45,
+              "monthly_spend_usd": 800000,
+              "lead_time_days": 3,
+              "status": "normal"
+            }
+          ]
+        }
+      },
+      "focal": {
+        "material": "naphtha",
+        "total_share": 100,
+        "total_spend": 12000000,
+        "affected_share": 65,
+        "affected_spend": 7800000,
+        "route_count": 4,
+        "affected_count": 3,
+        "routes": [
+          {
+            "route_id": "R-NAP-01",
+            "origin": "ヤンブー製油所",
+            "region": "Middle East",
+            "supplier": "ガルフ石化",
+            "share_percent": 35,
+            "monthly_spend_usd": 4200000,
+            "lead_time_days": 24,
+            "status": "resilient"
+          },
+          {
+            "route_id": "R-NAP-02",
+            "origin": "ジュロン製油所",
+            "region": "Southeast Asia",
+            "supplier": "デモ石化サプライヤ",
+            "share_percent": 30,
+            "monthly_spend_usd": 3600000,
+            "lead_time_days": 12,
+            "status": "disrupted"
+          },
+          {
+            "route_id": "R-NAP-03",
+            "origin": "蔚山製油所",
+            "region": "East Asia",
+            "supplier": "韓美ケム",
+            "share_percent": 20,
+            "monthly_spend_usd": 2400000,
+            "lead_time_days": 6,
+            "status": "disrupted"
+          },
+          {
+            "route_id": "R-NAP-04",
+            "origin": "マプタプット石化団地",
+            "region": "Southeast Asia",
+            "supplier": "サイアム原料",
+            "share_percent": 15,
+            "monthly_spend_usd": 1800000,
+            "lead_time_days": 10,
+            "status": "disrupted"
+          }
+        ]
+      }
+    },
+    "flow": {
+      "nodes": [
+        {
+          "id": "o:ヤンブー製油所",
+          "stage": 0,
+          "label": "ヤンブー製油所",
+          "sublabel": "Middle East",
+          "type": "origin",
+          "value": 35
+        },
+        {
+          "id": "m:ガルフ石化",
+          "stage": 1,
+          "label": "ガルフ石化",
+          "sublabel": "ジュバイル港",
+          "type": "supplier",
+          "value": 70
+        },
+        {
+          "id": "p:千葉工場",
+          "stage": 2,
+          "label": "千葉工場",
+          "sublabel": "plant",
+          "type": "plant",
+          "value": 265
+        },
+        {
+          "id": "o:ジュロン製油所",
+          "stage": 0,
+          "label": "ジュロン製油所",
+          "sublabel": "Southeast Asia",
+          "type": "origin",
+          "value": 30
+        },
+        {
+          "id": "m:デモ石化サプライヤ",
+          "stage": 1,
+          "label": "デモ石化サプライヤ",
+          "sublabel": "シンガポール港",
+          "type": "supplier",
+          "value": 60
+        },
+        {
+          "id": "o:蔚山製油所",
+          "stage": 0,
+          "label": "蔚山製油所",
+          "sublabel": "East Asia",
+          "type": "origin",
+          "value": 20
+        },
+        {
+          "id": "m:韓美ケム",
+          "stage": 1,
+          "label": "韓美ケム",
+          "sublabel": "蔚山港",
+          "type": "supplier",
+          "value": 40
+        },
+        {
+          "id": "p:大阪工場",
+          "stage": 2,
+          "label": "大阪工場",
+          "sublabel": "plant",
+          "type": "plant",
+          "value": 95
+        },
+        {
+          "id": "o:マプタプット石化団地",
+          "stage": 0,
+          "label": "マプタプット石化団地",
+          "sublabel": "Southeast Asia",
+          "type": "origin",
+          "value": 15
+        },
+        {
+          "id": "m:サイアム原料",
+          "stage": 1,
+          "label": "サイアム原料",
+          "sublabel": "レムチャバン港",
+          "type": "supplier",
+          "value": 30
+        },
+        {
+          "id": "pr:樹脂A",
+          "stage": 3,
+          "label": "樹脂A",
+          "sublabel": "product",
+          "type": "product",
+          "value": 240
+        },
+        {
+          "id": "c:自動車部品A社",
+          "stage": 4,
+          "label": "自動車部品A社",
+          "sublabel": "high",
+          "type": "customer",
+          "value": 120
+        },
+        {
+          "id": "pr:溶剤B",
+          "stage": 3,
+          "label": "溶剤B",
+          "sublabel": "product",
+          "type": "product",
+          "value": 160
+        },
+        {
+          "id": "c:包装材B社",
+          "stage": 4,
+          "label": "包装材B社",
+          "sublabel": "high",
+          "type": "customer",
+          "value": 80
+        },
+        {
+          "id": "pr:コーティングC",
+          "stage": 3,
+          "label": "コーティングC",
+          "sublabel": "product",
+          "type": "product",
+          "value": 120
+        },
+        {
+          "id": "c:化学品C社",
+          "stage": 4,
+          "label": "化学品C社",
+          "sublabel": "medium",
+          "type": "customer",
+          "value": 60
+        }
+      ],
+      "edges": [
+        {
+          "source": "o:ヤンブー製油所",
+          "target": "m:ガルフ石化",
+          "value": 35,
+          "status": "resilient"
+        },
+        {
+          "source": "m:ガルフ石化",
+          "target": "p:千葉工場",
+          "value": 35,
+          "status": "resilient"
+        },
+        {
+          "source": "o:ジュロン製油所",
+          "target": "m:デモ石化サプライヤ",
+          "value": 30,
+          "status": "disrupted"
+        },
+        {
+          "source": "m:デモ石化サプライヤ",
+          "target": "p:千葉工場",
+          "value": 30,
+          "status": "disrupted"
+        },
+        {
+          "source": "o:蔚山製油所",
+          "target": "m:韓美ケム",
+          "value": 20,
+          "status": "disrupted"
+        },
+        {
+          "source": "m:韓美ケム",
+          "target": "p:大阪工場",
+          "value": 20,
+          "status": "disrupted"
+        },
+        {
+          "source": "o:マプタプット石化団地",
+          "target": "m:サイアム原料",
+          "value": 15,
+          "status": "disrupted"
+        },
+        {
+          "source": "m:サイアム原料",
+          "target": "p:大阪工場",
+          "value": 15,
+          "status": "disrupted"
+        },
+        {
+          "source": "p:千葉工場",
+          "target": "pr:樹脂A",
+          "value": 120,
+          "status": "disrupted"
+        },
+        {
+          "source": "pr:樹脂A",
+          "target": "c:自動車部品A社",
+          "value": 120,
+          "status": "disrupted"
+        },
+        {
+          "source": "p:千葉工場",
+          "target": "pr:溶剤B",
+          "value": 80,
+          "status": "disrupted"
+        },
+        {
+          "source": "pr:溶剤B",
+          "target": "c:包装材B社",
+          "value": 80,
+          "status": "disrupted"
+        },
+        {
+          "source": "p:大阪工場",
+          "target": "pr:コーティングC",
+          "value": 60,
+          "status": "exposed"
+        },
+        {
+          "source": "pr:コーティングC",
+          "target": "c:化学品C社",
+          "value": 60,
+          "status": "exposed"
+        }
+      ]
+    },
+    "kpis": {
+      "focal_material": "naphtha",
+      "total_routes": 4,
+      "affected_routes": 3,
+      "resilient_routes": 1,
+      "affected_share_percent": 65,
+      "total_share_percent": 100,
+      "monthly_spend_at_risk": 7800000,
+      "total_monthly_spend": 12000000,
+      "lead_time_max_days": 24
+    }
+  }
+}

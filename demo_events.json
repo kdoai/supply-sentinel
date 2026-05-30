@@ -1,0 +1,122 @@
+{
+  "interval_ms": 1800,
+  "stages": [
+    {
+      "id": "baseline",
+      "time_label": "06:30",
+      "title": "定期巡回を開始",
+      "source": "Scheduler",
+      "source_type": "internal",
+      "detail": "ニュース、サプライヤ通知、物流・価格シグナル、社内在庫を巡回対象として読み込み。",
+      "score": 34,
+      "severity": "low",
+      "inventory_days_min": 12,
+      "affected_route_ids": [],
+      "resilient_route_ids": [],
+      "evidence_count": 0,
+      "recommended_count": 0,
+      "approval_count": 0,
+      "impacted_product_count": 0,
+      "impacted_customer_count": 0,
+      "impacted_order_count": 0
+    },
+    {
+      "id": "news",
+      "time_label": "06:31",
+      "title": "外部ニュースで供給不安を検知",
+      "source": "業界ニュース / GDELT想定",
+      "source_type": "external",
+      "detail": "アジア地域の製油所トラブルにより、ナフサ供給が逼迫している兆候を抽出。",
+      "score": 58,
+      "severity": "medium",
+      "inventory_days_min": 12,
+      "affected_route_ids": ["R-NAP-02"],
+      "resilient_route_ids": [],
+      "evidence_count": 1,
+      "recommended_count": 1,
+      "approval_count": 0,
+      "impacted_product_count": 0,
+      "impacted_customer_count": 0,
+      "impacted_order_count": 0
+    },
+    {
+      "id": "supplier_notice",
+      "time_label": "06:32",
+      "title": "サプライヤ通知から遅延を抽出",
+      "source": "サプライヤ通知PDF / メール",
+      "source_type": "supplier",
+      "detail": "出荷が5-7日遅延し、次回割当が通常契約量の70%程度に制限される可能性を確認。",
+      "score": 74,
+      "severity": "high",
+      "inventory_days_min": 8,
+      "affected_route_ids": ["R-NAP-02", "R-NAP-03"],
+      "resilient_route_ids": [],
+      "evidence_count": 3,
+      "recommended_count": 2,
+      "approval_count": 1,
+      "impacted_product_count": 2,
+      "impacted_customer_count": 1,
+      "impacted_order_count": 1
+    },
+    {
+      "id": "impact_assessment",
+      "time_label": "06:33",
+      "title": "BOM・在庫・受注を照合",
+      "source": "社内在庫 / BOM / 受注",
+      "source_type": "internal",
+      "detail": "3製品、3顧客、2工場に影響。千葉工場の最短在庫残日数は5日と判定。",
+      "score": 82,
+      "severity": "high",
+      "inventory_days_min": 5,
+      "affected_route_ids": ["R-NAP-02", "R-NAP-03", "R-NAP-04"],
+      "resilient_route_ids": ["R-NAP-01"],
+      "evidence_count": 4,
+      "recommended_count": 4,
+      "approval_count": 3,
+      "impacted_product_count": 3,
+      "impacted_customer_count": 3,
+      "impacted_order_count": 3
+    },
+    {
+      "id": "response_ready",
+      "time_label": "06:34",
+      "title": "初動案と管理職レポートを生成",
+      "source": "Supply Sentinel Agent",
+      "source_type": "agent",
+      "detail": "代替材確認、優先顧客向け在庫確保、一次説明文案、承認事項を整理。",
+      "score": 82,
+      "severity": "high",
+      "inventory_days_min": 5,
+      "affected_route_ids": ["R-NAP-02", "R-NAP-03", "R-NAP-04"],
+      "resilient_route_ids": ["R-NAP-01"],
+      "evidence_count": 4,
+      "recommended_count": 5,
+      "approval_count": 4,
+      "impacted_product_count": 3,
+      "impacted_customer_count": 3,
+      "impacted_order_count": 3
+    }
+  ],
+  "data_sources": [
+    {
+      "name": "外部ニュース",
+      "candidate": "GDELT / 業界紙RSS",
+      "role": "供給不安・事故・規制・地政学リスクの早期検知"
+    },
+    {
+      "name": "サプライヤ通知",
+      "candidate": "メール / PDF / ポータル通知",
+      "role": "出荷遅延、割当制限、停止予定の確度確認"
+    },
+    {
+      "name": "物流・災害",
+      "candidate": "港湾混雑 / 気象庁防災情報",
+      "role": "輸送遅延と地域リスクの補助シグナル"
+    },
+    {
+      "name": "社内データ",
+      "candidate": "在庫 / BOM / 代替材 / 受注",
+      "role": "世の中のリスクを自社影響へ翻訳"
+    }
+  ]
+}
