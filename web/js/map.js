@@ -197,8 +197,14 @@ export function createMap(canvasEl, geojson) {
     H = cssH;
     // Fit the full world (360° x 180°) while preserving 2:1 aspect, then center.
     scale = Math.min(W / 360, H / 180);
+    if (W < 560) {
+      scale *= 0.8;
+    }
     offX = (W - 360 * scale) / 2;
     offY = (H - 180 * scale) / 2;
+    if (W < 560) {
+      offX -= 12;
+    }
     canvasEl.width = Math.max(1, Math.round(cssW * dpr));
     canvasEl.height = Math.max(1, Math.round(cssH * dpr));
     // Reset transform then scale so all drawing happens in CSS pixels.
