@@ -7,20 +7,22 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" id="app-shell">
     <aside class="sidebar" aria-label="画面切り替え">
+      <button class="sidebar-toggle" type="button" id="sidebar-toggle" aria-label="サイドバーを閉じる" aria-expanded="true">‹</button>
+
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">S</div>
-        <div>
+        <div class="brand-text">
           <h1>Supply Sentinel</h1>
           <p>供給リスク早期警戒</p>
         </div>
       </div>
 
       <nav class="side-nav">
-        <button class="nav-item is-active" type="button" data-view="dashboard">監視ダッシュボード</button>
-        <button class="nav-item" type="button" data-view="analysis">影響分析</button>
-        <button class="nav-item" type="button" data-view="response">初動対応</button>
+        <button class="nav-item is-active" type="button" data-view="dashboard"><span>監視ダッシュボード</span></button>
+        <button class="nav-item" type="button" data-view="analysis"><span>影響分析</span></button>
+        <button class="nav-item" type="button" data-view="response"><span>初動対応</span></button>
       </nav>
 
       <div class="sidebar-footer">

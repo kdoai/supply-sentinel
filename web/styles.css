@@ -47,24 +47,47 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 236px minmax(0, 1fr);
+  grid-template-columns: 196px minmax(0, 1fr);
   height: 100vh;
   min-height: 720px;
+  transition: grid-template-columns 180ms ease;
+}
+
+.app-shell.sidebar-collapsed {
+  grid-template-columns: 64px minmax(0, 1fr);
 }
 
 .sidebar {
+  position: relative;
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 18px;
-  padding: 20px 16px;
+  padding: 18px 12px;
   color: #fff;
   background: linear-gradient(180deg, var(--navy-950), var(--navy-800));
 }
 
+.sidebar-toggle {
+  position: absolute;
+  top: 14px;
+  right: -14px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #c8d1df;
+  border-radius: 999px;
+  color: var(--navy-900);
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 39, 66, 0.18);
+}
+
 .brand {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
   align-items: center;
   padding: 4px 4px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.14);
@@ -82,15 +105,23 @@ button {
   font-weight: 800;
 }
 
+.app-shell:not(.sidebar-collapsed) .brand-mark {
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+}
+
 .brand h1 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .brand p {
   margin: 2px 0 0;
   color: #bdd0e6;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .side-nav {
@@ -104,11 +135,63 @@ button {
   min-height: 48px;
   border: 1px solid transparent;
   border-radius: 8px;
-  padding: 11px 12px;
+  padding: 10px 12px;
   color: #d8e6f7;
   background: transparent;
   text-align: left;
   cursor: pointer;
+}
+
+.app-shell.sidebar-collapsed .sidebar {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.app-shell.sidebar-collapsed .brand {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding-bottom: 14px;
+}
+
+.app-shell.sidebar-collapsed .brand-text,
+.app-shell.sidebar-collapsed .nav-item span,
+.app-shell.sidebar-collapsed .sidebar-footer span:not(.status-dot) {
+  display: none;
+}
+
+.app-shell.sidebar-collapsed .brand-mark {
+  width: 36px;
+  height: 36px;
+}
+
+.app-shell.sidebar-collapsed .nav-item {
+  min-height: 42px;
+  padding: 0;
+  text-align: center;
+}
+
+.app-shell.sidebar-collapsed .nav-item::before {
+  display: grid;
+  place-items: center;
+  height: 42px;
+  font-weight: 800;
+}
+
+.app-shell.sidebar-collapsed .nav-item[data-view="dashboard"]::before {
+  content: "監";
+}
+
+.app-shell.sidebar-collapsed .nav-item[data-view="analysis"]::before {
+  content: "影";
+}
+
+.app-shell.sidebar-collapsed .nav-item[data-view="response"]::before {
+  content: "初";
+}
+
+.app-shell.sidebar-collapsed .sidebar-footer {
+  justify-content: center;
+  padding: 10px;
 }
 
 .nav-item:hover {
@@ -250,13 +333,17 @@ button {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 390px;
+  grid-template-columns: minmax(0, 1fr) 330px;
   grid-template-rows: minmax(0, 1fr) 230px;
   grid-template-areas:
     "map side"
     "mix summary";
   gap: 16px;
   height: calc(100vh - 114px);
+}
+
+.app-shell.sidebar-collapsed .dashboard-grid {
+  grid-template-columns: minmax(0, 1fr) 300px;
 }
 
 .map-panel {
@@ -330,7 +417,7 @@ button {
 .dashboard-side {
   grid-area: side;
   display: grid;
-  grid-template-rows: 178px minmax(0, 1fr);
+  grid-template-rows: 170px minmax(0, 1fr);
   gap: 16px;
   min-height: 0;
 }
@@ -346,18 +433,18 @@ button {
 .risk-panel #risk-gauge {
   display: grid;
   place-items: center;
-  padding: 12px;
+  padding: 6px;
 }
 
 .risk-score {
   display: grid;
   justify-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .risk-score-main {
   color: var(--red);
-  font-size: 56px;
+  font-size: 44px;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -365,36 +452,36 @@ button {
 
 .risk-score-sub {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .risk-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 4px 14px;
+  min-height: 24px;
+  padding: 3px 12px;
   border-radius: 999px;
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 #kpi-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 10px;
+  gap: 7px;
+  padding: 8px;
   overflow: hidden;
 }
 
 .kpi-card {
   display: grid;
   align-content: center;
-  min-height: 68px;
+  min-height: 58px;
   border: 1px solid var(--line);
   border-left: 4px solid var(--blue-600);
   border-radius: 8px;
-  padding: 9px 10px;
+  padding: 8px 9px;
   background: #fff;
 }
 
@@ -406,7 +493,7 @@ button {
 .kpi-value {
   display: block;
   color: var(--blue-600);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   line-height: 1;
 }
@@ -423,7 +510,7 @@ button {
 .kpi-label {
   margin-top: 5px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .mix-panel {
@@ -445,8 +532,8 @@ button {
 
 #sourcing-mix,
 .summary-panel ul {
-  overflow: hidden;
-  padding: 12px 16px;
+  overflow: auto;
+  padding: 10px 14px;
 }
 
 .sourcing-header {
@@ -461,7 +548,7 @@ button {
 }
 
 .sourcing-row {
-  margin-bottom: 7px;
+  margin-bottom: 4px;
 }
 
 .sourcing-row-top,
@@ -469,7 +556,7 @@ button {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 11px;
+  font-size: 9.5px;
 }
 
 .sourcing-origin {
@@ -487,8 +574,8 @@ button {
 }
 
 .sourcing-bar-track {
-  height: 7px;
-  margin: 4px 0;
+  height: 5px;
+  margin: 2px 0;
   overflow: hidden;
   border-radius: 999px;
   background: #e8edf4;
@@ -593,7 +680,9 @@ li {
 }
 
 .summary-panel li {
-  font-size: 13px;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  line-height: 1.45;
 }
 
 @media (max-width: 1120px) {

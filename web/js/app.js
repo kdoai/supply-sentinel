@@ -16,7 +16,7 @@ function showFatalError(message) {
   const banner = document.createElement("div");
   banner.setAttribute("role", "alert");
   banner.style.cssText =
-    "position:fixed;left:236px;right:0;top:0;z-index:9999;" +
+    "position:fixed;left:0;right:0;top:0;z-index:9999;" +
     "background:#7f1d1d;color:#fff;padding:12px 16px;font:13px/1.5 system-ui,sans-serif;";
   banner.textContent = `ダッシュボードの読み込みに失敗しました: ${message}`;
   document.body.appendChild(banner);
@@ -30,9 +30,34 @@ async function fetchJson(url) {
   return res.json();
 }
 
+function ensureMap() {
+  const canvasEl = document.getElementById("world-map");
+  if (!canvasEl || !dashboardData || !worldGeojson) return;
+
+  if (!mapInstance) {
+    mapInstance = createMap(canvasEl, worldGeojson);
+    window.addEventListener("resize", () => {
+      try {
+        mapInstance.resize();
+      } catch {
+        // Ignore resize races.
+      }
+    });
+  }
+
+  requestAnimationFrame(() => {
+    try {
+      mapInstance.resize();
+      mapInstance.render(dashboardData);
+    } catch {
+      // Ignore resize races.
+    }
+  });
+}
+
 function setActiveView(viewName) {
   if (!VIEW_TITLES[viewName]) {
-    viewName = "overview";
+    viewName = "dashboard";
   }
   document.querySelectorAll("[data-view-panel]").forEach((panel) => {
     panel.classList.toggle("is-active", panel.dataset.viewPanel === viewName);
@@ -54,30 +79,32 @@ function bindNavigation() {
   });
 }
 
-function ensureMap() {
-  const canvasEl = document.getElementById("world-map");
-  if (!canvasEl || !dashboardData || !worldGeojson) return;
+function bindSidebarToggle() {
+  const shell = document.getElementById("app-shell");
+  const button = document.getElementById("sidebar-toggle");
+  if (!shell || !button) return;
 
-  if (!mapInstance) {
-    mapInstance = createMap(canvasEl, worldGeojson);
-    mapInstance.render(dashboardData);
-    window.addEventListener("resize", () => {
-      try {
-        mapInstance.resize();
-      } catch {
-        // Ignore resize races.
-      }
-    });
-  }
-
-  requestAnimationFrame(() => {
-    try {
-      mapInstance.resize();
-      mapInstance.render(dashboardData);
-    } catch {
-      // Ignore resize races.
-    }
+  button.addEventListener("click", () => {
+    const collapsed = shell.classList.toggle("sidebar-collapsed");
+    button.setAttribute("aria-expanded", String(!collapsed));
+    button.setAttribute("aria-label", collapsed ? "サイドバーを開く" : "サイドバーを閉じる");
+    button.textContent = collapsed ? "›" : "‹";
+    ensureMap();
   });
+}
+
+function applyInitialSidebarState() {
+  const shell = document.getElementById("app-shell");
+  const button = document.getElementById("sidebar-toggle");
+  if (!shell || !button) return;
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("sidebar") !== "closed") return;
+
+  shell.classList.add("sidebar-collapsed");
+  button.setAttribute("aria-expanded", "false");
+  button.setAttribute("aria-label", "サイドバーを開く");
+  button.textContent = "›";
 }
 
 async function init() {
@@ -93,6 +120,8 @@ async function init() {
   }
 
   bindNavigation();
+  bindSidebarToggle();
+  applyInitialSidebarState();
   const initialView = new URLSearchParams(window.location.search).get("view") || "dashboard";
   setActiveView(initialView);
 }
