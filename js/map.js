@@ -25,13 +25,20 @@ export function createMap(canvasEl, geojson) {
   let scale = 1;
   let offX = 0;
   let offY = 0;
+  let zoom = 1;
+  let panX = 0;
+  let panY = 0;
 
   let countryRings = []; // pre-extracted outer rings: [[ [lng,lat], ... ], ...]
+  let projectedRings = [];
   let projRoutes = [];   // projected routes ready to draw
   let projNodes = [];    // projected nodes ready to draw
 
   let rafId = null;
+  let dragging = false;
+  let dragStart = { x: 0, y: 0, panX: 0, panY: 0 };
   let mouse = { x: -9999, y: -9999, inside: false };
+  let selected = null;
 
   // --- tooltip element --------------------------------------------------
   function findTooltip() {
@@ -51,13 +58,62 @@ export function createMap(canvasEl, geojson) {
     return typeof v === 'number' && isFinite(v);
   }
 
-  // Equirectangular projection into CSS pixel space, aspect-preserving + centered.
-  function project(lng, lat) {
+  function baseProject(lng, lat) {
     if (!isNum(lng) || !isNum(lat)) return null;
     return {
       x: offX + (lng + 180) * scale,
       y: offY + (90 - lat) * scale,
     };
+  }
+
+  function viewPoint(pt) {
+    return {
+      x: W / 2 + (pt.x - W / 2) * zoom + panX,
+      y: H / 2 + (pt.y - H / 2) * zoom + panY,
+    };
+  }
+
+  // Equirectangular projection into CSS pixel space, aspect-preserving,
+  // centered, then transformed by the user-controlled viewport.
+  function project(lng, lat) {
+    const base = baseProject(lng, lat);
+    return base ? viewPoint(base) : null;
+  }
+
+  function clampViewport() {
+    const limitX = Math.max(40, W * zoom * 0.55);
+    const limitY = Math.max(40, H * zoom * 0.55);
+    panX = Math.max(-limitX, Math.min(limitX, panX));
+    panY = Math.max(-limitY, Math.min(limitY, panY));
+  }
+
+  function setZoom(nextZoom, anchor = { x: W / 2, y: H / 2 }) {
+    const oldZoom = zoom;
+    zoom = Math.max(0.85, Math.min(5.2, nextZoom));
+    if (oldZoom === zoom) return;
+    panX = anchor.x - W / 2 - ((anchor.x - W / 2 - panX) * zoom) / oldZoom;
+    panY = anchor.y - H / 2 - ((anchor.y - H / 2 - panY) * zoom) / oldZoom;
+    clampViewport();
+    reproject();
+  }
+
+  function resetView() {
+    zoom = 1;
+    panX = 0;
+    panY = 0;
+    selected = null;
+    reproject();
+    emitSelection(null);
+  }
+
+  function focusOn(lng, lat, nextZoom) {
+    const base = baseProject(lng, lat);
+    if (!base) return;
+    zoom = Math.max(0.85, Math.min(5.2, nextZoom || 2));
+    panX = W / 2 - base.x * zoom + (W / 2) * (zoom - 1);
+    panY = H / 2 - base.y * zoom + (H / 2) * (zoom - 1);
+    clampViewport();
+    reproject();
   }
 
   // Extract just the outer rings from a GeoJSON FeatureCollection /
@@ -116,6 +172,19 @@ export function createMap(canvasEl, geojson) {
   function reproject() {
     projRoutes = [];
     projNodes = [];
+    projectedRings = [];
+
+    for (const ring of countryRings) {
+      if (!Array.isArray(ring) || ring.length < 2) continue;
+      const projected = [];
+      for (const c of ring) {
+        if (!Array.isArray(c) || c.length < 2) continue;
+        const pt = project(c[0], c[1]);
+        if (pt) projected.push(pt);
+      }
+      if (projected.length > 1) projectedRings.push(projected);
+    }
+
     if (!data) return;
 
     const ri = data.route_intel || {};
@@ -159,6 +228,7 @@ export function createMap(canvasEl, geojson) {
         plant: p,
         // per-route phase offset so comets don't all line up
         phase: Math.random(),
+        source: r,
       });
     }
 
@@ -176,6 +246,7 @@ export function createMap(canvasEl, geojson) {
         id: n.id,
         lat: n.lat,
         lng: n.lng,
+        source: n,
       });
     }
   }
@@ -198,12 +269,12 @@ export function createMap(canvasEl, geojson) {
     // Fit the full world (360° x 180°) while preserving 2:1 aspect, then center.
     scale = Math.min(W / 360, H / 180);
     if (W < 560) {
-      scale *= 0.8;
+      scale *= 1.08;
     }
     offX = (W - 360 * scale) / 2;
     offY = (H - 180 * scale) / 2;
     if (W < 560) {
-      offX -= 12;
+      offY = Math.min(offY, 128);
     }
     canvasEl.width = Math.max(1, Math.round(cssW * dpr));
     canvasEl.height = Math.max(1, Math.round(cssH * dpr));
@@ -244,18 +315,14 @@ export function createMap(canvasEl, geojson) {
     ctx.save();
     ctx.fillStyle = '#16223d';
     ctx.strokeStyle = '#243a63';
-    ctx.lineWidth = 0.5;
-    for (const ring of countryRings) {
-      if (!Array.isArray(ring) || ring.length < 2) continue;
+    ctx.lineWidth = Math.max(0.45, Math.min(1.1, zoom * 0.45));
+    for (const ring of projectedRings) {
       ctx.beginPath();
       let started = false;
       for (let i = 0; i < ring.length; i++) {
-        const c = ring[i];
-        if (!Array.isArray(c) || c.length < 2) continue;
-        const x = offX + (c[0] + 180) * scale;
-        const y = offY + (90 - c[1]) * scale;
-        if (!started) { ctx.moveTo(x, y); started = true; }
-        else ctx.lineTo(x, y);
+        const pt = ring[i];
+        if (!started) { ctx.moveTo(pt.x, pt.y); started = true; }
+        else ctx.lineTo(pt.x, pt.y);
       }
       ctx.closePath();
       ctx.fill();
@@ -270,6 +337,7 @@ export function createMap(canvasEl, geojson) {
       const theme = statusTheme(r.status);
       const disrupted = r.status === 'disrupted';
       const affected = r.affected || disrupted;
+      const selectedRoute = selected && selected.type === 'route' && selected.route_id === r.route_id;
 
       // Pulse factor for disrupted/affected routes.
       const pulse = disrupted
@@ -283,10 +351,10 @@ export function createMap(canvasEl, geojson) {
       ctx.quadraticCurveTo(r.cx, r.cy, r.b.x, r.b.y);
       ctx.lineCap = 'round';
       ctx.shadowColor = theme.glow;
-      ctx.shadowBlur = (disrupted ? 22 : 12) * pulse;
+      ctx.shadowBlur = (selectedRoute ? 30 : disrupted ? 22 : 12) * pulse;
       ctx.strokeStyle = theme.glow;
-      ctx.lineWidth = r.width;
-      ctx.globalAlpha = disrupted ? 0.5 + 0.35 * pulse : 0.55;
+      ctx.lineWidth = r.width + (selectedRoute ? 2.4 : 0);
+      ctx.globalAlpha = selectedRoute ? 0.95 : disrupted ? 0.5 + 0.35 * pulse : 0.55;
       ctx.stroke();
       // brighter core line on top
       ctx.shadowBlur = 0;
@@ -346,6 +414,7 @@ export function createMap(canvasEl, geojson) {
     for (const n of projNodes) {
       const affected = n.affected;
       const t = now / 1000;
+      const selectedNode = selected && selected.type === 'node' && selected.id === n.id;
 
       if (n.type === 'plant') {
         // OUR downstream plants — make them stand out: cyan/white pulsing
@@ -357,11 +426,11 @@ export function createMap(canvasEl, geojson) {
         ctx.save();
         ctx.beginPath();
         ctx.strokeStyle = glow;
-        ctx.globalAlpha = 0.6 * (1 - pulse);
-        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = selectedNode ? 0.9 : 0.6 * (1 - pulse);
+        ctx.lineWidth = selectedNode ? 2.4 : 1.5;
         ctx.shadowColor = glow;
         ctx.shadowBlur = 16;
-        ctx.arc(n.x, n.y, 6 + pulse * 9, 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, (selectedNode ? 10 : 6) + pulse * 9, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
         // inner solid ring
@@ -393,8 +462,8 @@ export function createMap(canvasEl, geojson) {
         ctx.rotate(Math.PI / 4);
         ctx.fillStyle = color;
         ctx.shadowColor = glow;
-        ctx.shadowBlur = (affected ? 14 : 7) * pulse;
-        const s = 3.6;
+        ctx.shadowBlur = (affected ? 14 : 7) * pulse + (selectedNode ? 10 : 0);
+        const s = selectedNode ? 5.6 : 3.6;
         ctx.fillRect(-s, -s, s * 2, s * 2);
         ctx.restore();
         drawLabel(n.label, n.x + 7, n.y, affected ? '#ffb4b4' : '#e7d6ac');
@@ -408,8 +477,8 @@ export function createMap(canvasEl, geojson) {
         ctx.beginPath();
         ctx.fillStyle = color;
         ctx.shadowColor = glow;
-        ctx.shadowBlur = (affected ? 10 : 3) * pulse;
-        ctx.arc(n.x, n.y, affected ? 2.6 : 1.8, 0, Math.PI * 2);
+        ctx.shadowBlur = (affected ? 10 : 3) * pulse + (selectedNode ? 8 : 0);
+        ctx.arc(n.x, n.y, selectedNode ? 4 : affected ? 2.6 : 1.8, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -495,18 +564,57 @@ export function createMap(canvasEl, geojson) {
     let bestD = 14; // px radius
     for (const n of projNodes) {
       const d = Math.hypot(n.x - mx, n.y - my);
-      if (d < bestD) { bestD = d; best = n; }
+      if (d < bestD) { bestD = d; best = { type: 'node', item: n }; }
+    }
+    for (const r of projRoutes) {
+      const d = routeDistance(r, mx, my);
+      const threshold = Math.max(9, r.width + 6);
+      if (d < threshold && d < bestD) {
+        bestD = d;
+        best = { type: 'route', item: r };
+      }
     }
     return best;
+  }
+
+  function routeDistance(route, x, y) {
+    let best = Infinity;
+    let prev = bezierPoint(route, 0);
+    for (let i = 1; i <= 36; i++) {
+      const next = bezierPoint(route, i / 36);
+      best = Math.min(best, segmentDistance(x, y, prev.x, prev.y, next.x, next.y));
+      prev = next;
+    }
+    return best;
+  }
+
+  function segmentDistance(px, py, ax, ay, bx, by) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    if (dx === 0 && dy === 0) return Math.hypot(px - ax, py - ay);
+    const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+    const x = ax + t * dx;
+    const y = ay + t * dy;
+    return Math.hypot(px - x, py - y);
   }
 
   function hideTooltip() {
     if (tooltipEl) tooltipEl.hidden = true;
   }
 
-  function showTooltip(node, clientX, clientY) {
+  function showTooltip(hit, clientX, clientY) {
     if (!tooltipEl) return;
-    let html = '<div class="mt-label">' + escapeHtml(node.label) + '</div>';
+    const node = hit.type === 'node' ? hit.item : null;
+    const route = hit.type === 'route' ? hit.item : null;
+    let html = '';
+    if (route) {
+      const status = route.status === 'disrupted' ? '要対応' : route.status === 'resilient' ? '代替可' : '通常';
+      html += '<div class="mt-label">' + escapeHtml((route.origin || {}).name || '') + ' → ' + escapeHtml((route.plant || {}).name || '') + '</div>';
+      html += '<div class="mt-sub">' + escapeHtml(route.share) + '% / ' + escapeHtml(status) + '</div>';
+    } else {
+      html = '<div class="mt-label">' + escapeHtml(node.label) + '</div>';
+    }
+    if (node) {
     if (node.sublabel) {
       html += '<div class="mt-sub">' + escapeHtml(node.sublabel) + '</div>';
     }
@@ -518,6 +626,7 @@ export function createMap(canvasEl, geojson) {
       if (routesHtml) {
         html += '<div class="mt-routes">' + routesHtml + '</div>';
       }
+    }
     }
     tooltipEl.innerHTML = html;
     tooltipEl.hidden = false;
@@ -561,12 +670,77 @@ export function createMap(canvasEl, geojson) {
 
   function onMouseLeave() {
     mouse.inside = false;
+    dragging = false;
     hideTooltip();
     canvasEl.style.cursor = 'default';
   }
 
+  function onPointerDown(ev) {
+    dragging = true;
+    dragStart = { x: ev.clientX, y: ev.clientY, panX, panY };
+    if (canvasEl.setPointerCapture && ev.pointerId != null) {
+      canvasEl.setPointerCapture(ev.pointerId);
+    }
+  }
+
+  function onPointerMove(ev) {
+    if (!dragging) return;
+    panX = dragStart.panX + ev.clientX - dragStart.x;
+    panY = dragStart.panY + ev.clientY - dragStart.y;
+    clampViewport();
+    reproject();
+  }
+
+  function onPointerUp(ev) {
+    if (!dragging) return;
+    const moved = Math.hypot(ev.clientX - dragStart.x, ev.clientY - dragStart.y);
+    dragging = false;
+    if (moved > 6) return;
+
+    const rect = canvasEl.getBoundingClientRect();
+    const mx = (ev.clientX - rect.left) * (W / (rect.width || W));
+    const my = (ev.clientY - rect.top) * (H / (rect.height || H));
+    const hit = hitTest(mx, my);
+    if (!hit) {
+      selected = null;
+      emitSelection(null);
+      return;
+    }
+    if (hit.type === 'route') {
+      selected = { type: 'route', route_id: hit.item.route_id };
+      emitSelection({ type: 'route', route: hit.item.source });
+    } else {
+      selected = { type: 'node', id: hit.item.id };
+      emitSelection({ type: 'node', node: hit.item.source });
+    }
+  }
+
+  function onWheel(ev) {
+    ev.preventDefault();
+    const rect = canvasEl.getBoundingClientRect();
+    const anchor = {
+      x: (ev.clientX - rect.left) * (W / (rect.width || W)),
+      y: (ev.clientY - rect.top) * (H / (rect.height || H)),
+    };
+    const factor = ev.deltaY < 0 ? 1.18 : 0.84;
+    setZoom(zoom * factor, anchor);
+  }
+
+  function emitSelection(detail) {
+    canvasEl.dispatchEvent(new CustomEvent('supply-map-select', { detail }));
+  }
+
   canvasEl.addEventListener('mousemove', onMouseMove);
   canvasEl.addEventListener('mouseleave', onMouseLeave);
+  canvasEl.addEventListener('pointerdown', onPointerDown);
+  canvasEl.addEventListener('pointermove', onPointerMove);
+  canvasEl.addEventListener('pointerup', onPointerUp);
+  canvasEl.addEventListener('pointercancel', onPointerLeaveOrCancel);
+  canvasEl.addEventListener('wheel', onWheel, { passive: false });
+
+  function onPointerLeaveOrCancel() {
+    dragging = false;
+  }
 
   // --- window resize (debounced) ---------------------------------------
   let resizeTimer = null;
@@ -596,5 +770,13 @@ export function createMap(canvasEl, geojson) {
   // Initial sizing so the canvas is valid even before first render().
   resize();
 
-  return { render, resize };
+  return {
+    render,
+    resize,
+    zoomIn() { setZoom(zoom * 1.25); },
+    zoomOut() { setZoom(zoom / 1.25); },
+    resetView,
+    focusAsia() { focusOn(112, 22, W < 560 ? 2.05 : 1.75); },
+    focusJapan() { focusOn(138, 35, W < 560 ? 4.6 : 3.6); },
+  };
 }
