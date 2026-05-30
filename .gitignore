@@ -1,0 +1,10 @@
+node_modules/
+local.settings.json
+.env
+.azure/
+.claude/
+dist/
+coverage/
+outputs/
+desktop_screenshot.png
+*.log

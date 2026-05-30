@@ -1,0 +1,14 @@
+[
+  {
+    "id": "news-2026-001",
+    "source": "Industry News Demo",
+    "published_at": "2026-05-16T08:00:00+09:00",
+    "material": "naphtha",
+    "region": "Asia",
+    "event_type": "supply_instability",
+    "severity_hint": "high",
+    "headline": "Naphtha supply tightens after refinery disruption in Asia",
+    "summary": "Several downstream chemical producers may face tighter naphtha allocation over the next two to three weeks due to refinery maintenance and logistics congestion.",
+    "url": "https://example.com/demo/naphtha-supply-risk"
+  }
+]

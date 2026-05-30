@@ -1,0 +1,17 @@
+{
+  "name": "supply-sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hackathon MVP for early-warning supply risk impact assessment.",
+  "scripts": {
+    "start": "node src/serve.mjs",
+    "dev": "node src/serve.mjs",
+    "build:web": "node src/build-web.mjs",
+    "demo": "node src/run-demo.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
