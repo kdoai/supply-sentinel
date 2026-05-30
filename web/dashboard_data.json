@@ -2,7 +2,7 @@
   "meta": {
     "app": "Supply Sentinel",
     "scenario": "naphtha supply risk",
-    "generated_at": "2026-05-30T00:42:07.077Z"
+    "generated_at": "2026-05-30T01:40:16.723Z"
   },
   "risk_event": {
     "material": "naphtha",
@@ -49,7 +49,7 @@
     "inventory": [
       {
         "material": "naphtha",
-        "plant": "Chiba Plant",
+        "plant": "千葉工場",
         "stock_qty": 500,
         "daily_usage": 100,
         "unit": "ton",
@@ -57,7 +57,7 @@
       },
       {
         "material": "naphtha",
-        "plant": "Osaka Plant",
+        "plant": "大阪工場",
         "stock_qty": 900,
         "daily_usage": 90,
         "unit": "ton",
@@ -65,43 +65,43 @@
       }
     ],
     "impacted_products": [
-      "Resin A",
-      "Solvent B",
-      "Coating C"
+      "樹脂A",
+      "溶剤B",
+      "コーティングC"
     ],
     "impacted_customers": [
-      "Customer Alpha",
-      "Customer Beta",
-      "Customer Gamma"
+      "自動車部品A社",
+      "包装材B社",
+      "化学品C社"
     ],
     "impacted_plants": [
-      "Chiba Plant",
-      "Osaka Plant"
+      "千葉工場",
+      "大阪工場"
     ],
     "impacted_orders": [
       {
         "order_id": "SO-1001",
-        "customer": "Customer Alpha",
-        "product": "Resin A",
-        "plant": "Chiba Plant",
+        "customer": "自動車部品A社",
+        "product": "樹脂A",
+        "plant": "千葉工場",
         "due_date": "2026-05-22",
         "quantity": 120,
         "priority": "high"
       },
       {
         "order_id": "SO-1002",
-        "customer": "Customer Beta",
-        "product": "Solvent B",
-        "plant": "Chiba Plant",
+        "customer": "包装材B社",
+        "product": "溶剤B",
+        "plant": "千葉工場",
         "due_date": "2026-05-24",
         "quantity": 80,
         "priority": "high"
       },
       {
         "order_id": "SO-1003",
-        "customer": "Customer Gamma",
-        "product": "Coating C",
-        "plant": "Osaka Plant",
+        "customer": "化学品C社",
+        "product": "コーティングC",
+        "plant": "大阪工場",
         "due_date": "2026-05-29",
         "quantity": 60,
         "priority": "medium"
@@ -113,14 +113,14 @@
         "alternative_material": "NAP-ALT-01",
         "approved": true,
         "lead_time_days": 10,
-        "constraints": "Approved for Resin A only. Quality check required before Solvent B use."
+        "constraints": "樹脂Aのみ承認済み。溶剤Bへの適用には品質確認が必要。"
       },
       {
         "material": "naphtha",
         "alternative_material": "NAP-ALT-02",
         "approved": false,
         "lead_time_days": 21,
-        "constraints": "Under evaluation. Not approved for customer shipment."
+        "constraints": "評価中。顧客出荷品には未承認。"
       }
     ],
     "approved_alternatives": [
@@ -129,7 +129,7 @@
         "alternative_material": "NAP-ALT-01",
         "approved": true,
         "lead_time_days": 10,
-        "constraints": "Approved for Resin A only. Quality check required before Solvent B use."
+        "constraints": "樹脂Aのみ承認済み。溶剤Bへの適用には品質確認が必要。"
       }
     ],
     "evidence": [
@@ -151,7 +151,7 @@
       "Formal customer notification",
       "Major production plan changes"
     ],
-    "generated_at": "2026-05-30T00:42:07.077Z"
+    "generated_at": "2026-05-30T01:40:16.723Z"
   },
   "route_intel": {
     "focal_material": "naphtha",
@@ -162,21 +162,21 @@
         "material": "naphtha",
         "region": "Middle East",
         "origin": {
-          "name": "Yanbu Refinery",
-          "country": "Saudi Arabia",
+          "name": "ヤンブー製油所",
+          "country": "サウジアラビア",
           "type": "refinery",
           "lat": 24.09,
           "lng": 38.06
         },
-        "supplier": "Gulf Petrochem",
+        "supplier": "ガルフ石化",
         "port": {
-          "name": "Jubail Port",
+          "name": "ジュバイル港",
           "lat": 27,
           "lng": 49.66
         },
         "transport_mode": "sea",
         "plant": {
-          "name": "Chiba Plant",
+          "name": "千葉工場",
           "lat": 35.6,
           "lng": 140.12
         },
@@ -193,21 +193,21 @@
         "material": "naphtha",
         "region": "Southeast Asia",
         "origin": {
-          "name": "Jurong Refinery",
-          "country": "Singapore",
+          "name": "ジュロン製油所",
+          "country": "シンガポール",
           "type": "refinery",
           "lat": 1.27,
           "lng": 103.7
         },
-        "supplier": "Demo Petrochemical Supplier",
+        "supplier": "デモ石化サプライヤ",
         "port": {
-          "name": "Singapore Port",
+          "name": "シンガポール港",
           "lat": 1.26,
           "lng": 103.83
         },
         "transport_mode": "sea",
         "plant": {
-          "name": "Chiba Plant",
+          "name": "千葉工場",
           "lat": 35.6,
           "lng": 140.12
         },
@@ -224,21 +224,21 @@
         "material": "naphtha",
         "region": "East Asia",
         "origin": {
-          "name": "Ulsan Refinery",
-          "country": "South Korea",
+          "name": "蔚山製油所",
+          "country": "韓国",
           "type": "refinery",
           "lat": 35.54,
           "lng": 129.31
         },
-        "supplier": "Hanmi Chem",
+        "supplier": "韓美ケム",
         "port": {
-          "name": "Ulsan Port",
+          "name": "蔚山港",
           "lat": 35.5,
           "lng": 129.38
         },
         "transport_mode": "sea",
         "plant": {
-          "name": "Osaka Plant",
+          "name": "大阪工場",
           "lat": 34.69,
           "lng": 135.5
         },
@@ -255,21 +255,21 @@
         "material": "naphtha",
         "region": "Southeast Asia",
         "origin": {
-          "name": "Map Ta Phut Complex",
-          "country": "Thailand",
+          "name": "マプタプット石化団地",
+          "country": "タイ",
           "type": "refinery",
           "lat": 12.68,
           "lng": 101.15
         },
-        "supplier": "Siam Feedstock",
+        "supplier": "サイアム原料",
         "port": {
-          "name": "Laem Chabang Port",
+          "name": "レムチャバン港",
           "lat": 13.08,
           "lng": 100.88
         },
         "transport_mode": "sea",
         "plant": {
-          "name": "Osaka Plant",
+          "name": "大阪工場",
           "lat": 34.69,
           "lng": 135.5
         },
@@ -286,21 +286,21 @@
         "material": "packaging-film",
         "region": "East Asia",
         "origin": {
-          "name": "Taoyuan Film Mill",
-          "country": "Taiwan",
+          "name": "桃園フィルム工場",
+          "country": "台湾",
           "type": "film mill",
           "lat": 24.99,
           "lng": 121.3
         },
-        "supplier": "FilmTech",
+        "supplier": "フィルムテック",
         "port": {
-          "name": "Kaohsiung Port",
+          "name": "高雄港",
           "lat": 22.61,
           "lng": 120.3
         },
         "transport_mode": "sea",
         "plant": {
-          "name": "Chiba Plant",
+          "name": "千葉工場",
           "lat": 35.6,
           "lng": 140.12
         },
@@ -317,21 +317,21 @@
         "material": "packaging-film",
         "region": "East Asia",
         "origin": {
-          "name": "Busan Film Works",
-          "country": "South Korea",
+          "name": "釜山フィルム工場",
+          "country": "韓国",
           "type": "film mill",
           "lat": 35.18,
           "lng": 129.08
         },
-        "supplier": "K-Film",
+        "supplier": "Kフィルム",
         "port": {
-          "name": "Busan Port",
+          "name": "釜山港",
           "lat": 35.1,
           "lng": 129.04
         },
         "transport_mode": "sea",
         "plant": {
-          "name": "Chiba Plant",
+          "name": "千葉工場",
           "lat": 35.6,
           "lng": 140.12
         },
@@ -348,21 +348,21 @@
         "material": "semiconductor-adhesive",
         "region": "Europe",
         "origin": {
-          "name": "Frankfurt Specialty Plant",
-          "country": "Germany",
+          "name": "フランクフルト特殊材工場",
+          "country": "ドイツ",
           "type": "adhesive plant",
           "lat": 50.11,
           "lng": 8.68
         },
-        "supplier": "EuroBond",
+        "supplier": "ユーロボンド",
         "port": {
-          "name": "Frankfurt Airport",
+          "name": "フランクフルト空港",
           "lat": 50.04,
           "lng": 8.56
         },
         "transport_mode": "air",
         "plant": {
-          "name": "Nagoya Plant",
+          "name": "名古屋工場",
           "lat": 35.18,
           "lng": 136.91
         },
@@ -379,21 +379,21 @@
         "material": "semiconductor-adhesive",
         "region": "Japan",
         "origin": {
-          "name": "Sakai Adhesive Plant",
-          "country": "Japan",
+          "name": "堺接着材工場",
+          "country": "日本",
           "type": "adhesive plant",
           "lat": 34.57,
           "lng": 135.48
         },
-        "supplier": "Nihon Adhesive",
+        "supplier": "日本アドヘシブ",
         "port": {
-          "name": "Sakai Hub",
+          "name": "堺ハブ",
           "lat": 34.57,
           "lng": 135.48
         },
         "transport_mode": "road",
         "plant": {
-          "name": "Nagoya Plant",
+          "name": "名古屋工場",
           "lat": 35.18,
           "lng": 136.91
         },
@@ -408,171 +408,171 @@
     ],
     "map_nodes": [
       {
-        "id": "origin:Yanbu Refinery",
+        "id": "origin:ヤンブー製油所",
         "type": "origin",
-        "label": "Yanbu Refinery",
-        "sublabel": "Saudi Arabia · refinery",
+        "label": "ヤンブー製油所",
+        "sublabel": "サウジアラビア · refinery",
         "lat": 24.09,
         "lng": 38.06,
         "affected": false
       },
       {
-        "id": "port:Jubail Port",
+        "id": "port:ジュバイル港",
         "type": "port",
-        "label": "Jubail Port",
+        "label": "ジュバイル港",
         "sublabel": "sea",
         "lat": 27,
         "lng": 49.66,
         "affected": false
       },
       {
-        "id": "plant:Chiba Plant",
+        "id": "plant:千葉工場",
         "type": "plant",
-        "label": "Chiba Plant",
+        "label": "千葉工場",
         "sublabel": "Our plant",
         "lat": 35.6,
         "lng": 140.12,
         "affected": true
       },
       {
-        "id": "origin:Jurong Refinery",
+        "id": "origin:ジュロン製油所",
         "type": "origin",
-        "label": "Jurong Refinery",
-        "sublabel": "Singapore · refinery",
+        "label": "ジュロン製油所",
+        "sublabel": "シンガポール · refinery",
         "lat": 1.27,
         "lng": 103.7,
         "affected": true
       },
       {
-        "id": "port:Singapore Port",
+        "id": "port:シンガポール港",
         "type": "port",
-        "label": "Singapore Port",
+        "label": "シンガポール港",
         "sublabel": "sea",
         "lat": 1.26,
         "lng": 103.83,
         "affected": true
       },
       {
-        "id": "origin:Ulsan Refinery",
+        "id": "origin:蔚山製油所",
         "type": "origin",
-        "label": "Ulsan Refinery",
-        "sublabel": "South Korea · refinery",
+        "label": "蔚山製油所",
+        "sublabel": "韓国 · refinery",
         "lat": 35.54,
         "lng": 129.31,
         "affected": true
       },
       {
-        "id": "port:Ulsan Port",
+        "id": "port:蔚山港",
         "type": "port",
-        "label": "Ulsan Port",
+        "label": "蔚山港",
         "sublabel": "sea",
         "lat": 35.5,
         "lng": 129.38,
         "affected": true
       },
       {
-        "id": "plant:Osaka Plant",
+        "id": "plant:大阪工場",
         "type": "plant",
-        "label": "Osaka Plant",
+        "label": "大阪工場",
         "sublabel": "Our plant",
         "lat": 34.69,
         "lng": 135.5,
         "affected": true
       },
       {
-        "id": "origin:Map Ta Phut Complex",
+        "id": "origin:マプタプット石化団地",
         "type": "origin",
-        "label": "Map Ta Phut Complex",
-        "sublabel": "Thailand · refinery",
+        "label": "マプタプット石化団地",
+        "sublabel": "タイ · refinery",
         "lat": 12.68,
         "lng": 101.15,
         "affected": true
       },
       {
-        "id": "port:Laem Chabang Port",
+        "id": "port:レムチャバン港",
         "type": "port",
-        "label": "Laem Chabang Port",
+        "label": "レムチャバン港",
         "sublabel": "sea",
         "lat": 13.08,
         "lng": 100.88,
         "affected": true
       },
       {
-        "id": "origin:Taoyuan Film Mill",
+        "id": "origin:桃園フィルム工場",
         "type": "origin",
-        "label": "Taoyuan Film Mill",
-        "sublabel": "Taiwan · film mill",
+        "label": "桃園フィルム工場",
+        "sublabel": "台湾 · film mill",
         "lat": 24.99,
         "lng": 121.3,
         "affected": false
       },
       {
-        "id": "port:Kaohsiung Port",
+        "id": "port:高雄港",
         "type": "port",
-        "label": "Kaohsiung Port",
+        "label": "高雄港",
         "sublabel": "sea",
         "lat": 22.61,
         "lng": 120.3,
         "affected": false
       },
       {
-        "id": "origin:Busan Film Works",
+        "id": "origin:釜山フィルム工場",
         "type": "origin",
-        "label": "Busan Film Works",
-        "sublabel": "South Korea · film mill",
+        "label": "釜山フィルム工場",
+        "sublabel": "韓国 · film mill",
         "lat": 35.18,
         "lng": 129.08,
         "affected": false
       },
       {
-        "id": "port:Busan Port",
+        "id": "port:釜山港",
         "type": "port",
-        "label": "Busan Port",
+        "label": "釜山港",
         "sublabel": "sea",
         "lat": 35.1,
         "lng": 129.04,
         "affected": false
       },
       {
-        "id": "origin:Frankfurt Specialty Plant",
+        "id": "origin:フランクフルト特殊材工場",
         "type": "origin",
-        "label": "Frankfurt Specialty Plant",
-        "sublabel": "Germany · adhesive plant",
+        "label": "フランクフルト特殊材工場",
+        "sublabel": "ドイツ · adhesive plant",
         "lat": 50.11,
         "lng": 8.68,
         "affected": false
       },
       {
-        "id": "port:Frankfurt Airport",
+        "id": "port:フランクフルト空港",
         "type": "port",
-        "label": "Frankfurt Airport",
+        "label": "フランクフルト空港",
         "sublabel": "air",
         "lat": 50.04,
         "lng": 8.56,
         "affected": false
       },
       {
-        "id": "plant:Nagoya Plant",
+        "id": "plant:名古屋工場",
         "type": "plant",
-        "label": "Nagoya Plant",
+        "label": "名古屋工場",
         "sublabel": "Our plant",
         "lat": 35.18,
         "lng": 136.91,
         "affected": false
       },
       {
-        "id": "origin:Sakai Adhesive Plant",
+        "id": "origin:堺接着材工場",
         "type": "origin",
-        "label": "Sakai Adhesive Plant",
-        "sublabel": "Japan · adhesive plant",
+        "label": "堺接着材工場",
+        "sublabel": "日本 · adhesive plant",
         "lat": 34.57,
         "lng": 135.48,
         "affected": false
       },
       {
-        "id": "port:Sakai Hub",
+        "id": "port:堺ハブ",
         "type": "port",
-        "label": "Sakai Hub",
+        "label": "堺ハブ",
         "sublabel": "road",
         "lat": 34.57,
         "lng": 135.48,
@@ -592,9 +592,9 @@
           "routes": [
             {
               "route_id": "R-NAP-01",
-              "origin": "Yanbu Refinery",
+              "origin": "ヤンブー製油所",
               "region": "Middle East",
-              "supplier": "Gulf Petrochem",
+              "supplier": "ガルフ石化",
               "share_percent": 35,
               "monthly_spend_usd": 4200000,
               "lead_time_days": 24,
@@ -602,9 +602,9 @@
             },
             {
               "route_id": "R-NAP-02",
-              "origin": "Jurong Refinery",
+              "origin": "ジュロン製油所",
               "region": "Southeast Asia",
-              "supplier": "Demo Petrochemical Supplier",
+              "supplier": "デモ石化サプライヤ",
               "share_percent": 30,
               "monthly_spend_usd": 3600000,
               "lead_time_days": 12,
@@ -612,9 +612,9 @@
             },
             {
               "route_id": "R-NAP-03",
-              "origin": "Ulsan Refinery",
+              "origin": "蔚山製油所",
               "region": "East Asia",
-              "supplier": "Hanmi Chem",
+              "supplier": "韓美ケム",
               "share_percent": 20,
               "monthly_spend_usd": 2400000,
               "lead_time_days": 6,
@@ -622,9 +622,9 @@
             },
             {
               "route_id": "R-NAP-04",
-              "origin": "Map Ta Phut Complex",
+              "origin": "マプタプット石化団地",
               "region": "Southeast Asia",
-              "supplier": "Siam Feedstock",
+              "supplier": "サイアム原料",
               "share_percent": 15,
               "monthly_spend_usd": 1800000,
               "lead_time_days": 10,
@@ -643,9 +643,9 @@
           "routes": [
             {
               "route_id": "R-PKG-01",
-              "origin": "Taoyuan Film Mill",
+              "origin": "桃園フィルム工場",
               "region": "East Asia",
-              "supplier": "FilmTech",
+              "supplier": "フィルムテック",
               "share_percent": 70,
               "monthly_spend_usd": 900000,
               "lead_time_days": 14,
@@ -653,9 +653,9 @@
             },
             {
               "route_id": "R-PKG-02",
-              "origin": "Busan Film Works",
+              "origin": "釜山フィルム工場",
               "region": "East Asia",
-              "supplier": "K-Film",
+              "supplier": "Kフィルム",
               "share_percent": 30,
               "monthly_spend_usd": 400000,
               "lead_time_days": 8,
@@ -674,9 +674,9 @@
           "routes": [
             {
               "route_id": "R-ADH-01",
-              "origin": "Frankfurt Specialty Plant",
+              "origin": "フランクフルト特殊材工場",
               "region": "Europe",
-              "supplier": "EuroBond",
+              "supplier": "ユーロボンド",
               "share_percent": 55,
               "monthly_spend_usd": 1100000,
               "lead_time_days": 9,
@@ -684,9 +684,9 @@
             },
             {
               "route_id": "R-ADH-02",
-              "origin": "Sakai Adhesive Plant",
+              "origin": "堺接着材工場",
               "region": "Japan",
-              "supplier": "Nihon Adhesive",
+              "supplier": "日本アドヘシブ",
               "share_percent": 45,
               "monthly_spend_usd": 800000,
               "lead_time_days": 3,
@@ -706,9 +706,9 @@
         "routes": [
           {
             "route_id": "R-NAP-01",
-            "origin": "Yanbu Refinery",
+            "origin": "ヤンブー製油所",
             "region": "Middle East",
-            "supplier": "Gulf Petrochem",
+            "supplier": "ガルフ石化",
             "share_percent": 35,
             "monthly_spend_usd": 4200000,
             "lead_time_days": 24,
@@ -716,9 +716,9 @@
           },
           {
             "route_id": "R-NAP-02",
-            "origin": "Jurong Refinery",
+            "origin": "ジュロン製油所",
             "region": "Southeast Asia",
-            "supplier": "Demo Petrochemical Supplier",
+            "supplier": "デモ石化サプライヤ",
             "share_percent": 30,
             "monthly_spend_usd": 3600000,
             "lead_time_days": 12,
@@ -726,9 +726,9 @@
           },
           {
             "route_id": "R-NAP-03",
-            "origin": "Ulsan Refinery",
+            "origin": "蔚山製油所",
             "region": "East Asia",
-            "supplier": "Hanmi Chem",
+            "supplier": "韓美ケム",
             "share_percent": 20,
             "monthly_spend_usd": 2400000,
             "lead_time_days": 6,
@@ -736,9 +736,9 @@
           },
           {
             "route_id": "R-NAP-04",
-            "origin": "Map Ta Phut Complex",
+            "origin": "マプタプット石化団地",
             "region": "Southeast Asia",
-            "supplier": "Siam Feedstock",
+            "supplier": "サイアム原料",
             "share_percent": 15,
             "monthly_spend_usd": 1800000,
             "lead_time_days": 10,
@@ -750,129 +750,129 @@
     "flow": {
       "nodes": [
         {
-          "id": "o:Yanbu Refinery",
+          "id": "o:ヤンブー製油所",
           "stage": 0,
-          "label": "Yanbu Refinery",
+          "label": "ヤンブー製油所",
           "sublabel": "Middle East",
           "type": "origin",
           "value": 35
         },
         {
-          "id": "m:Gulf Petrochem",
+          "id": "m:ガルフ石化",
           "stage": 1,
-          "label": "Gulf Petrochem",
-          "sublabel": "Jubail Port",
+          "label": "ガルフ石化",
+          "sublabel": "ジュバイル港",
           "type": "supplier",
           "value": 70
         },
         {
-          "id": "p:Chiba Plant",
+          "id": "p:千葉工場",
           "stage": 2,
-          "label": "Chiba Plant",
+          "label": "千葉工場",
           "sublabel": "plant",
           "type": "plant",
           "value": 265
         },
         {
-          "id": "o:Jurong Refinery",
+          "id": "o:ジュロン製油所",
           "stage": 0,
-          "label": "Jurong Refinery",
+          "label": "ジュロン製油所",
           "sublabel": "Southeast Asia",
           "type": "origin",
           "value": 30
         },
         {
-          "id": "m:Demo Petrochemical Supplier",
+          "id": "m:デモ石化サプライヤ",
           "stage": 1,
-          "label": "Demo Petrochemical Supplier",
-          "sublabel": "Singapore Port",
+          "label": "デモ石化サプライヤ",
+          "sublabel": "シンガポール港",
           "type": "supplier",
           "value": 60
         },
         {
-          "id": "o:Ulsan Refinery",
+          "id": "o:蔚山製油所",
           "stage": 0,
-          "label": "Ulsan Refinery",
+          "label": "蔚山製油所",
           "sublabel": "East Asia",
           "type": "origin",
           "value": 20
         },
         {
-          "id": "m:Hanmi Chem",
+          "id": "m:韓美ケム",
           "stage": 1,
-          "label": "Hanmi Chem",
-          "sublabel": "Ulsan Port",
+          "label": "韓美ケム",
+          "sublabel": "蔚山港",
           "type": "supplier",
           "value": 40
         },
         {
-          "id": "p:Osaka Plant",
+          "id": "p:大阪工場",
           "stage": 2,
-          "label": "Osaka Plant",
+          "label": "大阪工場",
           "sublabel": "plant",
           "type": "plant",
           "value": 95
         },
         {
-          "id": "o:Map Ta Phut Complex",
+          "id": "o:マプタプット石化団地",
           "stage": 0,
-          "label": "Map Ta Phut Complex",
+          "label": "マプタプット石化団地",
           "sublabel": "Southeast Asia",
           "type": "origin",
           "value": 15
         },
         {
-          "id": "m:Siam Feedstock",
+          "id": "m:サイアム原料",
           "stage": 1,
-          "label": "Siam Feedstock",
-          "sublabel": "Laem Chabang Port",
+          "label": "サイアム原料",
+          "sublabel": "レムチャバン港",
           "type": "supplier",
           "value": 30
         },
         {
-          "id": "pr:Resin A",
+          "id": "pr:樹脂A",
           "stage": 3,
-          "label": "Resin A",
+          "label": "樹脂A",
           "sublabel": "product",
           "type": "product",
           "value": 240
         },
         {
-          "id": "c:Customer Alpha",
+          "id": "c:自動車部品A社",
           "stage": 4,
-          "label": "Customer Alpha",
+          "label": "自動車部品A社",
           "sublabel": "high",
           "type": "customer",
           "value": 120
         },
         {
-          "id": "pr:Solvent B",
+          "id": "pr:溶剤B",
           "stage": 3,
-          "label": "Solvent B",
+          "label": "溶剤B",
           "sublabel": "product",
           "type": "product",
           "value": 160
         },
         {
-          "id": "c:Customer Beta",
+          "id": "c:包装材B社",
           "stage": 4,
-          "label": "Customer Beta",
+          "label": "包装材B社",
           "sublabel": "high",
           "type": "customer",
           "value": 80
         },
         {
-          "id": "pr:Coating C",
+          "id": "pr:コーティングC",
           "stage": 3,
-          "label": "Coating C",
+          "label": "コーティングC",
           "sublabel": "product",
           "type": "product",
           "value": 120
         },
         {
-          "id": "c:Customer Gamma",
+          "id": "c:化学品C社",
           "stage": 4,
-          "label": "Customer Gamma",
+          "label": "化学品C社",
           "sublabel": "medium",
           "type": "customer",
           "value": 60
@@ -880,86 +880,86 @@
       ],
       "edges": [
         {
-          "source": "o:Yanbu Refinery",
-          "target": "m:Gulf Petrochem",
+          "source": "o:ヤンブー製油所",
+          "target": "m:ガルフ石化",
           "value": 35,
           "status": "resilient"
         },
         {
-          "source": "m:Gulf Petrochem",
-          "target": "p:Chiba Plant",
+          "source": "m:ガルフ石化",
+          "target": "p:千葉工場",
           "value": 35,
           "status": "resilient"
         },
         {
-          "source": "o:Jurong Refinery",
-          "target": "m:Demo Petrochemical Supplier",
+          "source": "o:ジュロン製油所",
+          "target": "m:デモ石化サプライヤ",
           "value": 30,
           "status": "disrupted"
         },
         {
-          "source": "m:Demo Petrochemical Supplier",
-          "target": "p:Chiba Plant",
+          "source": "m:デモ石化サプライヤ",
+          "target": "p:千葉工場",
           "value": 30,
           "status": "disrupted"
         },
         {
-          "source": "o:Ulsan Refinery",
-          "target": "m:Hanmi Chem",
+          "source": "o:蔚山製油所",
+          "target": "m:韓美ケム",
           "value": 20,
           "status": "disrupted"
         },
         {
-          "source": "m:Hanmi Chem",
-          "target": "p:Osaka Plant",
+          "source": "m:韓美ケム",
+          "target": "p:大阪工場",
           "value": 20,
           "status": "disrupted"
         },
         {
-          "source": "o:Map Ta Phut Complex",
-          "target": "m:Siam Feedstock",
+          "source": "o:マプタプット石化団地",
+          "target": "m:サイアム原料",
           "value": 15,
           "status": "disrupted"
         },
         {
-          "source": "m:Siam Feedstock",
-          "target": "p:Osaka Plant",
+          "source": "m:サイアム原料",
+          "target": "p:大阪工場",
           "value": 15,
           "status": "disrupted"
         },
         {
-          "source": "p:Chiba Plant",
-          "target": "pr:Resin A",
+          "source": "p:千葉工場",
+          "target": "pr:樹脂A",
           "value": 120,
           "status": "disrupted"
         },
         {
-          "source": "pr:Resin A",
-          "target": "c:Customer Alpha",
+          "source": "pr:樹脂A",
+          "target": "c:自動車部品A社",
           "value": 120,
           "status": "disrupted"
         },
         {
-          "source": "p:Chiba Plant",
-          "target": "pr:Solvent B",
+          "source": "p:千葉工場",
+          "target": "pr:溶剤B",
           "value": 80,
           "status": "disrupted"
         },
         {
-          "source": "pr:Solvent B",
-          "target": "c:Customer Beta",
+          "source": "pr:溶剤B",
+          "target": "c:包装材B社",
           "value": 80,
           "status": "disrupted"
         },
         {
-          "source": "p:Osaka Plant",
-          "target": "pr:Coating C",
+          "source": "p:大阪工場",
+          "target": "pr:コーティングC",
           "value": 60,
           "status": "exposed"
         },
         {
-          "source": "pr:Coating C",
-          "target": "c:Customer Gamma",
+          "source": "pr:コーティングC",
+          "target": "c:化学品C社",
           "value": 60,
           "status": "exposed"
         }

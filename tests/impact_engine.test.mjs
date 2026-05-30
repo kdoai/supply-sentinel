@@ -12,9 +12,9 @@ test("assessImpact maps naphtha risk to products, customers, plants, and score",
   assert.equal(assessment.material, "naphtha");
   assert.equal(assessment.risk_score, 82);
   assert.equal(assessment.severity, "high");
-  assert.deepEqual(assessment.impacted_products, ["Resin A", "Solvent B", "Coating C"]);
-  assert.deepEqual(assessment.impacted_customers, ["Customer Alpha", "Customer Beta", "Customer Gamma"]);
-  assert.deepEqual(assessment.impacted_plants, ["Chiba Plant", "Osaka Plant"]);
+  assert.deepEqual(assessment.impacted_products, ["樹脂A", "溶剤B", "コーティングC"]);
+  assert.deepEqual(assessment.impacted_customers, ["自動車部品A社", "包装材B社", "化学品C社"]);
+  assert.deepEqual(assessment.impacted_plants, ["千葉工場", "大阪工場"]);
   assert.equal(assessment.inventory_days_min, 5);
   assert.equal(assessment.approved_alternatives.length, 1);
 });

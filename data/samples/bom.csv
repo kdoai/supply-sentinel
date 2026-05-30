@@ -1,6 +1,6 @@
 product,material,required_qty,unit,criticality
-Resin A,naphtha,1.2,ton,high
-Solvent B,naphtha,0.8,ton,high
-Coating C,naphtha,0.4,ton,medium
-Packaged Resin A,packaging-film,2,roll,medium
-Sensor Module D,semiconductor-adhesive,0.1,kg,high
+樹脂A,naphtha,1.2,ton,high
+溶剤B,naphtha,0.8,ton,high
+コーティングC,naphtha,0.4,ton,medium
+包装済み樹脂A,packaging-film,2,roll,medium
+センサー部材D,semiconductor-adhesive,0.1,kg,high

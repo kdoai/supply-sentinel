@@ -1,68 +1,144 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Supply Sentinel - Global Sourcing Risk</title>
+  <title>Supply Sentinel - 供給リスク早期警戒</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-name">Supply Sentinel</span>
-      <span class="brand-tagline">External supply risk -> internal business impact</span>
-    </div>
-    <div class="topbar-meta">
-      <span id="scenario"></span>
-      <span id="generated-at"></span>
-    </div>
-  </header>
-
-  <main class="layout">
-    <section class="map-panel">
-      <div class="panel-head">
-        <h2>Global Sourcing Map</h2>
-        <div id="map-legend"></div>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="画面切り替え">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">S</div>
+        <div>
+          <h1>Supply Sentinel</h1>
+          <p>供給リスク早期警戒</p>
+        </div>
       </div>
-      <canvas id="world-map"></canvas>
-      <div id="map-tooltip" hidden></div>
-    </section>
 
-    <aside class="side">
-      <div id="risk-gauge"></div>
-      <div id="kpi-grid"></div>
-      <div class="card">
-        <h3>Sourcing Mix</h3>
-        <div id="sourcing-mix"></div>
+      <nav class="side-nav">
+        <button class="nav-item is-active" type="button" data-view="overview">概況</button>
+        <button class="nav-item" type="button" data-view="map">供給網</button>
+        <button class="nav-item" type="button" data-view="flow">業務フロー</button>
+        <button class="nav-item" type="button" data-view="orders">影響受注</button>
+        <button class="nav-item" type="button" data-view="actions">根拠と初動</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>定期監視中</span>
       </div>
     </aside>
 
-    <section class="flow-panel">
-      <div class="panel-head">
-        <h2>Supply Process Flow</h2>
-      </div>
-      <div id="flow-graph"></div>
-    </section>
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">供給リスク監視</p>
+          <h2 id="view-title">概況</h2>
+        </div>
+        <div class="topbar-meta">
+          <span id="scenario"></span>
+          <span id="generated-at"></span>
+        </div>
+      </header>
 
-    <section class="tables">
-      <div class="card">
-        <h3>Impacted Orders</h3>
-        <div id="orders-table"></div>
-      </div>
-      <div class="card">
-        <h3>Evidence</h3>
-        <ul id="evidence-list"></ul>
-      </div>
-      <div class="card">
-        <h3>Recommended First Actions</h3>
-        <ul id="actions-list"></ul>
-      </div>
-      <div class="card">
-        <h3>Human Approval Required</h3>
-        <ul id="approval-list"></ul>
-      </div>
-    </section>
-  </main>
+      <section class="view is-active" id="view-overview" data-view-panel="overview">
+        <div class="overview-grid">
+          <section class="panel risk-panel">
+            <div class="panel-head">
+              <h3>リスク判定</h3>
+              <span class="panel-note">AI抽出 + 業務ルール</span>
+            </div>
+            <div id="risk-gauge"></div>
+          </section>
+
+          <section class="panel kpi-panel">
+            <div class="panel-head">
+              <h3>業務影響</h3>
+              <span class="panel-note">在庫・BOM・受注照合</span>
+            </div>
+            <div id="kpi-grid"></div>
+          </section>
+
+          <section class="panel mix-panel">
+            <div class="panel-head">
+              <h3>調達構成</h3>
+              <span class="panel-note">影響を受ける供給ルート</span>
+            </div>
+            <div id="sourcing-mix"></div>
+          </section>
+
+          <section class="panel summary-panel">
+            <div class="panel-head">
+              <h3>初動サマリ</h3>
+              <span class="panel-note">人の承認前提</span>
+            </div>
+            <ul id="overview-actions-list"></ul>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-map" data-view-panel="map">
+        <section class="panel map-panel">
+          <div class="panel-head">
+            <h3>供給網マップ</h3>
+            <div id="map-legend"></div>
+          </div>
+          <canvas id="world-map"></canvas>
+          <div id="map-tooltip" hidden></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-flow" data-view-panel="flow">
+        <section class="panel flow-panel">
+          <div class="panel-head">
+            <h3>業務フロー</h3>
+            <span class="panel-note">原材料から顧客影響まで</span>
+          </div>
+          <div id="flow-graph"></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-orders" data-view-panel="orders">
+        <section class="panel orders-panel">
+          <div class="panel-head">
+            <h3>影響受注一覧</h3>
+            <span class="panel-note">優先度順に確認</span>
+          </div>
+          <div id="orders-table"></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-actions" data-view-panel="actions">
+        <div class="action-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h3>検知根拠</h3>
+              <span class="panel-note">外部情報</span>
+            </div>
+            <ul id="evidence-list"></ul>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h3>推奨初動</h3>
+              <span class="panel-note">担当者が確認</span>
+            </div>
+            <ul id="actions-list"></ul>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h3>承認が必要な判断</h3>
+              <span class="panel-note">人が最終承認</span>
+            </div>
+            <ul id="approval-list"></ul>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <script type="module" src="./js/app.js"></script>
 </body>

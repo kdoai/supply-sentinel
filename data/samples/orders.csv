@@ -1,5 +1,5 @@
 order_id,customer,product,plant,due_date,quantity,priority
-SO-1001,Customer Alpha,Resin A,Chiba Plant,2026-05-22,120,high
-SO-1002,Customer Beta,Solvent B,Chiba Plant,2026-05-24,80,high
-SO-1003,Customer Gamma,Coating C,Osaka Plant,2026-05-29,60,medium
-SO-1004,Customer Delta,Sensor Module D,Nagoya Plant,2026-05-27,30,medium
+SO-1001,自動車部品A社,樹脂A,千葉工場,2026-05-22,120,high
+SO-1002,包装材B社,溶剤B,千葉工場,2026-05-24,80,high
+SO-1003,化学品C社,コーティングC,大阪工場,2026-05-29,60,medium
+SO-1004,電子部品D社,センサー部材D,名古屋工場,2026-05-27,30,medium

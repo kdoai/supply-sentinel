@@ -1,75 +1,106 @@
-// Wires dashboard data and render modules into the fixed DOM skeleton.
-// Plain browser ES module: no CDN, no build step.
-
 import { createMap } from "./map.js";
 import { renderFlow } from "./flow.js";
 import { renderPanels } from "./panels.js";
+
+const VIEW_TITLES = {
+  overview: "概況",
+  map: "供給網",
+  flow: "業務フロー",
+  orders: "影響受注",
+  actions: "根拠と初動",
+};
+
+let dashboardData = null;
+let worldGeojson = null;
+let mapInstance = null;
 
 function showFatalError(message) {
   const banner = document.createElement("div");
   banner.setAttribute("role", "alert");
   banner.style.cssText =
-    "position:fixed;left:0;right:0;top:0;z-index:9999;" +
-    "background:#2a0d14;color:#ffb4b4;border-bottom:1px solid #ff4d6d;" +
-    "font:13px/1.5 system-ui,\"Segoe UI\",sans-serif;padding:12px 16px;white-space:pre-wrap;";
-  banner.textContent = `Supply Sentinel failed to load: ${message}`;
-  if (document.body) {
-    document.body.appendChild(banner);
-  } else {
-    document.addEventListener("DOMContentLoaded", () => document.body.appendChild(banner));
-  }
+    "position:fixed;left:236px;right:0;top:0;z-index:9999;" +
+    "background:#7f1d1d;color:#fff;padding:12px 16px;font:13px/1.5 system-ui,sans-serif;";
+  banner.textContent = `ダッシュボードの読み込みに失敗しました: ${message}`;
+  document.body.appendChild(banner);
 }
 
 async function fetchJson(url) {
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`GET ${url} -> HTTP ${res.status} ${res.statusText}`);
+    throw new Error(`GET ${url} -> HTTP ${res.status}`);
   }
   return res.json();
 }
 
-async function init() {
-  const [data, geojson] = await Promise.all([
-    fetchJson("./dashboard_data.json"),
-    fetchJson("./assets/world.geojson"),
-  ]);
+function setActiveView(viewName) {
+  if (!VIEW_TITLES[viewName]) {
+    viewName = "overview";
+  }
+  document.querySelectorAll("[data-view-panel]").forEach((panel) => {
+    panel.classList.toggle("is-active", panel.dataset.viewPanel === viewName);
+  });
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.view === viewName);
+  });
+  const title = document.getElementById("view-title");
+  if (title) title.textContent = VIEW_TITLES[viewName] || viewName;
 
-  renderPanels(data);
+  if (viewName === "map") {
+    ensureMap();
+  }
+}
 
+function bindNavigation() {
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => setActiveView(button.dataset.view));
+  });
+}
+
+function ensureMap() {
   const canvasEl = document.getElementById("world-map");
-  let map = null;
-  if (canvasEl) {
-    map = createMap(canvasEl, geojson);
-    map.render(data);
+  if (!canvasEl || !dashboardData || !worldGeojson) return;
+
+  if (!mapInstance) {
+    mapInstance = createMap(canvasEl, worldGeojson);
+    mapInstance.render(dashboardData);
     window.addEventListener("resize", () => {
       try {
-        map.resize();
+        mapInstance.resize();
       } catch {
-        // Ignore resize races while the page is settling.
+        // Ignore resize races.
       }
     });
   }
 
-  const flowEl = document.getElementById("flow-graph");
-  if (flowEl) {
-    renderFlow(flowEl, data.route_intel && data.route_intel.flow);
-  }
-
-  return map;
-}
-
-function start() {
-  init().catch((err) => {
-    const message = err && err.message ? err.message : String(err);
-    showFatalError(message);
-    if (typeof console !== "undefined" && console.error) {
-      console.error(err);
+  requestAnimationFrame(() => {
+    try {
+      mapInstance.resize();
+      mapInstance.render(dashboardData);
+    } catch {
+      // Ignore resize races.
     }
   });
 }
 
+async function init() {
+  [dashboardData, worldGeojson] = await Promise.all([
+    fetchJson("./dashboard_data.json"),
+    fetchJson("./assets/world.geojson"),
+  ]);
+
+  renderPanels(dashboardData);
+  const flowEl = document.getElementById("flow-graph");
+  if (flowEl) {
+    renderFlow(flowEl, dashboardData.route_intel && dashboardData.route_intel.flow);
+  }
+
+  bindNavigation();
+  const initialView = new URLSearchParams(window.location.search).get("view") || "overview";
+  setActiveView(initialView);
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", start);
+  document.addEventListener("DOMContentLoaded", () => init().catch((err) => showFatalError(err.message || err)));
 } else {
-  start();
+  init().catch((err) => showFatalError(err.message || err));
 }

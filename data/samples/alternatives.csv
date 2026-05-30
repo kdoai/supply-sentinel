@@ -1,5 +1,5 @@
 material,alternative_material,approved,lead_time_days,constraints
-naphtha,NAP-ALT-01,true,10,"Approved for Resin A only. Quality check required before Solvent B use."
-naphtha,NAP-ALT-02,false,21,"Under evaluation. Not approved for customer shipment."
-packaging-film,PKG-ALT-01,true,5,"Approved for all packaging lines."
-semiconductor-adhesive,ADH-ALT-01,true,14,"Requires engineering approval for Sensor Module D."
+naphtha,NAP-ALT-01,true,10,"樹脂Aのみ承認済み。溶剤Bへの適用には品質確認が必要。"
+naphtha,NAP-ALT-02,false,21,"評価中。顧客出荷品には未承認。"
+packaging-film,PKG-ALT-01,true,5,"全包装ラインで承認済み。"
+semiconductor-adhesive,ADH-ALT-01,true,14,"センサー部材Dへの適用には技術承認が必要。"

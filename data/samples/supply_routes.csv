@@ -1,9 +1,9 @@
 route_id,material,region,origin_name,origin_country,origin_type,origin_lat,origin_lng,supplier,port_name,port_lat,port_lng,transport_mode,dest_plant,plant_lat,plant_lng,share_percent,monthly_spend_usd,lead_time_days,baseline_status
-R-NAP-01,naphtha,Middle East,Yanbu Refinery,Saudi Arabia,refinery,24.09,38.06,Gulf Petrochem,Jubail Port,27.0,49.66,sea,Chiba Plant,35.6,140.12,35,4200000,24,normal
-R-NAP-02,naphtha,Southeast Asia,Jurong Refinery,Singapore,refinery,1.27,103.7,Demo Petrochemical Supplier,Singapore Port,1.26,103.83,sea,Chiba Plant,35.6,140.12,30,3600000,12,normal
-R-NAP-03,naphtha,East Asia,Ulsan Refinery,South Korea,refinery,35.54,129.31,Hanmi Chem,Ulsan Port,35.5,129.38,sea,Osaka Plant,34.69,135.5,20,2400000,6,normal
-R-NAP-04,naphtha,Southeast Asia,Map Ta Phut Complex,Thailand,refinery,12.68,101.15,Siam Feedstock,Laem Chabang Port,13.08,100.88,sea,Osaka Plant,34.69,135.5,15,1800000,10,normal
-R-PKG-01,packaging-film,East Asia,Taoyuan Film Mill,Taiwan,film mill,24.99,121.3,FilmTech,Kaohsiung Port,22.61,120.3,sea,Chiba Plant,35.6,140.12,70,900000,14,normal
-R-PKG-02,packaging-film,East Asia,Busan Film Works,South Korea,film mill,35.18,129.08,K-Film,Busan Port,35.1,129.04,sea,Chiba Plant,35.6,140.12,30,400000,8,normal
-R-ADH-01,semiconductor-adhesive,Europe,Frankfurt Specialty Plant,Germany,adhesive plant,50.11,8.68,EuroBond,Frankfurt Airport,50.04,8.56,air,Nagoya Plant,35.18,136.91,55,1100000,9,normal
-R-ADH-02,semiconductor-adhesive,Japan,Sakai Adhesive Plant,Japan,adhesive plant,34.57,135.48,Nihon Adhesive,Sakai Hub,34.57,135.48,road,Nagoya Plant,35.18,136.91,45,800000,3,normal
+R-NAP-01,naphtha,Middle East,ヤンブー製油所,サウジアラビア,refinery,24.09,38.06,ガルフ石化,ジュバイル港,27.0,49.66,sea,千葉工場,35.6,140.12,35,4200000,24,normal
+R-NAP-02,naphtha,Southeast Asia,ジュロン製油所,シンガポール,refinery,1.27,103.7,デモ石化サプライヤ,シンガポール港,1.26,103.83,sea,千葉工場,35.6,140.12,30,3600000,12,normal
+R-NAP-03,naphtha,East Asia,蔚山製油所,韓国,refinery,35.54,129.31,韓美ケム,蔚山港,35.5,129.38,sea,大阪工場,34.69,135.5,20,2400000,6,normal
+R-NAP-04,naphtha,Southeast Asia,マプタプット石化団地,タイ,refinery,12.68,101.15,サイアム原料,レムチャバン港,13.08,100.88,sea,大阪工場,34.69,135.5,15,1800000,10,normal
+R-PKG-01,packaging-film,East Asia,桃園フィルム工場,台湾,film mill,24.99,121.3,フィルムテック,高雄港,22.61,120.3,sea,千葉工場,35.6,140.12,70,900000,14,normal
+R-PKG-02,packaging-film,East Asia,釜山フィルム工場,韓国,film mill,35.18,129.08,Kフィルム,釜山港,35.1,129.04,sea,千葉工場,35.6,140.12,30,400000,8,normal
+R-ADH-01,semiconductor-adhesive,Europe,フランクフルト特殊材工場,ドイツ,adhesive plant,50.11,8.68,ユーロボンド,フランクフルト空港,50.04,8.56,air,名古屋工場,35.18,136.91,55,1100000,9,normal
+R-ADH-02,semiconductor-adhesive,Japan,堺接着材工場,日本,adhesive plant,34.57,135.48,日本アドヘシブ,堺ハブ,34.57,135.48,road,名古屋工場,35.18,136.91,45,800000,3,normal

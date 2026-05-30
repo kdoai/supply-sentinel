@@ -1,5 +1,5 @@
 material,plant,stock_qty,daily_usage,unit
-naphtha,Chiba Plant,500,100,ton
-naphtha,Osaka Plant,900,90,ton
-packaging-film,Chiba Plant,12000,800,roll
-semiconductor-adhesive,Nagoya Plant,300,20,kg
+naphtha,千葉工場,500,100,ton
+naphtha,大阪工場,900,90,ton
+packaging-film,千葉工場,12000,800,roll
+semiconductor-adhesive,名古屋工場,300,20,kg
