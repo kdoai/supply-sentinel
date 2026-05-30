@@ -24,6 +24,12 @@ const PRIORITY_LABELS = {
   low: "低",
 };
 
+const SEVERITY_LABELS = {
+  high: "高",
+  medium: "中",
+  low: "低",
+};
+
 const MATERIAL_LABELS = {
   naphtha: "ナフサ",
   "packaging-film": "包装フィルム",
@@ -154,15 +160,16 @@ function translateText(text) {
 function renderScenario(data) {
   const risk = data.risk_event || {};
   const assessment = data.assessment || {};
-  const severity = assessment.severity === "high" ? "高リスク" : assessment.severity || "判定中";
+  const severity = assessment.severity ? `${SEVERITY_LABELS[assessment.severity] || assessment.severity}リスク` : "判定中";
   setText("scenario", `${materialLabel(risk.material)}供給リスク / ${regionLabel(risk.region)} / ${severity}`);
 }
 
 function renderGeneratedAt(data) {
   const meta = data.meta || {};
+  const demo = data.demo || {};
   setHtml(
     "generated-at",
-    `<span class="live-dot">監視中</span><span>${esc(formatDateTime(meta.generated_at))} 更新</span>`,
+    `<span class="live-dot">監視中</span><span>${esc(demo.time_label || formatDateTime(meta.generated_at))} 更新</span>`,
   );
 }
 
@@ -170,7 +177,7 @@ function renderRiskGauge(data) {
   const assessment = data.assessment || {};
   const rawScore = Number(assessment.risk_score);
   const score = Number.isFinite(rawScore) ? Math.max(0, Math.min(100, rawScore)) : 0;
-  const severity = assessment.severity === "high" ? "高" : assessment.severity || "不明";
+  const severity = SEVERITY_LABELS[assessment.severity] || assessment.severity || "不明";
   const color = score >= 70 ? STATUS_COLORS.disrupted : STATUS_COLORS.exposed;
 
   setHtml(
@@ -180,9 +187,30 @@ function renderRiskGauge(data) {
         <div class="risk-score-main" style="color:${color};">${score}</div>
         <div class="risk-score-sub">/100 リスクスコア</div>
         <div class="risk-badge" style="background:${color};">危険度 ${esc(severity)}</div>
+        ${renderRiskTrend(data)}
       </div>
     `,
   );
+}
+
+function renderRiskTrend(data) {
+  const trend = asArray((data.demo || {}).score_trend);
+  if (!trend.length) return "";
+  const points = trend
+    .map((item, index) => {
+      const x = trend.length === 1 ? 50 : (index / (trend.length - 1)) * 100;
+      const y = 100 - Math.max(0, Math.min(100, Number(item.score) || 0));
+      return `${x},${y}`;
+    })
+    .join(" ");
+  const last = trend[trend.length - 1] || {};
+  return `
+    <div class="risk-trend" aria-label="リスクスコア推移">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+        <polyline points="${esc(points)}"></polyline>
+      </svg>
+      <span>推移 ${esc(trend[0]?.score ?? "-")} → ${esc(last.score ?? "-")}</span>
+    </div>`;
 }
 
 function kpiCard(value, label, sub = "", atRisk = false) {
@@ -262,7 +290,10 @@ function priorityChip(priority) {
 }
 
 function renderOrdersTable(data) {
-  const orders = asArray((data.assessment || {}).impacted_orders);
+  const priorityRank = { high: 0, medium: 1, low: 2 };
+  const orders = asArray((data.assessment || {}).impacted_orders)
+    .slice()
+    .sort((a, b) => (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9));
   const rows = orders
     .map((o) => `
       <tr>
@@ -305,6 +336,143 @@ function renderList(id, items, emptyText) {
   setHtml(id, html);
 }
 
+function renderEventLog(data) {
+  const demo = data.demo || {};
+  const active = asArray(demo.active_events);
+  const sources = asArray(demo.data_sources);
+  const html = `
+    <div class="event-current">
+      <span>${esc(demo.time_label || "--:--")}</span>
+      <strong>${esc(demo.title || "巡回待機中")}</strong>
+      <p>${esc(demo.detail || "デモを開始すると、外部情報から自社影響まで順に更新されます。")}</p>
+    </div>
+    <div class="event-source-grid">
+      ${sources
+        .map(
+          (source) => `
+            <div class="source-chip">
+              <strong>${esc(source.name)}</strong>
+              <span>${esc(source.candidate)}</span>
+            </div>`,
+        )
+        .join("")}
+    </div>
+    <ol class="event-list">
+      ${active
+        .map(
+          (event) => `
+            <li>
+              <time>${esc(event.time_label)}</time>
+              <div>
+                <strong>${esc(event.title)}</strong>
+                <span>${esc(event.source)}</span>
+              </div>
+            </li>`,
+        )
+        .join("") || "<li><time>--:--</time><div><strong>未開始</strong><span>巡回デモ開始を押してください</span></div></li>"}
+    </ol>`;
+  setHtml("event-log", html);
+}
+
+function renderInventoryRanking(data) {
+  const assessment = data.assessment || {};
+  const products = asArray(assessment.impacted_products);
+  const plants = asArray(assessment.impacted_plants);
+  const inventory = asArray(assessment.inventory).slice().sort((a, b) => (a.days_of_supply ?? 999) - (b.days_of_supply ?? 999));
+  const rows = inventory
+    .map((item) => {
+      const days = Number(item.days_of_supply);
+      const risk = Number.isFinite(days) && days <= 7;
+      return `
+        <div class="inventory-row${risk ? " inventory-risk" : ""}">
+          <div>
+            <strong>${esc(item.plant)}</strong>
+            <span>${esc(materialLabel(item.material))} / ${esc(item.stock_qty)}${esc(item.unit || "")} 在庫</span>
+          </div>
+          <b>${Number.isFinite(days) ? `${days}日` : "不明"}</b>
+        </div>`;
+    })
+    .join("");
+  setHtml(
+    "inventory-ranking",
+    `
+      <div class="impact-chip-row">
+        ${products.map((p) => `<span>${esc(p)}</span>`).join("") || "<span>影響製品なし</span>"}
+      </div>
+      <p class="impact-note">対象工場: ${esc(plants.join("、") || "なし")}</p>
+      <div class="inventory-list">${rows || `<p class="empty">在庫影響はありません。</p>`}</div>
+    `,
+  );
+}
+
+function renderAlternatives(data) {
+  const alternatives = asArray((data.assessment || {}).alternatives);
+  const rows = alternatives
+    .map((alt) => {
+      const approved = Boolean(alt.approved);
+      return `
+        <div class="alternative-row">
+          <div>
+            <strong>${esc(alt.alternative_material)}</strong>
+            <span>${esc(alt.constraints)}</span>
+          </div>
+          <b class="${approved ? "approved" : "pending"}">${approved ? "承認済" : "評価中"}</b>
+          <em>${esc(alt.lead_time_days)}日</em>
+        </div>`;
+    })
+    .join("");
+  setHtml("alternatives-table", rows || `<p class="empty">代替材候補はありません。</p>`);
+}
+
+function renderTaskBoard(data) {
+  const assessment = data.assessment || {};
+  const tasks = [
+    { owner: "調達", text: "サプライヤへ割当数量と出荷予定を確認", due: "本日中" },
+    { owner: "生産管理", text: `${assessment.inventory_days_min ?? "-"}日以内に影響する生産計画を確認`, due: "24時間以内" },
+    { owner: "品質保証", text: "NAP-ALT-01 の適用品目と品質条件を確認", due: "24時間以内" },
+    { owner: "営業", text: "高優先度顧客向けの一次説明文案を準備", due: "承認後" },
+  ];
+  const visibleCount = Math.max(1, Math.min(tasks.length, asArray(assessment.recommended_actions).length || 1));
+  setHtml(
+    "task-board",
+    tasks
+      .slice(0, visibleCount)
+      .map(
+        (task) => `
+          <div class="task-row">
+            <span>${esc(task.owner)}</span>
+            <strong>${esc(task.text)}</strong>
+            <em>${esc(task.due)}</em>
+          </div>`,
+      )
+      .join(""),
+  );
+}
+
+function renderManagementReport(data) {
+  const assessment = data.assessment || {};
+  const kpis = (data.route_intel && data.route_intel.kpis) || {};
+  const demo = data.demo || {};
+  setHtml(
+    "management-report",
+    `
+      <article class="report-card">
+        <header>
+          <span>Supply Sentinel 自動生成</span>
+          <strong>${esc(demo.time_label || formatDateTime(assessment.generated_at))}</strong>
+        </header>
+        <h4>ナフサ供給リスクにより、最短${esc(assessment.inventory_days_min ?? "-")}日で生産影響の可能性</h4>
+        <dl>
+          <div><dt>リスクスコア</dt><dd>${esc(assessment.risk_score)}/100</dd></div>
+          <div><dt>影響調達額</dt><dd>${esc(compactUsdJa(kpis.monthly_spend_at_risk))}/月</dd></div>
+          <div><dt>影響製品</dt><dd>${esc(asArray(assessment.impacted_products).join("、") || "なし")}</dd></div>
+          <div><dt>一次判断</dt><dd>発注変更と顧客通知は人の承認後に実施</dd></div>
+        </dl>
+      </article>
+    `,
+  );
+}
+
 function renderMapLegend() {
   const swatches = [
     { label: "要対応", color: STATUS_COLORS.disrupted },
@@ -330,7 +498,11 @@ export function renderPanels(data) {
   renderKpiGrid(model);
   renderSourcingMix(model);
   renderOrdersTable(model);
-  renderList("overview-actions-list", assessment.recommended_actions, "推奨初動はありません。");
+  renderEventLog(model);
+  renderInventoryRanking(model);
+  renderAlternatives(model);
+  renderTaskBoard(model);
+  renderManagementReport(model);
   renderList("evidence-list", assessment.evidence, "検知根拠はありません。");
   renderList("actions-list", assessment.recommended_actions, "推奨初動はありません。");
   renderList("approval-list", assessment.approval_required, "承認が必要な事項はありません。");

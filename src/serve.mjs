@@ -68,6 +68,9 @@ function route(pathname) {
   if (pathname === "/dashboard_data.json") {
     return path.join(outputsDir, "dashboard_data.json");
   }
+  if (pathname === "/demo_events.json") {
+    return path.join(webDir, "demo_events.json");
+  }
   if (pathname.startsWith("/js/")) {
     return resolveWithin(path.join(webDir, "js"), pathname.slice("/js/".length));
   }

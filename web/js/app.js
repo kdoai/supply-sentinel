@@ -9,6 +9,11 @@ const VIEW_TITLES = {
 };
 
 let dashboardData = null;
+let currentDashboardData = null;
+let demoConfig = { stages: [], data_sources: [], interval_ms: 1800 };
+let demoStep = 0;
+let demoTimer = null;
+let demoPlaying = false;
 let worldGeojson = null;
 let mapInstance = null;
 
@@ -32,7 +37,7 @@ async function fetchJson(url) {
 
 function ensureMap() {
   const canvasEl = document.getElementById("world-map");
-  if (!canvasEl || !dashboardData || !worldGeojson) return;
+  if (!canvasEl || !currentDashboardData || !worldGeojson) return;
 
   if (!mapInstance) {
     mapInstance = createMap(canvasEl, worldGeojson);
@@ -48,11 +53,239 @@ function ensureMap() {
   requestAnimationFrame(() => {
     try {
       mapInstance.resize();
-      mapInstance.render(dashboardData);
+      mapInstance.render(currentDashboardData);
     } catch {
       // Ignore resize races.
     }
   });
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function scoreSeverity(score, fallback = "medium") {
+  if (score >= 70) return "high";
+  if (score >= 50) return "medium";
+  if (score >= 1) return "low";
+  return fallback;
+}
+
+function visibleSlice(items, count) {
+  return Array.isArray(items) ? items.slice(0, Math.max(0, Number(count) || 0)) : [];
+}
+
+function sourceTimeToIso(stageIndex) {
+  const base = new Date("2026-05-31T06:30:00+09:00");
+  base.setMinutes(base.getMinutes() + stageIndex);
+  return base.toISOString();
+}
+
+function updateRouteState(route, stage) {
+  if (!route || route.material !== "naphtha") return route;
+  const affected = stage.affected_route_ids.includes(route.route_id);
+  const resilient = stage.resilient_route_ids.includes(route.route_id);
+  route.affected = affected;
+  route.status = affected ? "disrupted" : resilient ? "resilient" : "normal";
+  return route;
+}
+
+function recalcSourcing(model) {
+  const routes = ((model.route_intel || {}).routes || []).filter((route) => route.material === "naphtha");
+  const affectedRoutes = routes.filter((route) => route.affected);
+  const affectedShare = affectedRoutes.reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
+  const affectedSpend = affectedRoutes.reduce((sum, route) => sum + (Number(route.monthly_spend_usd) || 0), 0);
+  const totalSpend = routes.reduce((sum, route) => sum + (Number(route.monthly_spend_usd) || 0), 0);
+
+  const focalRoutes = routes.map((route) => ({
+    route_id: route.route_id,
+    origin: route.origin && route.origin.name,
+    region: route.region,
+    supplier: route.supplier,
+    share_percent: route.share_percent,
+    monthly_spend_usd: route.monthly_spend_usd,
+    lead_time_days: route.lead_time_days,
+    status: route.status,
+    affected: route.affected,
+  }));
+
+  const focal = {
+    material: "naphtha",
+    total_share: 100,
+    total_spend: totalSpend,
+    affected_share: affectedShare,
+    affected_spend: affectedSpend,
+    route_count: routes.length,
+    affected_count: affectedRoutes.length,
+    routes: focalRoutes,
+  };
+
+  model.route_intel.sourcing = model.route_intel.sourcing || {};
+  model.route_intel.sourcing.focal = focal;
+  model.route_intel.sourcing.by_material = model.route_intel.sourcing.by_material || {};
+  model.route_intel.sourcing.by_material.naphtha = focal;
+  model.route_intel.kpis = {
+    ...(model.route_intel.kpis || {}),
+    total_routes: routes.length,
+    affected_routes: affectedRoutes.length,
+    affected_share_percent: affectedShare,
+    total_monthly_spend: totalSpend,
+    monthly_spend_at_risk: affectedSpend,
+  };
+}
+
+function updateMapNodes(model) {
+  const affectedLabels = new Set();
+  for (const route of (model.route_intel || {}).routes || []) {
+    if (!route.affected) continue;
+    if (route.origin && route.origin.name) affectedLabels.add(route.origin.name);
+    if (route.port && route.port.name) affectedLabels.add(route.port.name);
+    if (route.plant && route.plant.name) affectedLabels.add(route.plant.name);
+  }
+  for (const node of (model.route_intel || {}).map_nodes || []) {
+    node.affected = affectedLabels.has(node.label);
+  }
+}
+
+function updateFlow(model) {
+  const affectedIds = new Set();
+  for (const route of (model.route_intel || {}).routes || []) {
+    if (!route.affected) continue;
+    if (route.origin && route.origin.name) affectedIds.add(`o:${route.origin.name}`);
+    if (route.supplier) affectedIds.add(`m:${route.supplier}`);
+    if (route.plant && route.plant.name) affectedIds.add(`p:${route.plant.name}`);
+  }
+  const flow = (model.route_intel || {}).flow || {};
+  for (const node of flow.nodes || []) {
+    node.status = affectedIds.has(node.id) ? "disrupted" : "normal";
+  }
+  for (const edge of flow.edges || []) {
+    edge.status = affectedIds.has(edge.source) || affectedIds.has(edge.target) ? "disrupted" : "normal";
+  }
+}
+
+function applyDemoStage(base, step) {
+  const stages = demoConfig.stages || [];
+  const stageIndex = Math.max(0, Math.min(stages.length - 1, step));
+  const stage = stages[stageIndex] || {};
+  const model = cloneJson(base);
+  stage.affected_route_ids = Array.isArray(stage.affected_route_ids) ? stage.affected_route_ids : [];
+  stage.resilient_route_ids = Array.isArray(stage.resilient_route_ids) ? stage.resilient_route_ids : [];
+
+  model.meta = model.meta || {};
+  model.meta.generated_at = sourceTimeToIso(stageIndex);
+
+  model.risk_event = model.risk_event || {};
+  model.risk_event.severity = stage.severity || scoreSeverity(stage.score);
+  model.risk_event.evidence = visibleSlice(base.risk_event && base.risk_event.evidence, stage.evidence_count);
+
+  model.assessment = model.assessment || {};
+  model.assessment.risk_score = stage.score ?? model.assessment.risk_score;
+  model.assessment.severity = stage.severity || scoreSeverity(model.assessment.risk_score);
+  model.assessment.inventory_days_min = stage.inventory_days_min ?? model.assessment.inventory_days_min;
+  model.assessment.evidence = visibleSlice(base.assessment && base.assessment.evidence, stage.evidence_count);
+  model.assessment.recommended_actions = visibleSlice(base.assessment && base.assessment.recommended_actions, stage.recommended_count);
+  model.assessment.approval_required = visibleSlice(base.assessment && base.assessment.approval_required, stage.approval_count);
+  model.assessment.impacted_products = visibleSlice(base.assessment && base.assessment.impacted_products, stage.impacted_product_count);
+  model.assessment.impacted_customers = visibleSlice(base.assessment && base.assessment.impacted_customers, stage.impacted_customer_count);
+  model.assessment.impacted_orders = visibleSlice(base.assessment && base.assessment.impacted_orders, stage.impacted_order_count);
+  model.assessment.impacted_plants = stage.impacted_product_count > 0
+    ? visibleSlice(base.assessment && base.assessment.impacted_plants, stage.impacted_product_count > 2 ? 2 : 1)
+    : [];
+  model.assessment.generated_at = model.meta.generated_at;
+  for (const item of model.assessment.inventory || []) {
+    if (item.plant === "千葉工場") item.days_of_supply = stage.inventory_days_min ?? item.days_of_supply;
+    if (item.plant === "大阪工場") item.days_of_supply = Math.max(10, (stage.inventory_days_min ?? 5) + 5);
+  }
+
+  for (const route of (model.route_intel || {}).routes || []) {
+    updateRouteState(route, stage);
+  }
+  recalcSourcing(model);
+  updateMapNodes(model);
+  updateFlow(model);
+
+  model.demo = {
+    ...stage,
+    step_index: stageIndex,
+    total_steps: stages.length,
+    is_playing: demoPlaying,
+    active_events: stages.slice(0, stageIndex + 1),
+    score_trend: stages.slice(0, stageIndex + 1).map((event) => ({
+      time_label: event.time_label,
+      score: event.score,
+    })),
+    data_sources: demoConfig.data_sources || [],
+  };
+  return model;
+}
+
+function renderFlowPanel(model) {
+  const flowEl = document.getElementById("flow-graph");
+  if (flowEl) {
+    renderFlow(flowEl, model.route_intel && model.route_intel.flow);
+  }
+}
+
+function updateDemoControls() {
+  const stage = (currentDashboardData && currentDashboardData.demo) || {};
+  const title = document.getElementById("demo-stage-title");
+  const detail = document.getElementById("demo-stage-detail");
+  const progress = document.getElementById("demo-progress-bar");
+  const play = document.getElementById("demo-play");
+  if (title) title.textContent = stage.title || "巡回デモ待機中";
+  if (detail) detail.textContent = stage.detail || "外部シグナルと社内データを順に照合します。";
+  if (progress) {
+    const denom = Math.max(1, (stage.total_steps || 1) - 1);
+    progress.style.width = `${Math.round(((stage.step_index || 0) / denom) * 100)}%`;
+  }
+  if (play) play.textContent = demoPlaying ? "巡回中..." : "巡回デモ開始";
+}
+
+function renderCurrentDashboard() {
+  currentDashboardData = applyDemoStage(dashboardData, demoStep);
+  renderPanels(currentDashboardData);
+  renderFlowPanel(currentDashboardData);
+  updateDemoControls();
+  ensureMap();
+}
+
+function stopDemo() {
+  if (demoTimer) {
+    clearInterval(demoTimer);
+    demoTimer = null;
+  }
+  demoPlaying = false;
+  updateDemoControls();
+}
+
+function startDemo() {
+  stopDemo();
+  demoPlaying = true;
+  demoStep = 0;
+  renderCurrentDashboard();
+  demoTimer = setInterval(() => {
+    if (demoStep >= (demoConfig.stages || []).length - 1) {
+      stopDemo();
+      renderCurrentDashboard();
+      return;
+    }
+    demoStep += 1;
+    renderCurrentDashboard();
+  }, demoConfig.interval_ms || 1800);
+}
+
+function resetDemo() {
+  stopDemo();
+  demoStep = 0;
+  renderCurrentDashboard();
+}
+
+function bindDemoControls() {
+  const play = document.getElementById("demo-play");
+  const reset = document.getElementById("demo-reset");
+  if (play) play.addEventListener("click", startDemo);
+  if (reset) reset.addEventListener("click", resetDemo);
 }
 
 function setActiveView(viewName) {
@@ -108,22 +341,27 @@ function applyInitialSidebarState() {
 }
 
 async function init() {
-  [dashboardData, worldGeojson] = await Promise.all([
+  [dashboardData, worldGeojson, demoConfig] = await Promise.all([
     fetchJson("./dashboard_data.json"),
     fetchJson("./assets/world.geojson"),
+    fetchJson("./demo_events.json").catch(() => demoConfig),
   ]);
 
-  renderPanels(dashboardData);
-  const flowEl = document.getElementById("flow-graph");
-  if (flowEl) {
-    renderFlow(flowEl, dashboardData.route_intel && dashboardData.route_intel.flow);
-  }
+  demoStep = Math.max(0, (demoConfig.stages || []).length - 1);
+  renderCurrentDashboard();
 
   bindNavigation();
   bindSidebarToggle();
+  bindDemoControls();
   applyInitialSidebarState();
-  const initialView = new URLSearchParams(window.location.search).get("view") || "dashboard";
+  const params = new URLSearchParams(window.location.search);
+  const initialView = params.get("view") || "dashboard";
   setActiveView(initialView);
+  if (params.get("demo") === "play") {
+    setTimeout(startDemo, 400);
+  } else if (params.get("demo") === "reset") {
+    resetDemo();
+  }
 }
 
 if (document.readyState === "loading") {
