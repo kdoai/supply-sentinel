@@ -45,25 +45,32 @@ async function extractWithAzureOpenAi(data, config) {
     headers["api-key"] = config.apiKey;
   }
 
+  const requestBody = {
+    messages: [
+      {
+        role: "system",
+        content:
+          "You extract supply-chain risk events. Return only valid JSON matching the requested schema. Do not invent facts beyond the sources.",
+      },
+      {
+        role: "user",
+        content: buildRiskExtractionPrompt(data),
+      },
+    ],
+    response_format: { type: "json_object" },
+  };
+
+  if (usesReasoningModel(config.deployment)) {
+    requestBody.max_completion_tokens = 900;
+  } else {
+    requestBody.temperature = 0;
+    requestBody.max_tokens = 900;
+  }
+
   const response = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({
-      temperature: 0,
-      max_tokens: 900,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You extract supply-chain risk events. Return only valid JSON matching the requested schema. Do not invent facts beyond the sources.",
-        },
-        {
-          role: "user",
-          content: buildRiskExtractionPrompt(data),
-        },
-      ],
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -136,6 +143,11 @@ function stringOr(value, fallback) {
 function numberOr(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function usesReasoningModel(deployment) {
+  const name = String(deployment || "").toLowerCase();
+  return name.startsWith("gpt-5") || name.startsWith("o1") || name.startsWith("o3") || name.startsWith("o4");
 }
 
 // Re-exported so tests and callers can reference the mock explicitly.

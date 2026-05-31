@@ -2,7 +2,7 @@
   "meta": {
     "app": "Supply Sentinel",
     "scenario": "naphtha supply risk",
-    "generated_at": "2026-05-31T08:42:30.545Z",
+    "generated_at": "2026-05-31T10:14:33.180Z",
     "materials": [
       {
         "material_id": "naphtha",
@@ -60,10 +60,10 @@
     ],
     "ai": {
       "run_mode": "demo",
-      "model": "gpt-5.4",
+      "model": "gpt-5.4-mini",
       "subagent_model": "gpt-5.4-mini",
       "provider": "Azure OpenAI",
-      "model_label": "Azure OpenAI · gpt-5.4",
+      "model_label": "Azure OpenAI · gpt-5.4-mini",
       "sub_model_label": "gpt-5.4-mini",
       "note": "デモは信頼性重視の決定論抽出。本番は同一スキーマ・同一プロンプトでAzure OpenAIが抽出します。",
       "inputs": [
@@ -235,7 +235,7 @@
       "Formal customer notification",
       "Major production plan changes"
     ],
-    "generated_at": "2026-05-31T08:42:30.545Z"
+    "generated_at": "2026-05-31T10:14:33.180Z"
   },
   "route_intel": {
     "focal_material": "naphtha",

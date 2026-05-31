@@ -82,8 +82,9 @@ jobs:
                 runMode="${{ inputs.run_mode }}" \
                 azureOpenAiEndpoint="${{ vars.AZURE_OPENAI_ENDPOINT || '' }}" \
                 azureOpenAiAccountName="${{ vars.AZURE_OPENAI_ACCOUNT_NAME || '' }}" \
-                azureOpenAiDeployment="${{ vars.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4' }}" \
-                azureOpenAiSubagentDeployment="${{ vars.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || 'gpt-5.4-mini' }}"
+                azureOpenAiDeployment="${{ vars.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4-mini' }}" \
+                azureOpenAiSubagentDeployment="${{ vars.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || 'gpt-5.4-mini' }}" \
+                azureOpenAiApiVersion="${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}"
             acr_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrName.value -o tsv)"
             acr_login_server="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrLoginServer.value -o tsv)"
             container_app_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.containerAppName.value -o tsv)"
@@ -131,8 +132,9 @@ jobs:
                 containerImage="$image" \
                 azureOpenAiEndpoint="${{ vars.AZURE_OPENAI_ENDPOINT || '' }}" \
                 azureOpenAiAccountName="${{ vars.AZURE_OPENAI_ACCOUNT_NAME || '' }}" \
-                azureOpenAiDeployment="${{ vars.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4' }}" \
-                azureOpenAiSubagentDeployment="${{ vars.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || 'gpt-5.4-mini' }}"
+                azureOpenAiDeployment="${{ vars.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4-mini' }}" \
+                azureOpenAiSubagentDeployment="${{ vars.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || 'gpt-5.4-mini' }}" \
+                azureOpenAiApiVersion="${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}"
             api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"
             echo "api_base=$api_base" >> "$GITHUB_OUTPUT"
             az containerapp job start \

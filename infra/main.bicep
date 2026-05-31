@@ -26,10 +26,13 @@ param azureOpenAiEndpoint string = ''
 param azureOpenAiAccountName string = ''
 
 @description('Main supervisor / response model deployment name.')
-param azureOpenAiDeployment string = 'gpt-5.4'
+param azureOpenAiDeployment string = 'gpt-5.4-mini'
 
 @description('Sub-agent model deployment name.')
 param azureOpenAiSubagentDeployment string = 'gpt-5.4-mini'
+
+@description('Azure OpenAI API version for the runtime client.')
+param azureOpenAiApiVersion string = '2025-04-01-preview'
 
 var suffix = toLower(uniqueString(resourceGroup().id, appName))
 var webStorageName = take('${appName}web${suffix}', 24)
@@ -245,6 +248,10 @@ var appEnv = [
   {
     name: 'AZURE_OPENAI_SUBAGENT_DEPLOYMENT'
     value: azureOpenAiSubagentDeployment
+  }
+  {
+    name: 'AZURE_OPENAI_API_VERSION'
+    value: azureOpenAiApiVersion
   }
   {
     name: 'AZURE_OPENAI_USE_AAD'

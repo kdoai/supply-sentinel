@@ -13,7 +13,7 @@ short and cached.
 | API and scheduler | Azure Container Apps Consumption + scheduled Job | API scales to zero/one replica; agent job runs every 6 hours by default. |
 | Container registry | Azure Container Registry Basic | Private image registry, no admin password, GitHub OIDC pushes images. |
 | State | Azure Cosmos DB for NoSQL Serverless | Serverless, local keys disabled, managed identity access. |
-| AI | Azure OpenAI through Azure AI Foundry | Main agent uses `gpt-5.4`; sub-agents use `gpt-5.4-mini` when quota is available. |
+| AI | Azure OpenAI through Azure AI Foundry | Main and sub-agent deployments use `gpt-5.4-mini` on East US 2 `DataZoneStandard` for the live hackathon demo. |
 | CI/CD identity | GitHub Actions OIDC + Entra ID | No publish profile, no client secret, no API key in Git. |
 
 Teams notification is intentionally excluded from this deployment because the
@@ -36,9 +36,9 @@ current demo focuses on the dashboard and operational decision flow.
 - ACR: Basic tier with short image retention.
 - Cosmos DB: Serverless, one region, small demo documents.
 - Storage: LRS only, small static assets.
-- Azure OpenAI: main model deployment is `gpt-5.4`; sub-agent deployment is
-  `gpt-5.4-mini`. Keep prompts short and keep `RUN_MODE=demo` until model quota
-  is available.
+- Azure OpenAI: main and sub-agent deployment is `gpt-5.4-mini`. Keep prompts
+  short, keep the deployment capacity low, and use `RUN_MODE=demo` when a fully
+  deterministic rehearsal is needed.
 - Set a subscription budget alert manually or with the bootstrap script.
 
 ## First Setup

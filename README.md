@@ -148,7 +148,7 @@ outputs/latest/
 ## Recommended Microsoft Stack
 
 - Runtime: Azure Container Apps Consumption + Container Apps Job
-- AI: Azure OpenAI / Azure AI Foundry (`gpt-5.4`, sub-agent `gpt-5.4-mini`)
+- AI: Azure OpenAI / Azure AI Foundry (`gpt-5.4-mini` on East US 2 DataZoneStandard for the live demo)
 - State: Azure Cosmos DB Serverless
 - Frontend: Azure Storage Static Website
 - Container registry: Azure Container Registry Basic
