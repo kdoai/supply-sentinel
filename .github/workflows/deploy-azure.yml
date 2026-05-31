@@ -96,15 +96,18 @@ jobs:
             echo "static_url=$static_url" >> "$GITHUB_OUTPUT"
 
       - name: Build and push container image
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            set -euo pipefail
-            az acr build \
-              --registry "${{ steps.infra.outputs.acr_name }}" \
-              --image "supply-sentinel:${{ github.sha }}" \
-              --image "supply-sentinel:latest" \
-              .
+        run: |
+          set -euo pipefail
+          token="$(az acr login --name "${{ steps.infra.outputs.acr_name }}" --expose-token --query accessToken -o tsv)"
+          echo "$token" | docker login "${{ steps.infra.outputs.acr_login_server }}" \
+            --username 00000000-0000-0000-0000-000000000000 \
+            --password-stdin
+          docker build \
+            --tag "${{ steps.infra.outputs.acr_login_server }}/supply-sentinel:${{ github.sha }}" \
+            --tag "${{ steps.infra.outputs.acr_login_server }}/supply-sentinel:latest" \
+            .
+          docker push "${{ steps.infra.outputs.acr_login_server }}/supply-sentinel:${{ github.sha }}"
+          docker push "${{ steps.infra.outputs.acr_login_server }}/supply-sentinel:latest"
 
       - name: Update Container Apps runtime
         id: runtime
