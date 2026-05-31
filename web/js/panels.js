@@ -129,6 +129,8 @@ function affectedPeriodLabel(period) {
     "next 2-3 weeks": "今後2〜3週間",
     "next 2 to 3 weeks": "今後2〜3週間",
     "next 1-2 weeks": "今後1〜2週間",
+    "next two weeks": "今後2週間",
+    "next 2 weeks": "今後2週間",
   };
   if (map[period]) return map[period];
   const range = String(period).match(/next\s+(\d+)\s*(?:-|to)\s*(\d+)\s*weeks?/i);
@@ -182,6 +184,15 @@ function translateText(text) {
   }
   if (String(text).startsWith("Supplier notice subject:")) {
     return "サプライヤ通知: ナフサ由来原料の一時的な割当制限。";
+  }
+  if (String(text).startsWith("Temporary allocation control for naphtha-derived feedstock")) {
+    return "ナフサ由来原料の出荷に一時的な割当制限が発生。";
+  }
+  if (String(text).startsWith("Confirmed shipments may be delayed by 5 to 7 days")) {
+    return "確定済み出荷でも5〜7日の遅延可能性がある。";
+  }
+  if (String(text).startsWith("Allocation volume for the next two weeks")) {
+    return "今後2週間の割当量が通常契約量の約70%に制限される可能性がある。";
   }
   return text;
 }

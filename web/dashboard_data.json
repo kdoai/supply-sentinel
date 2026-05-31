@@ -2,7 +2,7 @@
   "meta": {
     "app": "Supply Sentinel",
     "scenario": "naphtha supply risk",
-    "generated_at": "2026-05-31T10:44:07.207Z",
+    "generated_at": "2026-05-31T10:51:23.592Z",
     "materials": [
       {
         "material_id": "naphtha",
@@ -235,7 +235,7 @@
       "Formal customer notification",
       "Major production plan changes"
     ],
-    "generated_at": "2026-05-31T10:44:07.207Z"
+    "generated_at": "2026-05-31T10:51:23.592Z"
   },
   "route_intel": {
     "focal_material": "naphtha",
