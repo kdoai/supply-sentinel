@@ -180,6 +180,10 @@ function esc(value) {
     .replaceAll("'", "&#039;");
 }
 
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function renderMapInsight(detail) {
   const el = document.getElementById("map-insight");
   if (!el) return;
