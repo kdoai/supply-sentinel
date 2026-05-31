@@ -104,6 +104,7 @@ Write-Host "Assigning least practical roles scoped to $ResourceGroup..."
 az role assignment create --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --role Contributor --scope $scope 2>$null | Out-Null
 az role assignment create --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --role "Role Based Access Control Administrator" --scope $scope 2>$null | Out-Null
 az role assignment create --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --role "Storage Blob Data Contributor" --scope $scope 2>$null | Out-Null
+az role assignment create --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --role AcrPush --scope $scope 2>$null | Out-Null
 
 Write-Host "Writing GitHub OIDC secrets and deployment variables..."
 gh secret set AZURE_CLIENT_ID --repo $Repository --body $appId
@@ -119,7 +120,7 @@ az deployment group create `
   --name supply-sentinel-cloud `
   --resource-group $ResourceGroup `
   --template-file infra/main.bicep `
-  --parameters appName=$AppName location=$Location githubPrincipalId=$spObjectId runMode=demo `
+  --parameters appName=$AppName location=$Location runMode=demo `
   --query "properties.outputs" `
   -o json
 

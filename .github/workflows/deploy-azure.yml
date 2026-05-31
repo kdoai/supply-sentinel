@@ -79,7 +79,6 @@ jobs:
               --parameters \
                 appName="${{ vars.AZURE_APP_NAME }}" \
                 location="${{ vars.AZURE_LOCATION }}" \
-                githubPrincipalId="${{ vars.AZURE_GITHUB_PRINCIPAL_ID }}" \
                 runMode="${{ inputs.run_mode }}"
             acr_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrName.value -o tsv)"
             acr_login_server="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrLoginServer.value -o tsv)"
@@ -121,7 +120,6 @@ jobs:
               --parameters \
                 appName="${{ vars.AZURE_APP_NAME }}" \
                 location="${{ vars.AZURE_LOCATION }}" \
-                githubPrincipalId="${{ vars.AZURE_GITHUB_PRINCIPAL_ID }}" \
                 runMode="${{ inputs.run_mode }}" \
                 containerImage="$image"
             api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"

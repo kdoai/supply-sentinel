@@ -16,9 +16,6 @@ param timerCron string = '0 */6 * * *'
 ])
 param runMode string = 'demo'
 
-@description('Optional GitHub Actions service principal objectId. If provided, CI/CD RBAC is assigned without secrets.')
-param githubPrincipalId string = ''
-
 @description('Container image for the API and scheduled agent. CI updates this after pushing to ACR.')
 param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
@@ -39,7 +36,6 @@ var appContainerName = '${appName}-api'
 var jobName = '${appName}-agent-job'
 var databaseName = 'supply-sentinel'
 var containerName = 'runs'
-var hasGithubPrincipal = !empty(githubPrincipalId)
 var isAcrImage = startsWith(containerImage, '${acrName}.azurecr.io/')
 
 resource webStorage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
@@ -66,15 +62,6 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   properties: {
     adminUserEnabled: false
     publicNetworkAccess: 'Enabled'
-    policies: {
-      quarantinePolicy: {
-        status: 'disabled'
-      }
-      retentionPolicy: {
-        days: 7
-        status: 'enabled'
-      }
-    }
   }
 }
 
@@ -194,26 +181,6 @@ resource runtimeCosmosDataContributor 'Microsoft.DocumentDB/databaseAccounts/sql
     principalId: runtimeIdentity.properties.principalId
     roleDefinitionId: '${cosmos.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
     scope: cosmos.id
-  }
-}
-
-resource githubAcrPush 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasGithubPrincipal) {
-  name: guid(acr.id, githubPrincipalId, 'acrpush')
-  scope: acr
-  properties: {
-    principalId: githubPrincipalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8311e382-0749-4cb8-b61a-304f252e45ec')
-  }
-}
-
-resource githubStorageContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasGithubPrincipal) {
-  name: guid(webStorage.id, githubPrincipalId, 'storage-blob-data-contributor')
-  scope: webStorage
-  properties: {
-    principalId: githubPrincipalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
   }
 }
 
