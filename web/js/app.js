@@ -156,6 +156,18 @@ function trim1(num) {
   return s.endsWith(".0") ? s.slice(0, -2) : s;
 }
 
+function formatDateTime(value) {
+  if (!value) return "不明";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleString("ja-JP", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function routeStatusLabel(status) {
   if (status === "disrupted") return "要対応";
   if (status === "resilient") return "代替可";
