@@ -17,7 +17,8 @@ export function azureOpenAiConfig() {
   return {
     endpoint: process.env.AZURE_OPENAI_ENDPOINT || "",
     apiKey: process.env.AZURE_OPENAI_API_KEY || "",
-    deployment: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o-mini",
+    deployment: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-5.4",
+    subagentDeployment: process.env.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || "gpt-5.4-mini",
     apiVersion: process.env.AZURE_OPENAI_API_VERSION || "2024-10-21",
     useAad: String(process.env.AZURE_OPENAI_USE_AAD || "true").toLowerCase() !== "false",
   };

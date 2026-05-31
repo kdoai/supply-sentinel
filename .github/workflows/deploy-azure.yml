@@ -79,7 +79,11 @@ jobs:
               --parameters \
                 appName="${{ vars.AZURE_APP_NAME }}" \
                 location="${{ vars.AZURE_LOCATION }}" \
-                runMode="${{ inputs.run_mode }}"
+                runMode="${{ inputs.run_mode }}" \
+                azureOpenAiEndpoint="${{ vars.AZURE_OPENAI_ENDPOINT || '' }}" \
+                azureOpenAiAccountName="${{ vars.AZURE_OPENAI_ACCOUNT_NAME || '' }}" \
+                azureOpenAiDeployment="${{ vars.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4' }}" \
+                azureOpenAiSubagentDeployment="${{ vars.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || 'gpt-5.4-mini' }}"
             acr_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrName.value -o tsv)"
             acr_login_server="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrLoginServer.value -o tsv)"
             container_app_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.containerAppName.value -o tsv)"
@@ -124,7 +128,11 @@ jobs:
                 appName="${{ vars.AZURE_APP_NAME }}" \
                 location="${{ vars.AZURE_LOCATION }}" \
                 runMode="${{ inputs.run_mode }}" \
-                containerImage="$image"
+                containerImage="$image" \
+                azureOpenAiEndpoint="${{ vars.AZURE_OPENAI_ENDPOINT || '' }}" \
+                azureOpenAiAccountName="${{ vars.AZURE_OPENAI_ACCOUNT_NAME || '' }}" \
+                azureOpenAiDeployment="${{ vars.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4' }}" \
+                azureOpenAiSubagentDeployment="${{ vars.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || 'gpt-5.4-mini' }}"
             api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"
             echo "api_base=$api_base" >> "$GITHUB_OUTPUT"
             az containerapp job start \

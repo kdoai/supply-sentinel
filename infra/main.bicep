@@ -22,8 +22,14 @@ param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-hellowo
 @description('Optional Azure OpenAI endpoint from Azure AI Foundry. Leave empty for low-cost demo mode.')
 param azureOpenAiEndpoint string = ''
 
-@description('Optional Azure OpenAI deployment name, for example gpt-4o-mini.')
-param azureOpenAiDeployment string = 'gpt-4o-mini'
+@description('Optional existing Azure OpenAI account name. When set, runtime identity gets OpenAI User RBAC.')
+param azureOpenAiAccountName string = ''
+
+@description('Main supervisor / response model deployment name.')
+param azureOpenAiDeployment string = 'gpt-5.4'
+
+@description('Sub-agent model deployment name.')
+param azureOpenAiSubagentDeployment string = 'gpt-5.4-mini'
 
 var suffix = toLower(uniqueString(resourceGroup().id, appName))
 var webStorageName = take('${appName}web${suffix}', 24)
@@ -37,6 +43,7 @@ var jobName = '${appName}-agent-job'
 var databaseName = 'supply-sentinel'
 var containerName = 'runs'
 var isAcrImage = startsWith(containerImage, '${acrName}.azurecr.io/')
+var hasAzureOpenAiAccount = !empty(azureOpenAiAccountName)
 
 resource webStorage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: webStorageName
@@ -184,6 +191,20 @@ resource runtimeCosmosDataContributor 'Microsoft.DocumentDB/databaseAccounts/sql
   }
 }
 
+resource azureOpenAiAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = if (hasAzureOpenAiAccount) {
+  name: azureOpenAiAccountName
+}
+
+resource runtimeOpenAiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasAzureOpenAiAccount) {
+  name: guid(azureOpenAiAccount.id, runtimeIdentity.name, 'openai-user')
+  scope: azureOpenAiAccount
+  properties: {
+    principalId: runtimeIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+  }
+}
+
 var appEnv = [
   {
     name: 'RUN_MODE'
@@ -220,6 +241,10 @@ var appEnv = [
   {
     name: 'AZURE_OPENAI_DEPLOYMENT'
     value: azureOpenAiDeployment
+  }
+  {
+    name: 'AZURE_OPENAI_SUBAGENT_DEPLOYMENT'
+    value: azureOpenAiSubagentDeployment
   }
   {
     name: 'AZURE_OPENAI_USE_AAD'
