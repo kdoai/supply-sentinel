@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runSupplySentinel } from "./supply_sentinel/workflow.mjs";
+import { createStateStore } from "./supply_sentinel/stateStore.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -10,7 +11,7 @@ const webDir = path.join(rootDir, "web");
 const outputsDir = path.join(rootDir, "outputs", "latest");
 
 const PORT = Number(process.env.PORT) || 4173;
-const HOST = "127.0.0.1";
+const HOST = process.env.HOST || "127.0.0.1";
 
 const CONTENT_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -57,6 +58,15 @@ function sendStatus(res, code, message) {
   res.end(message);
 }
 
+function sendJson(res, code, body) {
+  res.writeHead(code, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Access-Control-Allow-Origin": "*",
+  });
+  res.end(JSON.stringify(body));
+}
+
 // Map a request to a file path inside an allowed dir, or null if not routable.
 function route(pathname) {
   if (pathname === "/" || pathname === "/index.html") {
@@ -64,6 +74,9 @@ function route(pathname) {
   }
   if (pathname === "/styles.css") {
     return path.join(webDir, "styles.css");
+  }
+  if (pathname === "/config.js") {
+    return path.join(webDir, "config.js");
   }
   if (pathname === "/dashboard_data.json") {
     return path.join(outputsDir, "dashboard_data.json");
@@ -91,6 +104,29 @@ const server = http.createServer(async (req, res) => {
     pathname = decodeURIComponent(new URL(req.url, `http://${req.headers.host || HOST}`).pathname);
   } catch {
     sendStatus(res, 400, "Bad Request");
+    return;
+  }
+
+  if (pathname === "/api/health") {
+    sendJson(res, 200, { ok: true, app: "Supply Sentinel", served_at: new Date().toISOString() });
+    return;
+  }
+
+  if (pathname === "/api/latest-dashboard") {
+    try {
+      const store = createStateStore({ outputDir: outputsDir });
+      const dashboard = await store.getLatestDashboard();
+      sendJson(res, 200, {
+        served_at: new Date().toISOString(),
+        state_store: store.kind,
+        dashboard,
+      });
+    } catch (err) {
+      sendJson(res, 404, {
+        error: "latest_dashboard_not_found",
+        message: err && err.message ? err.message : String(err),
+      });
+    }
     return;
   }
 
@@ -135,7 +171,7 @@ async function main() {
 
   server.listen(PORT, HOST, () => {
     console.log("");
-    console.log(`Supply Sentinel dashboard:  http://localhost:${PORT}`);
+    console.log(`Supply Sentinel dashboard:  http://${HOST}:${PORT}`);
     console.log("Press Ctrl+C to stop.");
   });
 }

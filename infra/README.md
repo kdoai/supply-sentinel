@@ -10,7 +10,8 @@ short and cached.
 | Layer | Azure service | Cost/security choice |
 | --- | --- | --- |
 | Frontend | Azure Storage static website | Static files only; no secrets in browser. |
-| API and scheduler | Azure Functions Consumption | Timer trigger every 6 hours by default; scale to zero. |
+| API and scheduler | Azure Container Apps Consumption + scheduled Job | API scales to zero/one replica; agent job runs every 6 hours by default. |
+| Container registry | Azure Container Registry Basic | Private image registry, no admin password, GitHub OIDC pushes images. |
 | State | Azure Cosmos DB for NoSQL Serverless | Serverless, local keys disabled, managed identity access. |
 | AI | Azure OpenAI through Azure AI Foundry | Optional endpoint/deployment settings; use `gpt-4o-mini` for demo cost. |
 | CI/CD identity | GitHub Actions OIDC + Entra ID | No publish profile, no client secret, no API key in Git. |
@@ -21,7 +22,7 @@ current demo focuses on the dashboard and operational decision flow.
 ## Security Model
 
 - GitHub deploys with OIDC federation, not a stored Azure password.
-- The Function App uses managed identity for Cosmos DB.
+- The Container App and scheduled Job use managed identity for Cosmos DB and ACR pull.
 - Cosmos DB local auth is disabled, so leaked keys cannot be abused.
 - The public HTTP endpoint is read-only and returns only sanitized dashboard
   data for the demo.
@@ -31,7 +32,8 @@ current demo focuses on the dashboard and operational decision flow.
 
 ## Cost Guardrails
 
-- Functions: Consumption plan, timer every 6 hours.
+- Container Apps: 0.25 CPU / 0.5 GiB, max 1 API replica, scheduled job every 6 hours.
+- ACR: Basic tier with short image retention.
 - Cosmos DB: Serverless, one region, small demo documents.
 - Storage: LRS only, small static assets.
 - Azure OpenAI: use a small deployment such as `gpt-4o-mini`, short prompts, and
@@ -68,8 +70,9 @@ gh workflow run deploy-azure.yml -R kdoai/supply-sentinel -f run_mode=demo
 ```
 
 The workflow validates the app, deploys Azure resources from `infra/main.bicep`,
-deploys the Function App, writes `web/config.js` with the Function endpoint, and
-uploads the static dashboard to the `$web` container.
+builds and pushes the container image to ACR, updates the Container App and
+scheduled Job, writes `web/config.js` with the API endpoint, and uploads the
+static dashboard to the `$web` container.
 
 ## Switching Materials
 

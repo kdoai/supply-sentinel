@@ -54,6 +54,13 @@ $tenantId = az account show --query tenantId -o tsv
 Write-Host "Creating resource group $ResourceGroup in $Location..."
 az group create --name $ResourceGroup --location $Location --tags project=SupplySentinel environment=hackathon costTargetYen=$MonthlyBudgetYen | Out-Null
 
+Write-Host "Registering required Azure resource providers..."
+az provider register --namespace Microsoft.App --wait | Out-Null
+az provider register --namespace Microsoft.ContainerRegistry --wait | Out-Null
+az provider register --namespace Microsoft.OperationalInsights --wait | Out-Null
+az provider register --namespace Microsoft.DocumentDB --wait | Out-Null
+az provider register --namespace Microsoft.Storage --wait | Out-Null
+
 $displayName = "$AppName-github-oidc"
 $appId = az ad app list --display-name $displayName --query "[0].appId" -o tsv
 if (-not $appId) {

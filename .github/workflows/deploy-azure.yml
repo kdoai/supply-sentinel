@@ -34,7 +34,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts
 
       - name: Syntax check
         run: |
@@ -66,7 +66,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy infrastructure
+      - name: Deploy base infrastructure
         id: infra
         uses: azure/cli@v2
         with:
@@ -81,26 +81,61 @@ jobs:
                 location="${{ vars.AZURE_LOCATION }}" \
                 githubPrincipalId="${{ vars.AZURE_GITHUB_PRINCIPAL_ID }}" \
                 runMode="${{ inputs.run_mode }}"
-            function_app_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionAppName.value -o tsv)"
-            function_api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"
+            acr_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrName.value -o tsv)"
+            acr_login_server="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrLoginServer.value -o tsv)"
+            container_app_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.containerAppName.value -o tsv)"
+            container_job_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.containerJobName.value -o tsv)"
+            api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"
             static_storage="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.staticStorageAccountName.value -o tsv)"
             static_url="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.staticWebsiteUrl.value -o tsv)"
-            echo "function_app_name=$function_app_name" >> "$GITHUB_OUTPUT"
-            echo "function_api_base=$function_api_base" >> "$GITHUB_OUTPUT"
+            echo "acr_name=$acr_name" >> "$GITHUB_OUTPUT"
+            echo "acr_login_server=$acr_login_server" >> "$GITHUB_OUTPUT"
+            echo "container_app_name=$container_app_name" >> "$GITHUB_OUTPUT"
+            echo "container_job_name=$container_job_name" >> "$GITHUB_OUTPUT"
+            echo "api_base=$api_base" >> "$GITHUB_OUTPUT"
             echo "static_storage=$static_storage" >> "$GITHUB_OUTPUT"
             echo "static_url=$static_url" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy Function App
-        uses: Azure/functions-action@v1
+      - name: Build and push container image
+        uses: azure/cli@v2
         with:
-          app-name: ${{ steps.infra.outputs.function_app_name }}
-          package: .
+          inlineScript: |
+            set -euo pipefail
+            az acr build \
+              --registry "${{ steps.infra.outputs.acr_name }}" \
+              --image "supply-sentinel:${{ github.sha }}" \
+              --image "supply-sentinel:latest" \
+              .
+
+      - name: Update Container Apps runtime
+        id: runtime
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            image="${{ steps.infra.outputs.acr_login_server }}/supply-sentinel:${{ github.sha }}"
+            az deployment group create \
+              --name supply-sentinel-cloud \
+              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              --template-file infra/main.bicep \
+              --parameters \
+                appName="${{ vars.AZURE_APP_NAME }}" \
+                location="${{ vars.AZURE_LOCATION }}" \
+                githubPrincipalId="${{ vars.AZURE_GITHUB_PRINCIPAL_ID }}" \
+                runMode="${{ inputs.run_mode }}" \
+                containerImage="$image"
+            api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"
+            echo "api_base=$api_base" >> "$GITHUB_OUTPUT"
+            az containerapp job start \
+              --name "${{ steps.infra.outputs.container_job_name }}" \
+              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              --no-wait
 
       - name: Write frontend cloud config
         run: |
           cat > web/config.js <<'EOF'
           window.SUPPLY_SENTINEL_CONFIG = {
-            apiBase: "${{ steps.infra.outputs.function_api_base }}"
+            apiBase: "${{ steps.runtime.outputs.api_base }}"
           };
           EOF
 
@@ -124,5 +159,5 @@ jobs:
 
       - name: Deployment summary
         run: |
-          echo "Function API: ${{ steps.infra.outputs.function_api_base }}/api/latest-dashboard"
-          echo "Static site:  ${{ steps.infra.outputs.static_url }}"
+          echo "Cloud API:   ${{ steps.runtime.outputs.api_base }}/api/latest-dashboard"
+          echo "Static site: ${{ steps.infra.outputs.static_url }}"

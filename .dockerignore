@@ -1,0 +1,8 @@
+.git
+.github
+.azure
+node_modules
+outputs
+docs
+desktop_screenshot.png
+*.log
