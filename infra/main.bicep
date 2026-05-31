@@ -67,13 +67,9 @@ resource webStorage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: planName
   location: location
-  kind: 'linux'
   sku: {
     name: 'Y1'
     tier: 'Dynamic'
-  }
-  properties: {
-    reserved: true
   }
 }
 
@@ -147,7 +143,7 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: functionAppName
   location: location
-  kind: 'functionapp,linux'
+  kind: 'functionapp'
   identity: {
     type: 'SystemAssigned'
   }
@@ -155,7 +151,6 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     serverFarmId: plan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'NODE|20'
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       cors: {
@@ -176,6 +171,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'FUNCTIONS_WORKER_RUNTIME'
           value: 'node'
+        }
+        {
+          name: 'WEBSITE_NODE_DEFAULT_VERSION'
+          value: '~20'
         }
         {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
