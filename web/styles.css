@@ -45,6 +45,88 @@ button {
   font: inherit;
 }
 
+.boot-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 48% 42%, rgba(37, 99, 168, 0.28), transparent 30%),
+    linear-gradient(180deg, #071426, #0f2742);
+  transition: opacity 180ms ease, visibility 180ms ease;
+}
+
+.boot-loader.is-hidden {
+  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.boot-card {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 14px;
+  width: min(520px, 100%);
+  border: 1px solid rgba(197, 214, 234, 0.28);
+  border-radius: 8px;
+  padding: 22px;
+  background: rgba(7, 20, 38, 0.82);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.boot-orbit {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 42px;
+  border: 3px solid rgba(114, 210, 255, 0.24);
+  border-top-color: #72d2ff;
+  border-radius: 999px;
+  animation: boot-spin 900ms linear infinite;
+}
+
+@keyframes boot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.boot-card strong {
+  display: block;
+  font-size: 17px;
+}
+
+.boot-card p {
+  margin: 4px 0 0;
+  color: #c5d6ea;
+  font-size: 13px;
+}
+
+.boot-steps {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.boot-steps li {
+  margin: 0;
+  border: 1px solid rgba(197, 214, 234, 0.18);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #d8e6f7;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  text-align: center;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 196px minmax(0, 1fr);
@@ -991,18 +1073,17 @@ button {
 .analysis-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
-  grid-template-rows: minmax(430px, 1.1fr) 220px 260px 220px;
+  grid-template-rows: minmax(430px, 1.1fr) 220px 240px 220px;
   grid-template-areas:
     "network timeline"
     "network provenance"
-    "flow inventory"
+    "orders inventory"
     "orders alternatives";
   gap: 16px;
   height: calc(100vh - 114px);
   overflow: auto;
 }
 
-.flow-panel,
 .orders-panel,
 .inventory-panel,
 .alternatives-panel,
@@ -1025,10 +1106,6 @@ button {
   grid-area: provenance;
 }
 
-.flow-panel {
-  grid-area: flow;
-}
-
 .orders-panel {
   grid-area: orders;
 }
@@ -1039,13 +1116,6 @@ button {
 
 .alternatives-panel {
   grid-area: alternatives;
-}
-
-#flow-graph {
-  min-height: 0;
-  overflow: hidden;
-  padding: 12px;
-  background: #fbfcfe;
 }
 
 #network-legend {
@@ -1342,11 +1412,6 @@ button {
   color: var(--green);
 }
 
-#flow-graph svg {
-  width: 100%;
-  height: 100%;
-}
-
 #orders-table {
   min-height: 0;
   overflow: auto;
@@ -1501,8 +1566,11 @@ tbody td {
 
 .response-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1.35fr) minmax(220px, 0.65fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  grid-template-rows: minmax(360px, 0.9fr) minmax(260px, 0.7fr);
+  grid-template-areas:
+    "agent ai"
+    "brief brief";
   gap: 16px;
   height: calc(100vh - 114px);
 }
@@ -1512,24 +1580,229 @@ tbody td {
   grid-template-rows: auto minmax(0, 1fr);
 }
 
+.agent-panel {
+  grid-area: agent;
+}
+
 .ai-panel {
-  grid-column: 1 / span 3;
+  grid-area: ai;
 }
 
-.actions-panel {
-  grid-column: 4;
+.response-brief-panel {
+  grid-area: brief;
 }
 
-.task-panel {
-  grid-column: 1 / span 2;
+.response-brief-grid {
+  display: grid;
+  grid-template-columns: 0.82fr 1.18fr 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
 }
 
-.approval-panel {
-  grid-column: 3;
+.response-brief-cell {
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
 }
 
-.report-panel {
-  grid-column: 4;
+.response-brief-cell h4 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 9px 11px;
+  color: var(--muted);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.response-brief-cell #actions-list,
+.response-brief-cell #approval-list,
+.response-brief-cell #task-board,
+.response-brief-cell #management-report {
+  padding: 10px;
+}
+
+.agent-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid #b8ddca;
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--green);
+  background: #e8f5ee;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.agent-chat {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  min-height: 0;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0), #f8fafc),
+    #fff;
+}
+
+.agent-thread {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.agent-message {
+  display: grid;
+  gap: 5px;
+  max-width: 94%;
+}
+
+.agent-message > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.agent-message > div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: #fff;
+}
+
+.agent-message-assistant > div {
+  border-left: 4px solid var(--blue-600);
+  box-shadow: 0 8px 18px rgba(15, 39, 66, 0.08);
+}
+
+.agent-message-user {
+  justify-self: end;
+}
+
+.agent-message-user > span {
+  text-align: right;
+}
+
+.agent-message-user > div {
+  color: #fff;
+  background: var(--navy-800);
+  border-color: var(--navy-800);
+}
+
+.agent-message p,
+.agent-message ul {
+  margin: 0;
+}
+
+.agent-message ul {
+  padding-left: 18px;
+}
+
+.agent-answer-title {
+  margin-bottom: 8px;
+  color: var(--navy-900);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.agent-trace {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 9px;
+}
+
+.agent-trace span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--blue-700);
+  background: #eaf2fb;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.agent-footnote {
+  margin-top: 9px !important;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.agent-suggestions {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 14px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.agent-suggestions button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: var(--blue-700);
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.agent-suggestions button:hover,
+.agent-suggestions button:focus-visible {
+  border-color: var(--blue-600);
+  background: #eaf2fb;
+  outline: none;
+}
+
+.agent-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
+.agent-form input {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  background: #fff;
+}
+
+.agent-form input:focus {
+  border-color: var(--blue-600);
+  outline: 2px solid rgba(37, 99, 168, 0.18);
+}
+
+.agent-form button {
+  min-height: 38px;
+  border: 1px solid var(--blue-600);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #fff;
+  background: var(--blue-600);
+  cursor: pointer;
+  font-weight: 800;
 }
 
 ul {
@@ -2233,11 +2506,14 @@ li {
   }
 
   .ai-panel,
+  .agent-panel,
   .actions-panel,
   .task-panel,
   .approval-panel,
-  .report-panel {
+  .report-panel,
+  .response-brief-panel {
     grid-column: auto;
+    grid-area: auto;
   }
 
   .cloud-proof,
@@ -2250,6 +2526,10 @@ li {
   }
 
   .business-trace {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .response-brief-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2290,10 +2570,6 @@ li {
 
   .dashboard-side {
     grid-template-rows: none;
-  }
-
-  .flow-panel {
-    min-height: 620px;
   }
 
   .orders-panel {
@@ -2569,10 +2845,6 @@ li {
     grid-template-areas: none;
   }
 
-  .flow-panel {
-    min-height: 460px;
-  }
-
   .network-panel {
     min-height: 760px;
   }
@@ -2610,7 +2882,9 @@ li {
   }
 
   .cloud-proof dl,
-  .business-trace {
+  .business-trace,
+  .response-brief-grid,
+  .boot-steps {
     grid-template-columns: 1fr;
   }
 

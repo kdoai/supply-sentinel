@@ -7,6 +7,21 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+  <div class="boot-loader" id="boot-loader" role="status" aria-live="polite">
+    <div class="boot-card">
+      <span class="boot-orbit" aria-hidden="true"></span>
+      <div>
+        <strong>Supply Sentinel 起動中</strong>
+        <p id="boot-loader-text">Cloud API と供給網データを読み込んでいます</p>
+      </div>
+      <ol class="boot-steps" aria-label="読み込み状況">
+        <li>Cloud API</li>
+        <li>多段供給網</li>
+        <li>AI判断</li>
+      </ol>
+    </div>
+  </div>
+
   <div class="app-shell" id="app-shell">
     <aside class="sidebar" aria-label="画面切り替え">
       <button class="sidebar-toggle" type="button" id="sidebar-toggle" aria-label="サイドバーを閉じる" aria-expanded="true">‹</button>
@@ -156,14 +171,6 @@
             <div id="provenance-list"></div>
           </section>
 
-          <section class="panel flow-panel">
-            <div class="panel-head">
-              <h3>業務フロー</h3>
-              <span class="panel-note">原材料から顧客影響まで</span>
-            </div>
-            <div id="flow-graph"></div>
-          </section>
-
           <section class="panel orders-panel">
             <div class="panel-head">
               <h3>影響受注一覧</h3>
@@ -192,44 +199,55 @@
 
       <section class="view" id="view-response" data-view-panel="response">
         <div class="response-grid">
+          <section class="panel agent-panel">
+            <div class="panel-head">
+              <div>
+                <h3>Supply Sentinel AI</h3>
+                <span class="panel-note">対策相談・根拠確認</span>
+              </div>
+              <span class="agent-status" id="agent-status">AI待機中</span>
+            </div>
+            <div class="agent-chat">
+              <div class="agent-thread" id="agent-thread" aria-live="polite"></div>
+              <div class="agent-suggestions" id="agent-suggestions"></div>
+              <form class="agent-form" id="agent-form">
+                <input id="agent-input" type="text" autocomplete="off" placeholder="例: まず誰に何を確認する？">
+                <button type="submit">相談</button>
+              </form>
+            </div>
+          </section>
+
           <section class="panel ai-panel">
             <div class="panel-head">
-              <h3>AIリスク抽出</h3>
+              <h3>AI判断ログ</h3>
               <span class="panel-note">原文 → 構造化 → 業務影響</span>
             </div>
             <div id="ai-extraction"></div>
           </section>
 
-          <section class="panel actions-panel">
+          <section class="panel response-brief-panel">
             <div class="panel-head">
-              <h3>推奨初動</h3>
-              <span class="panel-note">担当者が確認</span>
+              <h3>初動対応ボード</h3>
+              <span class="panel-note">AIが起案し、人が実行判断</span>
             </div>
-            <ul id="actions-list"></ul>
-          </section>
-
-          <section class="panel task-panel">
-            <div class="panel-head">
-              <h3>担当タスク</h3>
-              <span class="panel-note">部門別に着手</span>
+            <div class="response-brief-grid">
+              <section class="response-brief-cell">
+                <h4>推奨初動</h4>
+                <ul id="actions-list"></ul>
+              </section>
+              <section class="response-brief-cell">
+                <h4>担当タスク</h4>
+                <div id="task-board"></div>
+              </section>
+              <section class="response-brief-cell">
+                <h4>人が判断する事項</h4>
+                <ul id="approval-list"></ul>
+              </section>
+              <section class="response-brief-cell">
+                <h4>管理職レポート</h4>
+                <div id="management-report"></div>
+              </section>
             </div>
-            <div id="task-board"></div>
-          </section>
-
-          <section class="panel approval-panel">
-            <div class="panel-head">
-              <h3>人が判断する事項</h3>
-              <span class="panel-note">AIは起案まで</span>
-            </div>
-            <ul id="approval-list"></ul>
-          </section>
-
-          <section class="panel report-panel">
-            <div class="panel-head">
-              <h3>管理職レポート</h3>
-              <span class="panel-note">自動生成</span>
-            </div>
-            <div id="management-report"></div>
           </section>
         </div>
       </section>

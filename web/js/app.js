@@ -1,5 +1,4 @@
 import { createMap } from "./map.js";
-import { renderFlow } from "./flow.js";
 import { renderPanels } from "./panels.js";
 import { createNetwork, networkLegendHtml } from "./network.js";
 import { computeMetrics } from "./propagation.js";
@@ -62,8 +61,21 @@ let activeScenarioId = "";
 let activeScenario = null;
 let activeTimeseries = null;
 let activeMonthIndex = -1;
+let agentMessages = [];
+let agentContextKey = "";
+let agentChatBound = false;
+
+function setLoaderText(message) {
+  const el = document.getElementById("boot-loader-text");
+  if (el) el.textContent = message;
+}
+
+function hideLoader() {
+  document.getElementById("boot-loader")?.classList.add("is-hidden");
+}
 
 function showFatalError(message) {
+  setLoaderText(`読み込みに失敗しました: ${message}`);
   const banner = document.createElement("div");
   banner.setAttribute("role", "alert");
   banner.style.cssText =
@@ -194,6 +206,214 @@ function esc(value) {
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function firstText(items, fallback = "未特定") {
+  const value = asArray(items)[0];
+  if (!value) return fallback;
+  if (typeof value === "string") return value;
+  return value.product || value.customer || value.plant || value.name || value.order_id || value.title || fallback;
+}
+
+function joinTop(items, picker, fallback = "なし", limit = 3) {
+  const values = asArray(items)
+    .map((item) => (typeof picker === "function" ? picker(item) : item))
+    .filter(Boolean)
+    .slice(0, limit);
+  return values.length ? values.join("、") : fallback;
+}
+
+function agentContextSignature(model) {
+  return [
+    activeScenarioId,
+    activeMonthIndex,
+    model?.assessment?.material,
+    model?.assessment?.risk_score,
+    model?.meta?.ai?.run_id || model?.meta?.cloud?.served_at || model?.meta?.generated_at,
+  ].join("|");
+}
+
+function buildAgentContext(model) {
+  const assessment = model?.assessment || {};
+  const metrics = model?.propagation?.metrics || {};
+  const ai = model?.meta?.ai || {};
+  const cloud = model?.meta?.cloud || {};
+  const routes = asArray(model?.route_intel?.routes);
+  const affectedRoutes = routes.filter((route) => route.affected);
+  const material = materialLabel(assessment.material || activeMaterial);
+  const inventoryDays = metrics.inventory_days_min ?? assessment.inventory_days_min ?? "-";
+  const affectedShare = metrics.affected_supply_ratio ?? model?.route_intel?.kpis?.affected_share_percent ?? 0;
+  const spendAtRisk = metrics.spend_at_risk_usd ?? model?.route_intel?.kpis?.monthly_spend_at_risk ?? 0;
+  return {
+    material,
+    score: assessment.risk_score ?? "-",
+    severity: assessment.severity || model?.risk_event?.severity || "unknown",
+    inventoryDays,
+    affectedShare,
+    spendAtRisk,
+    products: asArray(assessment.impacted_products),
+    customers: asArray(assessment.impacted_customers),
+    orders: asArray(assessment.impacted_orders),
+    plants: asArray(assessment.impacted_plants),
+    actions: asArray(assessment.recommended_actions),
+    approvals: asArray(assessment.approval_required),
+    evidence: asArray(assessment.evidence).length ? asArray(assessment.evidence) : asArray(model?.risk_event?.evidence),
+    alternatives: asArray(assessment.alternatives),
+    affectedRoutes,
+    ai,
+    cloud,
+  };
+}
+
+function agentStatusLabel(model) {
+  const ai = model?.meta?.ai || {};
+  const cloud = model?.meta?.cloud || {};
+  const mode = ai.run_mode || (cloud.persisted ? "cloud" : "demo");
+  const modelName = ai.model || "gpt-5.4-mini";
+  const store = cloud.persisted ? "Cosmos保存済み" : "未保存";
+  return `${modelName} / ${mode} / ${store}`;
+}
+
+function initialAgentMessage(model) {
+  const ctx = buildAgentContext(model);
+  const route = ctx.affectedRoutes[0];
+  const product = firstText(ctx.products, "影響製品なし");
+  const customer = firstText(ctx.customers, "影響顧客なし");
+  const action = firstText(ctx.actions, "監視継続");
+  return `
+    <div class="agent-answer-title">初動判断を開始できます</div>
+    <div class="agent-trace">
+      <span>Risk Watcher</span>
+      <span>Impact Mapper</span>
+      <span>Response Planner</span>
+    </div>
+    <p>${esc(ctx.material)}のリスクスコアは <b>${esc(ctx.score)}</b>。影響調達比率は <b>${esc(ctx.affectedShare)}%</b>、最短在庫は <b>${esc(ctx.inventoryDays)}日</b>です。</p>
+    <ul>
+      <li>要注意ルート: ${esc(route ? `${route.origin?.name || route.supplier} → ${route.plant?.name || "自社工場"}` : "なし")}</li>
+      <li>影響候補: ${esc(product)} / ${esc(customer)}</li>
+      <li>まずの起案: ${esc(action)}</li>
+    </ul>`;
+}
+
+function makeAgentAnswer(question, model) {
+  const ctx = buildAgentContext(model);
+  const normalized = String(question || "").toLowerCase();
+  const routeText = joinTop(ctx.affectedRoutes, (route) => `${route.supplier || route.origin?.name}→${route.plant?.name || "工場"}`);
+  const productText = joinTop(ctx.products, (item) => item.product || item.name || item);
+  const customerText = joinTop(ctx.customers, (item) => item.customer || item.name || item);
+  const evidenceText = joinTop(ctx.evidence, (item) => item.text || item.claim || item.summary || item, "根拠データなし", 4);
+  const approvalText = joinTop(ctx.approvals, (item) => item.action || item.title || item, "承認事項なし");
+  const alternativeText = joinTop(ctx.alternatives, (item) => {
+    const name = item.alternative_material || item.material || item.name;
+    const state = item.approved ? "承認済み" : "要確認";
+    return name ? `${name}(${state})` : "";
+  });
+
+  let title = "初動プラン";
+  let bullets = [
+    `${ctx.material}はリスク${ctx.score}、影響調達比率${ctx.affectedShare}%、最短在庫${ctx.inventoryDays}日として扱います。`,
+    `最初に確認すべき供給ルートは ${routeText} です。`,
+    `調達・生産・営業は、${productText} / ${customerText} への波及を同じ前提で確認します。`,
+  ];
+
+  if (normalized.includes("根拠") || normalized.includes("エビデンス") || normalized.includes("なぜ")) {
+    title = "判断根拠";
+    bullets = [
+      `外部原文から抽出した主な根拠は「${evidenceText}」です。`,
+      `社内照合では、影響調達比率${ctx.affectedShare}%、最短在庫${ctx.inventoryDays}日、リスク金額${compactUsdJa(ctx.spendAtRisk)}を確認しています。`,
+      "AIは確定判断ではなく、根拠と影響範囲をそろえて人の判断を早める役割です。",
+    ];
+  } else if (normalized.includes("代替") || normalized.includes("切替")) {
+    title = "代替策";
+    bullets = [
+      `代替候補は ${alternativeText} です。`,
+      `承認済み候補から先に引当可否を確認し、未承認候補は品質・顧客認定の確認タスクに分けます。`,
+      `サプライヤ切替や正式発注変更は ${approvalText} として人の承認に残します。`,
+    ];
+  } else if (normalized.includes("顧客") || normalized.includes("営業")) {
+    title = "顧客影響";
+    bullets = [
+      `優先して見る顧客は ${customerText} です。`,
+      `影響製品は ${productText}。受注一覧では納期が近いものから確認します。`,
+      "顧客への正式通知はAIが文案まで準備し、営業責任者が送信判断します。",
+    ];
+  } else if (normalized.includes("誰") || normalized.includes("まず") || normalized.includes("何")) {
+    title = "最初の30分";
+    bullets = [
+      `調達: ${routeText} の納期・割当率・代替ロット有無をサプライヤに確認します。`,
+      `生産管理: ${productText} の在庫${ctx.inventoryDays}日を前提に、止まりやすいラインを確認します。`,
+      `営業: ${customerText} への影響可能性を先に把握し、正式連絡は承認後にします。`,
+    ];
+  }
+
+  return `
+    <div class="agent-answer-title">${esc(title)}</div>
+    <div class="agent-trace">
+      <span>1. 外部シグナル</span>
+      <span>2. 在庫/BOM照合</span>
+      <span>3. 初動起案</span>
+    </div>
+    <ul>${bullets.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>
+    <p class="agent-footnote">実行判断が必要なもの: ${esc(approvalText)}</p>`;
+}
+
+function addAgentMessage(role, html) {
+  agentMessages.push({ role, html });
+  renderAgentPanel(currentDashboardData);
+}
+
+function renderAgentPanel(model) {
+  const status = document.getElementById("agent-status");
+  const thread = document.getElementById("agent-thread");
+  const suggestions = document.getElementById("agent-suggestions");
+  if (!thread || !suggestions) return;
+
+  if (status) status.textContent = agentStatusLabel(model);
+  const key = agentContextSignature(model);
+  if (key !== agentContextKey) {
+    agentContextKey = key;
+    agentMessages = [{ role: "assistant", html: initialAgentMessage(model) }];
+  }
+
+  thread.innerHTML = agentMessages
+    .map(
+      (message) => `
+        <article class="agent-message agent-message-${message.role}">
+          <span>${message.role === "user" ? "あなた" : "Supply Sentinel AI"}</span>
+          <div>${message.html}</div>
+        </article>`,
+    )
+    .join("");
+  suggestions.innerHTML = ["まず何をする？", "根拠を見せて", "代替策は？", "顧客影響を要約"]
+    .map((text) => `<button type="button" data-agent-question="${esc(text)}">${esc(text)}</button>`)
+    .join("");
+  thread.scrollTop = thread.scrollHeight;
+}
+
+function askAgent(question) {
+  const trimmed = String(question || "").trim();
+  if (!trimmed || !currentDashboardData) return;
+  addAgentMessage("user", `<p>${esc(trimmed)}</p>`);
+  window.setTimeout(() => {
+    addAgentMessage("assistant", makeAgentAnswer(trimmed, currentDashboardData));
+  }, 180);
+}
+
+function bindAgentChat() {
+  if (agentChatBound) return;
+  agentChatBound = true;
+  document.getElementById("agent-form")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const input = document.getElementById("agent-input");
+    const question = input?.value || "";
+    if (input) input.value = "";
+    askAgent(question);
+  });
+  document.getElementById("agent-suggestions")?.addEventListener("click", (event) => {
+    const button = event.target.closest?.("[data-agent-question]");
+    if (!button) return;
+    askAgent(button.getAttribute("data-agent-question"));
+  });
 }
 
 function renderMapInsight(detail) {
@@ -960,13 +1180,6 @@ function applyDemoStage(base, step) {
   return model;
 }
 
-function renderFlowPanel(model) {
-  const flowEl = document.getElementById("flow-graph");
-  if (flowEl) {
-    renderFlow(flowEl, model.route_intel && model.route_intel.flow);
-  }
-}
-
 function renderNetworkSelection(detail) {
   const el = document.getElementById("network-selection");
   if (!el) return;
@@ -1110,7 +1323,7 @@ function renderCurrentDashboard() {
   currentDashboardData = buildScenarioOverlayModel(applyDemoStage(dashboardData, demoStep));
   renderPanels(currentDashboardData);
   renderNetworkPanel(currentDashboardData);
-  renderFlowPanel(currentDashboardData);
+  renderAgentPanel(currentDashboardData);
   updateDemoControls();
   renderMapInsight(null);
   mapInstance?.highlightRoute(null);
@@ -1208,6 +1421,7 @@ function applyInitialSidebarState() {
 }
 
 async function init() {
+  setLoaderText("Cloud API と供給網データを読み込んでいます");
   [dashboardData, worldGeojson, demoConfig, scenarioIndex] = await Promise.all([
     fetchDashboardData(),
     fetchJson("./assets/world.geojson"),
@@ -1215,6 +1429,7 @@ async function init() {
     fetchJson("./assets/scenarios/index.json").catch(() => ({ scenarios: [] })),
   ]);
 
+  setLoaderText("監視シナリオと多段サプライヤネットワークを準備しています");
   const params = new URLSearchParams(window.location.search);
   const scenarioParam = params.get("scenario");
   const defaultScenario =
@@ -1239,6 +1454,8 @@ async function init() {
   demoStep = Math.max(0, (demoConfig.stages || []).length - 1);
   bindMaterialSwitch();
   bindScenarioSwitch();
+  bindAgentChat();
+  setLoaderText("AI判断ログと初動対応ボードを描画しています");
   renderCurrentDashboard();
 
   bindNavigation();
@@ -1253,6 +1470,7 @@ async function init() {
   } else if (params.get("demo") === "reset") {
     resetDemo();
   }
+  hideLoader();
 }
 
 if (document.readyState === "loading") {
