@@ -619,7 +619,7 @@ export function createMap(canvasEl, geojson) {
       html += '<div class="mt-sub">' + escapeHtml(node.sublabel) + '</div>';
     }
     if (node.affected) {
-      html += '<div class="mt-affected">影響あり / affected</div>';
+      html += '<div class="mt-affected">影響あり</div>';
     }
     if (node.type === 'plant' || node.type === 'origin') {
       const routesHtml = summarizeRoutes(node);
@@ -776,6 +776,12 @@ export function createMap(canvasEl, geojson) {
     zoomIn() { setZoom(zoom * 1.25); },
     zoomOut() { setZoom(zoom / 1.25); },
     resetView,
+    // Programmatic selection (e.g. clicking a sourcing row) — highlights the
+    // matching arc without re-emitting a select event, so panels stay the
+    // source of truth and we avoid a feedback loop.
+    highlightRoute(routeId) {
+      selected = routeId ? { type: 'route', route_id: routeId } : null;
+    },
     focusAsia() { focusOn(112, 22, W < 560 ? 2.05 : 1.75); },
     focusJapan() { focusOn(138, 35, W < 560 ? 4.6 : 3.6); },
   };

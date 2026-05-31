@@ -1,0 +1,40 @@
+import path from "node:path";
+import { createStateStore } from "../supply_sentinel/stateStore.mjs";
+
+const DEFAULT_OUTPUT_DIR = path.join(process.cwd(), "outputs", "latest");
+
+export async function httpLatestDashboard(context = {}, req = {}) {
+  const outputDir = process.env.SUPPLY_SENTINEL_OUTPUT_DIR || DEFAULT_OUTPUT_DIR;
+  const store = createStateStore({ outputDir });
+
+  try {
+    const dashboard = await store.getLatestDashboard();
+    const response = jsonResponse(200, {
+      served_at: new Date().toISOString(),
+      state_store: store.kind,
+      dashboard,
+    });
+    context.res = response;
+    return response;
+  } catch (error) {
+    const response = jsonResponse(404, {
+      error: "latest_dashboard_not_found",
+      message: error && error.message ? error.message : String(error),
+      hint: "Run the timer trigger or `npm run build:web` before requesting the latest dashboard.",
+      path: req.url || "/api/latest-dashboard",
+    });
+    context.res = response;
+    return response;
+  }
+}
+
+function jsonResponse(status, body) {
+  return {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+    body: JSON.stringify(body),
+  };
+}

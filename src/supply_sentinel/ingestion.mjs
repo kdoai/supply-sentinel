@@ -6,6 +6,18 @@ export async function loadJson(filePath) {
   return JSON.parse(text);
 }
 
+// Optional JSON loader: returns `fallback` if the file is missing.
+export async function loadJsonOptional(filePath, fallback = []) {
+  try {
+    return await loadJson(filePath);
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return fallback;
+    }
+    throw error;
+  }
+}
+
 export async function loadCsv(filePath) {
   const text = await readFile(filePath, "utf8");
   return parseCsv(text);
@@ -83,6 +95,7 @@ export async function loadSampleData(rootDir = process.cwd()) {
     orders,
     alternatives,
     supplyRoutes,
+    materials,
   ] = await Promise.all([
     loadJson(path.join(samplesDir, "news_events.json")),
     loadJson(path.join(samplesDir, "supplier_notices.json")),
@@ -91,6 +104,8 @@ export async function loadSampleData(rootDir = process.cwd()) {
     loadCsv(path.join(samplesDir, "orders.csv")),
     loadCsv(path.join(samplesDir, "alternatives.csv")),
     loadCsv(path.join(samplesDir, "supply_routes.csv")),
+    // Material master (docs/13 §4.1). Optional so the pipeline still runs if absent.
+    loadJsonOptional(path.join(samplesDir, "materials.json"), []),
   ]);
 
   return {
@@ -101,5 +116,6 @@ export async function loadSampleData(rootDir = process.cwd()) {
     orders,
     alternatives,
     supplyRoutes,
+    materials,
   };
 }

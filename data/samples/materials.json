@@ -1,0 +1,26 @@
+[
+  {
+    "material_id": "naphtha",
+    "display_name": "ナフサ",
+    "category": "petrochemical_feedstock",
+    "criticality": "high",
+    "aliases": ["naphtha", "ナフサ", "ナフサ由来原料"],
+    "monitoring_keywords": ["refinery disruption", "allocation", "shipment delay", "製油所", "割当", "出荷遅延"]
+  },
+  {
+    "material_id": "packaging-film",
+    "display_name": "包装フィルム",
+    "category": "packaging",
+    "criticality": "medium",
+    "aliases": ["packaging film", "packaging-film", "包装フィルム"],
+    "monitoring_keywords": ["film shortage", "包装", "フィルム", "出荷遅延"]
+  },
+  {
+    "material_id": "semiconductor-adhesive",
+    "display_name": "半導体接着材",
+    "category": "electronic_material",
+    "criticality": "high",
+    "aliases": ["semiconductor adhesive", "semiconductor-adhesive", "半導体接着材"],
+    "monitoring_keywords": ["adhesive", "接着材", "出荷遅延", "認定"]
+  }
+]

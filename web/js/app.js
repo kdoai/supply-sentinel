@@ -143,7 +143,7 @@ function renderMapInsight(detail) {
       .filter((route) => route.affected)
       .reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
     el.innerHTML = `
-      <span class="map-insight-kicker">MAP INTELLIGENCE</span>
+      <span class="map-insight-kicker">マップ分析</span>
       <strong>${esc(materialLabel(activeMaterial))}供給網の要注意地点</strong>
       <p>赤いルートは割当制限・遅延の可能性がある調達経路です。監視対象を切り替えると、同じ仕組みで他の重要物資も確認できます。</p>
       <dl>
@@ -158,7 +158,7 @@ function renderMapInsight(detail) {
     const status = routeStatusLabel(route.status);
     const riskClass = route.status === "disrupted" ? "route-risk" : "";
     el.innerHTML = `
-      <span class="map-insight-kicker">SELECTED ROUTE</span>
+      <span class="map-insight-kicker">選択中のルート</span>
       <strong>${esc(route.origin?.name)} → ${esc(route.plant?.name)}</strong>
       <p>${esc(route.supplier)} / ${esc(materialLabel(route.material))}。調達比率とリードタイムを見ながら、どの工場に波及するか確認できます。</p>
       <dl>
@@ -177,7 +177,7 @@ function renderMapInsight(detail) {
     });
     const affected = related.filter((route) => route.affected);
     el.innerHTML = `
-      <span class="map-insight-kicker">SELECTED NODE</span>
+      <span class="map-insight-kicker">選択中の拠点</span>
       <strong>${esc(node.label)}</strong>
       <p>${esc(node.sublabel || "供給網ノード")}。関連ルートの状態から、自社影響の有無を確認します。</p>
       <dl>
@@ -185,6 +185,75 @@ function renderMapInsight(detail) {
         <div><dt>要対応</dt><dd class="${affected.length ? "route-risk" : ""}">${esc(affected.length)}件</dd></div>
       </dl>`;
   }
+}
+
+function clearLinkHighlight() {
+  document
+    .querySelectorAll(".sourcing-row.is-linked, .kpi-card.is-linked")
+    .forEach((el) => el.classList.remove("is-linked"));
+}
+
+// Connect a map selection to the business panels: highlight the matching
+// 調達構成 row(s) and, for an affected route, the KPI cards it feeds into.
+function applyLinkHighlight(detail) {
+  clearLinkHighlight();
+  if (!detail) return;
+  const routes = ((currentDashboardData || {}).route_intel || {}).routes || [];
+
+  let ids = [];
+  let affected = false;
+  if (detail.type === "route" && detail.route) {
+    ids = [detail.route.route_id];
+    affected = Boolean(detail.route.affected);
+  } else if (detail.type === "node" && detail.node) {
+    const label = detail.node.label;
+    const related = routes.filter(
+      (route) => route.origin?.name === label || route.port?.name === label || route.plant?.name === label,
+    );
+    ids = related.map((route) => route.route_id);
+    affected = related.some((route) => route.affected);
+  }
+
+  for (const id of ids) {
+    if (!id) continue;
+    document.querySelector(`.sourcing-row[data-route-id="${id}"]`)?.classList.add("is-linked");
+  }
+  if (affected) {
+    document
+      .querySelectorAll('.kpi-card[data-kpi="affected-share"], .kpi-card[data-kpi="spend"], .kpi-card[data-kpi="routes"]')
+      .forEach((el) => el.classList.add("is-linked"));
+  }
+}
+
+function bindSourcingInteraction() {
+  const el = document.getElementById("sourcing-mix");
+  if (!el || el.dataset.bound === "1") return;
+  el.dataset.bound = "1";
+
+  function selectFromRow(row) {
+    const routeId = row.getAttribute("data-route-id");
+    if (!routeId) return;
+    const route = (((currentDashboardData || {}).route_intel || {}).routes || []).find(
+      (item) => item.route_id === routeId,
+    );
+    if (!route) return;
+    mapInstance?.highlightRoute(routeId);
+    const detail = { type: "route", route };
+    renderMapInsight(detail);
+    applyLinkHighlight(detail);
+  }
+
+  el.addEventListener("click", (event) => {
+    const row = event.target.closest?.(".sourcing-row[data-route-id]");
+    if (row) selectFromRow(row);
+  });
+  el.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const row = event.target.closest?.(".sourcing-row[data-route-id]");
+    if (!row) return;
+    event.preventDefault();
+    selectFromRow(row);
+  });
 }
 
 function bindMapControls(canvasEl) {
@@ -196,6 +265,7 @@ function bindMapControls(canvasEl) {
   document.getElementById("map-reset")?.addEventListener("click", () => {
     mapInstance?.resetView();
     renderMapInsight(null);
+    clearLinkHighlight();
   });
   document.querySelectorAll("[data-map-focus]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -203,7 +273,10 @@ function bindMapControls(canvasEl) {
       else mapInstance?.focusAsia();
     });
   });
-  canvasEl.addEventListener("supply-map-select", (event) => renderMapInsight(event.detail));
+  canvasEl.addEventListener("supply-map-select", (event) => {
+    renderMapInsight(event.detail);
+    applyLinkHighlight(event.detail);
+  });
 }
 
 function bindMaterialSwitch() {
@@ -386,7 +459,7 @@ function applyDemoStage(base, step) {
     : {
         ...stage,
         title: `${profile.label}を通常監視`,
-        source: "Supply Sentinel Agent",
+        source: "Supply Sentinel エージェント",
         source_type: "agent",
         detail: "外部シグナルと社内データを照合しましたが、現時点で初動対応が必要な供給リスクはありません。",
         score: profile.normalScore,
@@ -485,6 +558,7 @@ function renderCurrentDashboard() {
   renderFlowPanel(currentDashboardData);
   updateDemoControls();
   renderMapInsight(null);
+  mapInstance?.highlightRoute(null);
   ensureMap();
 }
 
@@ -597,6 +671,7 @@ async function init() {
   bindNavigation();
   bindSidebarToggle();
   bindDemoControls();
+  bindSourcingInteraction();
   applyInitialSidebarState();
   const initialView = params.get("view") || "dashboard";
   setActiveView(initialView);

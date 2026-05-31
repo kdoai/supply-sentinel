@@ -2,7 +2,62 @@
   "meta": {
     "app": "Supply Sentinel",
     "scenario": "naphtha supply risk",
-    "generated_at": "2026-05-30T22:04:09.152Z"
+    "generated_at": "2026-05-31T02:53:17.570Z",
+    "materials": [
+      {
+        "material_id": "naphtha",
+        "display_name": "ナフサ",
+        "category": "petrochemical_feedstock",
+        "criticality": "high",
+        "aliases": [
+          "naphtha",
+          "ナフサ",
+          "ナフサ由来原料"
+        ],
+        "monitoring_keywords": [
+          "refinery disruption",
+          "allocation",
+          "shipment delay",
+          "製油所",
+          "割当",
+          "出荷遅延"
+        ]
+      },
+      {
+        "material_id": "packaging-film",
+        "display_name": "包装フィルム",
+        "category": "packaging",
+        "criticality": "medium",
+        "aliases": [
+          "packaging film",
+          "packaging-film",
+          "包装フィルム"
+        ],
+        "monitoring_keywords": [
+          "film shortage",
+          "包装",
+          "フィルム",
+          "出荷遅延"
+        ]
+      },
+      {
+        "material_id": "semiconductor-adhesive",
+        "display_name": "半導体接着材",
+        "category": "electronic_material",
+        "criticality": "high",
+        "aliases": [
+          "semiconductor adhesive",
+          "semiconductor-adhesive",
+          "半導体接着材"
+        ],
+        "monitoring_keywords": [
+          "adhesive",
+          "接着材",
+          "出荷遅延",
+          "認定"
+        ]
+      }
+    ]
   },
   "risk_event": {
     "material": "naphtha",
@@ -27,7 +82,7 @@
     }
   },
   "assessment": {
-    "alert_id": "alert-20260530-naphtha",
+    "alert_id": "alert-20260531-naphtha",
     "material": "naphtha",
     "risk_type": "allocation",
     "risk_score": 82,
@@ -151,7 +206,7 @@
       "Formal customer notification",
       "Major production plan changes"
     ],
-    "generated_at": "2026-05-30T22:04:09.152Z"
+    "generated_at": "2026-05-31T02:53:17.570Z"
   },
   "route_intel": {
     "focal_material": "naphtha",

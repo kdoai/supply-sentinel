@@ -32,7 +32,14 @@ jobs:
           node --check web/js/app.js
           node --check web/js/panels.js
           node --check web/js/map.js
+          node --check web/js/flow.js
           node --check src/serve.mjs
+          node --check src/build-web.mjs
+          node --check src/function_app/timerTrigger.mjs
+          node --check src/function_app/httpLatestDashboard.mjs
+          node --check src/supply_sentinel/config.mjs
+          node --check src/supply_sentinel/aiClient.mjs
+          node --check src/supply_sentinel/stateStore.mjs
 
       - name: Run tests
         run: npm test

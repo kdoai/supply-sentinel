@@ -1,5 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { cosmosDbConfigured, stateStoreMode } from "./config.mjs";
+
+const DASHBOARD_FILE = "dashboard_data.json";
+const ALERT_HISTORY_FILE = "alert_history.json";
 
 export async function saveRunArtifacts({
   outputDir,
@@ -21,7 +25,7 @@ export async function saveRunArtifacts({
   };
 
   if (dashboardData) {
-    files["dashboard_data.json"] = JSON.stringify(dashboardData, null, 2);
+    files[DASHBOARD_FILE] = JSON.stringify(dashboardData, null, 2);
   }
 
   await Promise.all(
@@ -33,16 +37,66 @@ export async function saveRunArtifacts({
   await appendAlertHistory({ outputDir, assessment });
 }
 
-async function appendAlertHistory({ outputDir, assessment }) {
-  const historyPath = path.join(outputDir, "alert_history.json");
-  let history = [];
-  try {
-    history = JSON.parse(await readFile(historyPath, "utf8"));
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
-    }
+export function createStateStore({ outputDir, mode } = {}) {
+  const resolvedMode = stateStoreMode({ stateStore: mode });
+  if (resolvedMode === "cosmos") {
+    return createCosmosStateStore();
   }
+  return createLocalStateStore({ outputDir });
+}
+
+export function createLocalStateStore({ outputDir = path.join(process.cwd(), "outputs", "latest") } = {}) {
+  return {
+    kind: "local",
+    outputDir,
+    async saveRun(run) {
+      await saveRunArtifacts({ outputDir, ...run });
+    },
+    async getLatestDashboard() {
+      return loadLatestDashboardData({ outputDir });
+    },
+    async listAlerts() {
+      return loadAlertHistory({ outputDir });
+    },
+  };
+}
+
+export function createCosmosStateStore() {
+  return {
+    kind: "cosmos",
+    configured: cosmosDbConfigured(),
+    async saveRun() {
+      throw new Error("Cosmos DB state store is a cloud boundary stub in the local build.");
+    },
+    async getLatestDashboard() {
+      throw new Error("Cosmos DB state store is a cloud boundary stub in the local build.");
+    },
+    async listAlerts() {
+      throw new Error("Cosmos DB state store is a cloud boundary stub in the local build.");
+    },
+  };
+}
+
+export async function loadLatestDashboardData({ outputDir = path.join(process.cwd(), "outputs", "latest") } = {}) {
+  const content = await readFile(path.join(outputDir, DASHBOARD_FILE), "utf8");
+  return JSON.parse(content);
+}
+
+export async function loadAlertHistory({ outputDir = path.join(process.cwd(), "outputs", "latest") } = {}) {
+  try {
+    const content = await readFile(path.join(outputDir, ALERT_HISTORY_FILE), "utf8");
+    return JSON.parse(content);
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+}
+
+async function appendAlertHistory({ outputDir, assessment }) {
+  const historyPath = path.join(outputDir, ALERT_HISTORY_FILE);
+  const history = await loadAlertHistory({ outputDir });
 
   const nextHistory = [
     ...history.filter((item) => item.alert_id !== assessment.alert_id),
