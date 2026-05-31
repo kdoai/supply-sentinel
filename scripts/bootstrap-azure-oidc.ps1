@@ -80,7 +80,7 @@ if ($repoParts.Count -ne 2) {
 }
 
 $federatedName = "github-$($repoParts[0])-$($repoParts[1])-$EnvironmentName"
-$subject = "repo:$Repository:environment:$EnvironmentName"
+$subject = "repo:${Repository}:environment:${EnvironmentName}"
 $existingFederated = az ad app federated-credential list --id $appId --query "[?name=='$federatedName'].name | [0]" -o tsv
 if (-not $existingFederated) {
   $credential = @{
