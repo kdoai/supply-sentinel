@@ -84,12 +84,29 @@ async function fetchDashboardData() {
   if (apiUrl) {
     try {
       const payload = await fetchJson(apiUrl);
-      if (payload && payload.dashboard) return payload.dashboard;
+      if (payload && payload.dashboard) {
+        payload.dashboard.meta = payload.dashboard.meta || {};
+        payload.dashboard.meta.cloud = {
+          served_at: payload.served_at || null,
+          state_store: payload.state_store || "api",
+          api_base: base,
+          persisted: payload.state_store === "cosmos",
+        };
+        return payload.dashboard;
+      }
     } catch (error) {
       console.warn("Cloud dashboard API unavailable; falling back to static demo data.", error);
     }
   }
-  return fetchJson("./dashboard_data.json");
+  const fallback = await fetchJson("./dashboard_data.json");
+  fallback.meta = fallback.meta || {};
+  fallback.meta.cloud = {
+    served_at: null,
+    state_store: "static-json",
+    api_base: "",
+    persisted: false,
+  };
+  return fallback;
 }
 
 function ensureMap() {

@@ -186,6 +186,24 @@ function translateText(text) {
   return text;
 }
 
+function scoreFactorLabel(key) {
+  const labels = {
+    external_event_severity: "外部イベント深刻度",
+    supplier_notice_confidence: "サプライヤ通知の確度",
+    inventory_days_risk: "在庫残日数リスク",
+    customer_order_priority: "顧客・受注優先度",
+    alternative_availability_risk: "代替材制約",
+  };
+  return labels[key] || key;
+}
+
+function cloudStoreLabel(store) {
+  if (store === "cosmos") return "Cosmos DB";
+  if (store === "static-json") return "静的JSON";
+  if (store === "local") return "ローカル";
+  return store || "不明";
+}
+
 function renderScenario(data) {
   const risk = data.risk_event || {};
   const assessment = data.assessment || {};
@@ -381,7 +399,9 @@ function renderAiExtraction(data) {
 
   const assessment = data.assessment || {};
   const risk = data.risk_event || {};
-  const ai = (data.meta || {}).ai || {};
+  const meta = data.meta || {};
+  const ai = meta.ai || {};
+  const cloud = meta.cloud || {};
   const inputs = asArray(ai.inputs);
   const evidence = asArray(assessment.evidence);
 
@@ -412,12 +432,31 @@ function renderAiExtraction(data) {
   const runMode = ai.run_mode === "cloud" ? "cloud" : "demo";
   const runLabel = runMode === "cloud" ? "Azure OpenAI ライブ" : "デモ抽出(決定論)";
   const confidence = risk.confidence ? `確度 ${esc(risk.confidence)}` : "";
+  const cloudFacts = [
+    { label: "実行モード", value: `${ai.provider || "Azure OpenAI"} / ${runMode}` },
+    { label: "モデル", value: ai.model || "gpt-5.4-mini" },
+    { label: "Cloud API応答", value: cloud.served_at ? formatDateTime(cloud.served_at) : formatDateTime(meta.generated_at) },
+    { label: "保存先", value: `${cloudStoreLabel(cloud.state_store)}${cloud.persisted ? " 保存済み" : " fallback"}` },
+    { label: "実行ID", value: assessment.alert_id || "latest-dashboard" },
+  ];
 
   const badges = `
     <div class="ai-extract-badges">
-      <span class="ai-extract-model">${esc(ai.model_label || "Azure OpenAI · gpt-5.4")}</span>
+      <span class="ai-extract-model">${esc(ai.model_label || "Azure OpenAI · gpt-5.4-mini")}</span>
       <span class="ai-extract-mode ai-extract-mode-${runMode}">${esc(runLabel)}</span>
+      <span class="ai-extract-store">${esc(cloud.persisted ? "Cosmos保存済み" : "静的fallback")}</span>
       ${confidence ? `<span class="ai-extract-confidence">${confidence}</span>` : ""}
+    </div>`;
+
+  const cloudPanel = `
+    <div class="cloud-proof">
+      <div>
+        <span>Cloud実行証跡</span>
+        <strong>${esc(ai.model_label || "Azure OpenAI · gpt-5.4-mini")} / ${esc(runMode)}</strong>
+      </div>
+      <dl>
+        ${cloudFacts.map((item) => `<div><dt>${esc(item.label)}</dt><dd>${esc(item.value)}</dd></div>`).join("")}
+      </dl>
     </div>`;
 
   const inputCards = inputs
@@ -458,8 +497,43 @@ function renderAiExtraction(data) {
       <div><dt>対象期間</dt><dd>${esc(affectedPeriodLabel(risk.affected_period))}</dd></div>
     </dl>`;
 
+  const factors = Object.entries(assessment.scoring_factors || {});
+  const factorRows = factors
+    .map(([key, value]) => {
+      const score = Math.max(0, Math.min(25, Number(value) || 0));
+      return `
+        <div class="factor-row">
+          <span>${esc(scoreFactorLabel(key))}</span>
+          <b>${esc(value)}</b>
+          <em><i style="width:${score * 4}%"></i></em>
+        </div>`;
+    })
+    .join("");
+
+  const inventoryMin = assessment.inventory_days_min ?? "-";
+  const affectedProducts = asArray(assessment.impacted_products);
+  const affectedCustomers = asArray(assessment.impacted_customers);
+  const kpis = ((data.route_intel || {}).kpis) || {};
+  const businessTrace = `
+    <div class="business-trace ai-trace-inline" aria-label="AI抽出から業務判断までの流れ">
+      <div><span>1</span><strong>外部情報</strong><em>ニュース・通知 ${inputs.length}件</em></div>
+      <div><span>2</span><strong>AI構造化</strong><em>${esc(materialLabel(risk.material))} / ${esc(riskTypeLabel(risk.risk_type))}</em></div>
+      <div><span>3</span><strong>在庫/BOM照合</strong><em>最短 ${esc(inventoryMin)}日・製品 ${affectedProducts.length}件</em></div>
+      <div><span>4</span><strong>初動案</strong><em>顧客 ${affectedCustomers.length}社・調達影響 ${esc(kpis.affected_share_percent ?? 0)}%</em></div>
+    </div>`;
+
+  const judgment = `
+    <div class="judgment-proof">
+      <section>
+        <h4>スコア判断根拠</h4>
+        <div class="factor-list">${factorRows || `<p class="empty">スコア内訳はありません。</p>`}</div>
+      </section>
+    </div>`;
+
   container.innerHTML = `
     ${badges}
+    ${cloudPanel}
+    ${businessTrace}
     <div class="ai-extract-flow">
       <section class="ai-extract-col ai-extract-col-input">
         <h4>AIが読んだ外部テキスト</h4>
@@ -471,6 +545,7 @@ function renderAiExtraction(data) {
         ${fields}
       </section>
     </div>
+    ${judgment}
     <div class="ai-extract-evidence">
       <span class="ai-extract-evidence-head">検知根拠</span>
       <ul id="evidence-list"></ul>
@@ -596,7 +671,7 @@ function renderTaskBoard(data) {
     { owner: "調達", team: "樹脂調達G", text: "サプライヤへ割当数量と出荷予定を確認", due: "本日 17:00", status: "進行中", cls: "op-progress" },
     { owner: "生産管理", team: "千葉工場", text: `${invDays}日以内に影響する生産計画を確認`, due: "24時間以内", status: "着手待ち", cls: "op-wait" },
     { owner: "品質保証", team: "材料認定", text: "NAP-ALT-01 の適用品目と品質条件を確認", due: "24時間以内", status: "着手待ち", cls: "op-wait" },
-    { owner: "営業", team: "重点顧客担当", text: "高優先度顧客向けの一次説明文案を準備", due: "承認後", status: "承認待ち", cls: "op-hold" },
+    { owner: "営業", team: "重点顧客担当", text: "高優先度顧客向けの一次説明文案を準備", due: "承認後", status: "承認後実行", cls: "op-hold" },
   ];
   const visibleCount = Math.max(1, Math.min(tasks.length, asArray(assessment.recommended_actions).length || 1));
   const shown = tasks.slice(0, visibleCount);
@@ -605,7 +680,7 @@ function renderTaskBoard(data) {
   const head = `
     <div class="op-board-head">
       <span>初動タスク ${shown.length}件</span>
-      <span class="op-head-meta">承認待ち ${waitingApproval}件</span>
+      <span class="op-head-meta">人の判断待ち ${waitingApproval}件</span>
     </div>`;
   const rows = shown
     .map(
@@ -643,7 +718,7 @@ function renderApprovals(data) {
     return;
   }
 
-  const lead = `<li class="approval-lead">Supply Sentinel が起案。実行はいずれも人の承認が前提です。</li>`;
+  const lead = `<li class="approval-lead">Supply Sentinel が判断材料を整理。ここでは実行ボタンを置かず、発注変更・サプライヤ切替・顧客通知は既存の承認プロセスに渡します。</li>`;
   const cards = items
     .map((raw) => {
       const meta = APPROVAL_META.get(raw) || { approver: "担当責任者", impact: () => "" };
@@ -656,7 +731,7 @@ function renderApprovals(data) {
             <span>承認者: ${esc(meta.approver)}</span>
           </div>
           ${impact ? `<p class="approval-why">${esc(impact)}</p>` : ""}
-          <span class="approval-status">承認待ち</span>
+          <span class="approval-status">人の判断待ち</span>
         </li>`;
     })
     .join("");

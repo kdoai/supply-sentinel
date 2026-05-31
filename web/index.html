@@ -160,15 +160,15 @@
 
       <section class="view" id="view-response" data-view-panel="response">
         <div class="response-grid">
-          <section class="panel">
+          <section class="panel ai-panel">
             <div class="panel-head">
               <h3>AIリスク抽出</h3>
-              <span class="panel-note">外部テキストを構造化</span>
+              <span class="panel-note">原文 → 構造化 → 業務影響</span>
             </div>
             <div id="ai-extraction"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel actions-panel">
             <div class="panel-head">
               <h3>推奨初動</h3>
               <span class="panel-note">担当者が確認</span>
@@ -176,7 +176,7 @@
             <ul id="actions-list"></ul>
           </section>
 
-          <section class="panel">
+          <section class="panel task-panel">
             <div class="panel-head">
               <h3>担当タスク</h3>
               <span class="panel-note">部門別に着手</span>
@@ -184,10 +184,10 @@
             <div id="task-board"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel approval-panel">
             <div class="panel-head">
-              <h3>承認が必要な判断</h3>
-              <span class="panel-note">人が最終承認</span>
+              <h3>人が判断する事項</h3>
+              <span class="panel-note">AIは起案まで</span>
             </div>
             <ul id="approval-list"></ul>
           </section>

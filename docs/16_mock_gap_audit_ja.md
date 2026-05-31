@@ -1,0 +1,26 @@
+# モック・未完機能の棚卸し
+
+## 現在ライブ化済み
+
+- Azure Container Apps API / Job は Azure 上で稼働。
+- Cosmos DB に `latest-dashboard` と実行履歴を保存。
+- Azure OpenAI / Azure AI Foundry `gpt-5.4-mini` を `RUN_MODE=cloud` で呼び出し。
+- フロントは Cloud API から最新ダッシュボードを取得し、失敗時のみ静的 JSON に fallback。
+
+## 意図的にモック・簡略化している箇所
+
+| 領域 | 現状 | デモでの説明 |
+| --- | --- | --- |
+| 外部ニュース収集 | サンプルJSON | 実務ではRSS/API/業界紙クローラへ差し替え |
+| サプライヤ通知 | サンプルメール本文 | 実務ではメールボックス/PDF抽出へ接続 |
+| 社内データ | CSV/JSONのデモデータ | ERP/PLM/WMSからの定期同期に差し替え |
+| Teams通知 | Markdown生成のみ | 今回は不要。通知連携はPower Automateで追加可能 |
+| チケット起票 | 未実装 | 初動案をServiceNow/Azure DevOpsへ渡す拡張余地 |
+| 承認 | UI上は判断事項の提示のみ | AIは起案まで。発注・顧客通知は既存承認フローで人が実行 |
+| demo_events | 5分デモ演出用 | Cloud結果を段階的に見せるための再生シナリオ |
+
+## デモで強調する完成ポイント
+
+- ハリボテではなく、AI抽出、影響評価、Cosmos保存、Cloud API表示まで接続済み。
+- 計算は決定論的な業務ロジックに寄せ、AIの役割は外部テキストの構造化に限定。
+- 重要判断はHuman-in-the-loopに残し、実務導入時の安全性を担保。
