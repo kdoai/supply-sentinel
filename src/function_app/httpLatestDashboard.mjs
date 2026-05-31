@@ -28,12 +28,22 @@ export async function httpLatestDashboard(context = {}, req = {}) {
   }
 }
 
+export async function latestDashboardHandler(request, context) {
+  const response = await httpLatestDashboard(context, { url: request.url });
+  return {
+    status: response.status,
+    headers: response.headers,
+    body: response.body,
+  };
+}
+
 function jsonResponse(status, body) {
   return {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
+      "access-control-allow-origin": "*",
     },
     body: JSON.stringify(body),
   };

@@ -18,14 +18,15 @@ export function azureOpenAiConfig() {
     endpoint: process.env.AZURE_OPENAI_ENDPOINT || "",
     apiKey: process.env.AZURE_OPENAI_API_KEY || "",
     deployment: process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o-mini",
-    apiVersion: process.env.AZURE_OPENAI_API_VERSION || "",
+    apiVersion: process.env.AZURE_OPENAI_API_VERSION || "2024-10-21",
+    useAad: String(process.env.AZURE_OPENAI_USE_AAD || "true").toLowerCase() !== "false",
   };
 }
 
 // True only when enough Azure OpenAI settings exist to attempt a real call.
 export function azureOpenAiConfigured() {
   const config = azureOpenAiConfig();
-  return Boolean(config.endpoint && config.apiKey);
+  return Boolean(config.endpoint && config.deployment && (config.useAad || config.apiKey));
 }
 
 // Where input signals/master data come from. "local" = files under data/samples
@@ -49,10 +50,11 @@ export function cosmosDbConfig() {
     key: process.env.COSMOS_DB_KEY || "",
     databaseId: process.env.COSMOS_DB_DATABASE || "supply-sentinel",
     containerId: process.env.COSMOS_DB_CONTAINER || "runs",
+    useAad: String(process.env.COSMOS_DB_USE_AAD || "true").toLowerCase() !== "false",
   };
 }
 
 export function cosmosDbConfigured() {
   const config = cosmosDbConfig();
-  return Boolean(config.endpoint && config.key);
+  return Boolean(config.endpoint && (config.useAad || config.key));
 }

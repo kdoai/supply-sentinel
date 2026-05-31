@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { cosmosDbConfigured, stateStoreMode } from "./config.mjs";
+import { cosmosDbConfig, cosmosDbConfigured, stateStoreMode } from "./config.mjs";
 
 const DASHBOARD_FILE = "dashboard_data.json";
 const ALERT_HISTORY_FILE = "alert_history.json";
@@ -62,19 +62,80 @@ export function createLocalStateStore({ outputDir = path.join(process.cwd(), "ou
 }
 
 export function createCosmosStateStore() {
+  const config = cosmosDbConfig();
   return {
     kind: "cosmos",
     configured: cosmosDbConfigured(),
-    async saveRun() {
-      throw new Error("Cosmos DB state store is a cloud boundary stub in the local build.");
+    async saveRun(run) {
+      const container = await getCosmosContainer(config);
+      const assessment = run.assessment || {};
+      const now = new Date().toISOString();
+      await container.items.upsert({
+        id: "latest-dashboard",
+        pk: "latest",
+        type: "dashboard",
+        updated_at: now,
+        dashboard: run.dashboardData,
+      });
+      await container.items.upsert({
+        id: `run-${assessment.alert_id || now}`,
+        pk: "run",
+        type: "run",
+        updated_at: now,
+        risk_event: run.riskEvent,
+        assessment,
+        teams_alert: run.teamsAlert,
+        management_report: run.managementReport,
+      });
+      await container.items.upsert({
+        id: `alert-${assessment.alert_id || now}`,
+        pk: "alert",
+        type: "alert",
+        updated_at: now,
+        alert: buildAlertHistoryItem(assessment),
+      });
     },
     async getLatestDashboard() {
-      throw new Error("Cosmos DB state store is a cloud boundary stub in the local build.");
+      const container = await getCosmosContainer(config);
+      const { resource } = await container.item("latest-dashboard", "latest").read();
+      if (!resource || !resource.dashboard) {
+        throw new Error("Latest dashboard document was not found in Cosmos DB.");
+      }
+      return resource.dashboard;
     },
     async listAlerts() {
-      throw new Error("Cosmos DB state store is a cloud boundary stub in the local build.");
+      const container = await getCosmosContainer(config);
+      const query = {
+        query: "SELECT c.alert FROM c WHERE c.pk = @pk ORDER BY c.updated_at DESC",
+        parameters: [{ name: "@pk", value: "alert" }],
+      };
+      const { resources } = await container.items.query(query).fetchAll();
+      return resources.map((item) => item.alert).filter(Boolean);
     },
   };
+}
+
+async function getCosmosContainer(config) {
+  if (!cosmosDbConfigured()) {
+    throw new Error("Cosmos DB is not configured. Set COSMOS_DB_ENDPOINT and use managed identity or COSMOS_DB_KEY.");
+  }
+
+  const { CosmosClient } = await import("@azure/cosmos");
+  let client;
+  if (config.useAad) {
+    const { DefaultAzureCredential } = await import("@azure/identity");
+    client = new CosmosClient({
+      endpoint: config.endpoint,
+      aadCredentials: new DefaultAzureCredential(),
+    });
+  } else {
+    client = new CosmosClient({
+      endpoint: config.endpoint,
+      key: config.key,
+    });
+  }
+
+  return client.database(config.databaseId).container(config.containerId);
 }
 
 export async function loadLatestDashboardData({ outputDir = path.join(process.cwd(), "outputs", "latest") } = {}) {
@@ -100,17 +161,21 @@ async function appendAlertHistory({ outputDir, assessment }) {
 
   const nextHistory = [
     ...history.filter((item) => item.alert_id !== assessment.alert_id),
-    {
-      alert_id: assessment.alert_id,
-      material: assessment.material,
-      risk_score: assessment.risk_score,
-      severity: assessment.severity,
-      status: "open",
-      generated_at: assessment.generated_at,
-      impacted_products: assessment.impacted_products,
-      impacted_customers: assessment.impacted_customers,
-    },
+    buildAlertHistoryItem(assessment),
   ];
 
   await writeFile(historyPath, JSON.stringify(nextHistory, null, 2), "utf8");
+}
+
+function buildAlertHistoryItem(assessment) {
+  return {
+    alert_id: assessment.alert_id,
+    material: assessment.material,
+    risk_score: assessment.risk_score,
+    severity: assessment.severity,
+    status: "open",
+    generated_at: assessment.generated_at,
+    impacted_products: assessment.impacted_products,
+    impacted_customers: assessment.impacted_customers,
+  };
 }

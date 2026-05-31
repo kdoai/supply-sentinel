@@ -73,6 +73,25 @@ async function fetchJson(url) {
   return res.json();
 }
 
+function apiBaseUrl() {
+  const config = window.SUPPLY_SENTINEL_CONFIG || {};
+  return String(config.apiBase || "").replace(/\/$/, "");
+}
+
+async function fetchDashboardData() {
+  const base = apiBaseUrl();
+  const apiUrl = base ? `${base}/api/latest-dashboard` : "";
+  if (apiUrl) {
+    try {
+      const payload = await fetchJson(apiUrl);
+      if (payload && payload.dashboard) return payload.dashboard;
+    } catch (error) {
+      console.warn("Cloud dashboard API unavailable; falling back to static demo data.", error);
+    }
+  }
+  return fetchJson("./dashboard_data.json");
+}
+
 function ensureMap() {
   const canvasEl = document.getElementById("world-map");
   if (!canvasEl || !currentDashboardData || !worldGeojson) return;
@@ -654,7 +673,7 @@ function applyInitialSidebarState() {
 
 async function init() {
   [dashboardData, worldGeojson, demoConfig] = await Promise.all([
-    fetchJson("./dashboard_data.json"),
+    fetchDashboardData(),
     fetchJson("./assets/world.geojson"),
     fetchJson("./demo_events.json").catch(() => demoConfig),
   ]);

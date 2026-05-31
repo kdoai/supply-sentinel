@@ -1,0 +1,128 @@
+name: Deploy Azure
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_mode:
+        description: "Application mode"
+        required: true
+        default: "demo"
+        type: choice
+        options:
+          - demo
+          - cloud
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: azure-demo
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Syntax check
+        run: |
+          node --check web/js/app.js
+          node --check web/js/panels.js
+          node --check web/js/map.js
+          node --check web/js/flow.js
+          node --check src/serve.mjs
+          node --check src/build-web.mjs
+          node --check src/function_app/app.mjs
+          node --check src/function_app/timerTrigger.mjs
+          node --check src/function_app/httpLatestDashboard.mjs
+          node --check src/supply_sentinel/config.mjs
+          node --check src/supply_sentinel/stateStore.mjs
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build static demo data
+        run: npm run build:web
+        env:
+          RUN_MODE: demo
+          SUPPLY_SENTINEL_STATE_STORE: local
+
+      - name: Azure login with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy infrastructure
+        id: infra
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            az deployment group create \
+              --name supply-sentinel-cloud \
+              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              --template-file infra/main.bicep \
+              --parameters \
+                appName="${{ vars.AZURE_APP_NAME }}" \
+                location="${{ vars.AZURE_LOCATION }}" \
+                githubPrincipalId="${{ vars.AZURE_GITHUB_PRINCIPAL_ID }}" \
+                runMode="${{ inputs.run_mode }}"
+            function_app_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionAppName.value -o tsv)"
+            function_api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"
+            static_storage="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.staticStorageAccountName.value -o tsv)"
+            static_url="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.staticWebsiteUrl.value -o tsv)"
+            echo "function_app_name=$function_app_name" >> "$GITHUB_OUTPUT"
+            echo "function_api_base=$function_api_base" >> "$GITHUB_OUTPUT"
+            echo "static_storage=$static_storage" >> "$GITHUB_OUTPUT"
+            echo "static_url=$static_url" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Function App
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ steps.infra.outputs.function_app_name }}
+          package: .
+
+      - name: Write frontend cloud config
+        run: |
+          cat > web/config.js <<'EOF'
+          window.SUPPLY_SENTINEL_CONFIG = {
+            apiBase: "${{ steps.infra.outputs.function_api_base }}"
+          };
+          EOF
+
+      - name: Upload static frontend
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            az storage blob service-properties update \
+              --account-name "${{ steps.infra.outputs.static_storage }}" \
+              --auth-mode login \
+              --static-website \
+              --index-document index.html \
+              --404-document index.html
+            az storage blob upload-batch \
+              --account-name "${{ steps.infra.outputs.static_storage }}" \
+              --auth-mode login \
+              --destination '$web' \
+              --source web \
+              --overwrite true
+
+      - name: Deployment summary
+        run: |
+          echo "Function API: ${{ steps.infra.outputs.function_api_base }}/api/latest-dashboard"
+          echo "Static site:  ${{ steps.infra.outputs.static_url }}"

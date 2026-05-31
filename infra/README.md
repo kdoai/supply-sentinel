@@ -1,41 +1,88 @@
-# Infrastructure Plan
+# Azure Infrastructure
 
-## Minimal Azure Services
+Supply Sentinel is designed to demo as a low-cost, secure Azure application.
+The target monthly cost for the hackathon environment is a few thousand yen by
+running the agent on a timer, using serverless storage, and keeping AI calls
+short and cached.
 
-| Purpose | Service |
-|---|---|
-| Scheduled runtime | Azure Functions Timer Trigger |
-| AI extraction/report generation | Azure OpenAI via Microsoft Foundry |
-| State/history | Azure Cosmos DB |
-| Notification | Microsoft Teams via Power Automate or Logic Apps |
-| Identity | Microsoft Entra ID |
+## Minimal Cloud Shape
 
-## Cost-Minimal Strategy
+| Layer | Azure service | Cost/security choice |
+| --- | --- | --- |
+| Frontend | Azure Storage static website | Static files only; no secrets in browser. |
+| API and scheduler | Azure Functions Consumption | Timer trigger every 6 hours by default; scale to zero. |
+| State | Azure Cosmos DB for NoSQL Serverless | Serverless, local keys disabled, managed identity access. |
+| AI | Azure OpenAI through Azure AI Foundry | Optional endpoint/deployment settings; use `gpt-4o-mini` for demo cost. |
+| CI/CD identity | GitHub Actions OIDC + Entra ID | No publish profile, no client secret, no API key in Git. |
 
-- Run the Function only on schedule or manually during demo.
-- Use sample files for the hackathon demo.
-- Keep AI prompts short.
-- Cache extracted events for demo reliability.
-- Use Cosmos DB only for alert state if needed.
+Teams notification is intentionally excluded from this deployment because the
+current demo focuses on the dashboard and operational decision flow.
 
-## Environment Variables
+## Security Model
 
-Suggested variables:
+- GitHub deploys with OIDC federation, not a stored Azure password.
+- The Function App uses managed identity for Cosmos DB.
+- Cosmos DB local auth is disabled, so leaked keys cannot be abused.
+- The public HTTP endpoint is read-only and returns only sanitized dashboard
+  data for the demo.
+- Static web storage allows public reads only for frontend assets.
+- App settings may contain non-secret endpoint names. API keys are not required
+  for Cosmos DB and must never be committed.
 
-```text
-AZURE_OPENAI_ENDPOINT=
-AZURE_OPENAI_API_KEY=
-AZURE_OPENAI_DEPLOYMENT=
-COSMOS_ENDPOINT=
-COSMOS_KEY=
-COSMOS_DATABASE=
-COSMOS_CONTAINER_ALERTS=
-TEAMS_WEBHOOK_URL=
-RUN_MODE=demo
+## Cost Guardrails
+
+- Functions: Consumption plan, timer every 6 hours.
+- Cosmos DB: Serverless, one region, small demo documents.
+- Storage: LRS only, small static assets.
+- Azure OpenAI: use a small deployment such as `gpt-4o-mini`, short prompts, and
+  demo cache. Keep `RUN_MODE=demo` until the final AI call path is ready.
+- Set a subscription budget alert manually or with the bootstrap script.
+
+## First Setup
+
+Prerequisites:
+
+- Azure CLI logged in with an account that can create resource groups and role
+  assignments.
+- GitHub CLI logged in to `kdoai/supply-sentinel`.
+
+Recommended command:
+
+```powershell
+.\scripts\bootstrap-azure-oidc.ps1 `
+  -SubscriptionId "<subscription-id>" `
+  -Repository "kdoai/supply-sentinel" `
+  -Location "japaneast"
 ```
 
-## Deployment Notes
+The script creates the resource group, Entra app registration, GitHub OIDC
+federated credential, scoped role assignments, GitHub secrets/variables, and the
+initial Bicep deployment. No client secret is created.
 
-Start with local execution. Deploy only after the full data-to-alert flow works locally.
+## Deploy
 
-For the hackathon demo, prioritize repeatability over infrastructure complexity.
+After bootstrap, run the GitHub Actions workflow:
+
+```powershell
+gh workflow run deploy-azure.yml -R kdoai/supply-sentinel -f run_mode=demo
+```
+
+The workflow validates the app, deploys Azure resources from `infra/main.bicep`,
+deploys the Function App, writes `web/config.js` with the Function endpoint, and
+uploads the static dashboard to the `$web` container.
+
+## Switching Materials
+
+The demo data model is intentionally product/material driven. To move from
+naphtha to another material, replace or extend the sample files under `data/`
+with:
+
+- material master
+- BOM
+- inventory
+- supplier/source notices
+- route intelligence
+- impacted orders and customers
+
+The workflow and dashboard should remain the same. This preserves the original
+design idea: external signals are translated into internal operational impact.
