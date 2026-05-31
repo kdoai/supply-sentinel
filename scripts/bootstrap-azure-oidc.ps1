@@ -12,14 +12,36 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-function Require-Command($Name) {
-  if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-    throw "$Name is not available in PATH. Open a new terminal or install it first."
+function Resolve-Tool($Name, [string[]]$FallbackPaths) {
+  $command = Get-Command $Name -ErrorAction SilentlyContinue
+  if ($command) {
+    return $command.Source
   }
+
+  foreach ($candidate in $FallbackPaths) {
+    if (Test-Path -LiteralPath $candidate) {
+      return $candidate
+    }
+  }
+
+  throw "$Name is not available. Open a new terminal or install it first."
 }
 
-Require-Command az
-Require-Command gh
+$script:AzCli = Resolve-Tool "az" @(
+  "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd"
+)
+$script:GhCli = Resolve-Tool "gh" @(
+  "C:\Program Files\GitHub CLI\gh.exe",
+  "C:\tmp\gh-cli\bin\gh.exe"
+)
+
+function az {
+  & $script:AzCli @Args
+}
+
+function gh {
+  & $script:GhCli @Args
+}
 
 $account = az account show --query "{tenantId:tenantId,user:user.name}" -o json | ConvertFrom-Json
 if (-not $account) {
