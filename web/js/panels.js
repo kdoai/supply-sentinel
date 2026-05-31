@@ -418,7 +418,6 @@ function renderAiExtraction(data) {
 
   // 通常監視中(ナフサ以外 / 要対応シグナルなし)は対比表示を出さない。
   const isNormalWatch =
-    assessment.material !== "naphtha" ||
     evidence.length === 0 ||
     Number(assessment.risk_score) < 50;
 

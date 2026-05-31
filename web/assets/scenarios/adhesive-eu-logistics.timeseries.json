@@ -1,0 +1,173 @@
+{
+  "scenario_id": "adhesive-eu-logistics",
+  "unit": "month",
+  "note": "欧州物流遅延が直近月に向けて悪化。metricsは各月の disruption/inventory/risk_inputs から propagationEngine で算出(ベイク)。",
+  "months": [
+    {
+      "month": "2026-02",
+      "label": "2月",
+      "price_index": 100,
+      "disruption": {
+        "hit_nodes": [],
+        "capacity_drop": 0
+      },
+      "inventory": [
+        {
+          "plant": "名古屋工場",
+          "material": "semiconductor-adhesive",
+          "stock_qty": 1600,
+          "daily_usage": 80,
+          "unit": "kg"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "low",
+        "confidence": "low"
+      },
+      "metrics": {
+        "risk_score": 30,
+        "severity": "low",
+        "affected_supply_ratio": 0,
+        "spend_at_risk_usd": 0,
+        "total_spend_usd": 1900000,
+        "inventory_days_min": 20
+      },
+      "events": [],
+      "sources": []
+    },
+    {
+      "month": "2026-03",
+      "label": "3月",
+      "price_index": 103,
+      "disruption": {
+        "hit_nodes": [
+          "n_chem_ludwigshafen"
+        ],
+        "capacity_drop": 0.2
+      },
+      "inventory": [
+        {
+          "plant": "名古屋工場",
+          "material": "semiconductor-adhesive",
+          "stock_qty": 1200,
+          "daily_usage": 80,
+          "unit": "kg"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "medium",
+        "confidence": "low"
+      },
+      "metrics": {
+        "risk_score": 47,
+        "severity": "medium",
+        "affected_supply_ratio": 58,
+        "spend_at_risk_usd": 1100000,
+        "total_spend_usd": 1900000,
+        "inventory_days_min": 15
+      },
+      "events": [
+        {
+          "kind": "news",
+          "text": "欧州で航空貨物の混雑が拡大との報道。ドイツ発の電子材料に遅れ観測。",
+          "ref": "news-adh-2026-001"
+        }
+      ],
+      "sources": [
+        "src-news"
+      ]
+    },
+    {
+      "month": "2026-04",
+      "label": "4月",
+      "price_index": 106,
+      "disruption": {
+        "hit_nodes": [
+          "n_chem_ludwigshafen"
+        ],
+        "capacity_drop": 0.4
+      },
+      "inventory": [
+        {
+          "plant": "名古屋工場",
+          "material": "semiconductor-adhesive",
+          "stock_qty": 760,
+          "daily_usage": 80,
+          "unit": "kg"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "high",
+        "confidence": "medium"
+      },
+      "metrics": {
+        "risk_score": 70,
+        "severity": "high",
+        "affected_supply_ratio": 58,
+        "spend_at_risk_usd": 1100000,
+        "total_spend_usd": 1900000,
+        "inventory_days_min": 9.5
+      },
+      "events": [
+        {
+          "kind": "logistics",
+          "text": "フランクフルト空港発の貨物スペース逼迫。輸送リードタイムが悪化。",
+          "ref": null
+        },
+        {
+          "kind": "price_feed",
+          "text": "輸送割増で半導体接着材の実効コストが基準比+6%。",
+          "ref": null
+        }
+      ],
+      "sources": [
+        "src-news",
+        "src-logi"
+      ]
+    },
+    {
+      "month": "2026-05",
+      "label": "5月(現在)",
+      "price_index": 109,
+      "disruption": {
+        "hit_nodes": [
+          "n_chem_ludwigshafen"
+        ],
+        "capacity_drop": 0.55
+      },
+      "inventory": [
+        {
+          "plant": "名古屋工場",
+          "material": "semiconductor-adhesive",
+          "stock_qty": 480,
+          "daily_usage": 80,
+          "unit": "kg"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "high",
+        "confidence": "medium"
+      },
+      "metrics": {
+        "risk_score": 80,
+        "severity": "high",
+        "affected_supply_ratio": 58,
+        "spend_at_risk_usd": 1100000,
+        "total_spend_usd": 1900000,
+        "inventory_days_min": 6
+      },
+      "events": [
+        {
+          "kind": "supplier_notice",
+          "text": "ユーロボンドが上流原料の遅れで次回出荷5〜7日遅延・数量の一部を後ろ倒しと通知。",
+          "ref": "notice-adh-2026-001"
+        }
+      ],
+      "sources": [
+        "src-supplier",
+        "src-logi",
+        "src-price"
+      ]
+    }
+  ]
+}

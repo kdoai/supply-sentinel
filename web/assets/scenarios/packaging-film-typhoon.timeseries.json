@@ -1,0 +1,180 @@
+{
+  "scenario_id": "packaging-film-typhoon",
+  "unit": "month",
+  "note": "エージェントが過去をリサーチし事前生成した月次の変動。metricsは各月の disruption/inventory/risk_inputs から propagationEngine で算出済み(ベイク)。",
+  "months": [
+    {
+      "month": "2026-02",
+      "label": "2月",
+      "price_index": 100,
+      "packaging_film_price_usd_per_roll": 50,
+      "disruption": {
+        "hit_nodes": [],
+        "capacity_drop": 0
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "packaging-film",
+          "stock_qty": 1320,
+          "daily_usage": 120,
+          "unit": "roll"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "low",
+        "confidence": "low"
+      },
+      "metrics": {
+        "risk_score": 27,
+        "severity": "low",
+        "affected_supply_ratio": 0,
+        "spend_at_risk_usd": 0,
+        "total_spend_usd": 1300000,
+        "inventory_days_min": 11
+      },
+      "events": [],
+      "sources": []
+    },
+    {
+      "month": "2026-03",
+      "label": "3月",
+      "price_index": 104,
+      "packaging_film_price_usd_per_roll": 52,
+      "disruption": {
+        "hit_nodes": [
+          "n_raw_taoyuan_resin"
+        ],
+        "capacity_drop": 0.2
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "packaging-film",
+          "stock_qty": 1080,
+          "daily_usage": 120,
+          "unit": "roll"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "medium",
+        "confidence": "medium"
+      },
+      "metrics": {
+        "risk_score": 56,
+        "severity": "medium",
+        "affected_supply_ratio": 69,
+        "spend_at_risk_usd": 900000,
+        "total_spend_usd": 1300000,
+        "inventory_days_min": 9
+      },
+      "events": [
+        {
+          "kind": "news",
+          "text": "台湾近海で台風が発生・北上の予報。原反メーカーが減産観測との報道。",
+          "ref": "news-2026-051"
+        }
+      ],
+      "sources": [
+        "src-news"
+      ]
+    },
+    {
+      "month": "2026-04",
+      "label": "4月",
+      "price_index": 110,
+      "packaging_film_price_usd_per_roll": 55,
+      "disruption": {
+        "hit_nodes": [
+          "n_raw_taoyuan_resin",
+          "n_mill_taoyuan"
+        ],
+        "capacity_drop": 0.4
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "packaging-film",
+          "stock_qty": 840,
+          "daily_usage": 120,
+          "unit": "roll"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "high",
+        "confidence": "medium"
+      },
+      "metrics": {
+        "risk_score": 76,
+        "severity": "high",
+        "affected_supply_ratio": 69,
+        "spend_at_risk_usd": 900000,
+        "total_spend_usd": 1300000,
+        "inventory_days_min": 7
+      },
+      "events": [
+        {
+          "kind": "logistics",
+          "text": "高雄港で台風前の駆け込みと滞留が増加。本船スケジュールに乱れ。",
+          "ref": "logi-2026-051"
+        },
+        {
+          "kind": "price_feed",
+          "text": "包装フィルム価格が基準比+10%。",
+          "ref": null
+        }
+      ],
+      "sources": [
+        "src-news",
+        "src-logi"
+      ]
+    },
+    {
+      "month": "2026-05",
+      "label": "5月(現在)",
+      "price_index": 114,
+      "packaging_film_price_usd_per_roll": 57,
+      "disruption": {
+        "hit_nodes": [
+          "n_raw_taoyuan_resin",
+          "n_mill_taoyuan",
+          "n_port_kaohsiung"
+        ],
+        "capacity_drop": 0.55
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "packaging-film",
+          "stock_qty": 720,
+          "daily_usage": 120,
+          "unit": "roll"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "high",
+        "confidence": "high"
+      },
+      "metrics": {
+        "risk_score": 82,
+        "severity": "high",
+        "affected_supply_ratio": 69,
+        "spend_at_risk_usd": 900000,
+        "total_spend_usd": 1300000,
+        "inventory_days_min": 6
+      },
+      "events": [
+        {
+          "kind": "supplier_notice",
+          "text": "商社フィルムテックが原反入荷停止と港湾混雑で出荷を当面55%に制限する通知。10〜14日遅延。",
+          "ref": "notice-2026-051"
+        }
+      ],
+      "sources": [
+        "src-supplier",
+        "src-logi",
+        "src-price"
+      ]
+    }
+  ]
+}

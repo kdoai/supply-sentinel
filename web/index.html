@@ -39,6 +39,7 @@
         </div>
         <div class="topbar-meta">
           <div class="material-switch" id="material-switch" aria-label="監視対象"></div>
+          <div class="scenario-switch" id="scenario-switch" aria-label="デモシナリオ"></div>
           <span id="scenario"></span>
           <span id="generated-at"></span>
         </div>
@@ -124,6 +125,37 @@
 
       <section class="view" id="view-analysis" data-view-panel="analysis">
         <div class="analysis-grid">
+          <section class="panel network-panel">
+            <div class="panel-head">
+              <div>
+                <h3>多段サプライヤネットワーク</h3>
+                <span class="panel-note">自社だけでなく、1次・2次サプライヤまで波及を追跡</span>
+              </div>
+              <div id="network-legend"></div>
+            </div>
+            <div class="network-body">
+              <div class="network-story" id="network-story"></div>
+              <div class="network-canvas" id="supply-network"></div>
+              <div class="network-selection" id="network-selection" aria-live="polite"></div>
+            </div>
+          </section>
+
+          <section class="panel timeline-panel">
+            <div class="panel-head">
+              <h3>変動タイムライン</h3>
+              <span class="panel-note">エージェントが後追い整理した月次推移</span>
+            </div>
+            <div id="scenario-timeline"></div>
+          </section>
+
+          <section class="panel provenance-panel">
+            <div class="panel-head">
+              <h3>情報源と根拠</h3>
+              <span class="panel-note">どの情報がどのノードを裏付けたか</span>
+            </div>
+            <div id="provenance-list"></div>
+          </section>
+
           <section class="panel flow-panel">
             <div class="panel-head">
               <h3>業務フロー</h3>
@@ -195,7 +227,7 @@
           <section class="panel report-panel">
             <div class="panel-head">
               <h3>管理職レポート</h3>
-              <span class="panel-note">自動生成モック</span>
+              <span class="panel-note">自動生成</span>
             </div>
             <div id="management-report"></div>
           </section>

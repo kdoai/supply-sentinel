@@ -1,6 +1,8 @@
 import { createMap } from "./map.js";
 import { renderFlow } from "./flow.js";
 import { renderPanels } from "./panels.js";
+import { createNetwork, networkLegendHtml } from "./network.js";
+import { computeMetrics } from "./propagation.js";
 
 const VIEW_TITLES = {
   dashboard: "監視ダッシュボード",
@@ -52,8 +54,14 @@ let demoTimer = null;
 let demoPlaying = false;
 let worldGeojson = null;
 let mapInstance = null;
+let networkInstance = null;
 let mapControlsBound = false;
 let activeMaterial = "naphtha";
+let scenarioIndex = { scenarios: [] };
+let activeScenarioId = "";
+let activeScenario = null;
+let activeTimeseries = null;
+let activeMonthIndex = -1;
 
 function showFatalError(message) {
   const banner = document.createElement("div");
@@ -157,6 +165,10 @@ function routeStatusLabel(status) {
 
 function materialLabel(material) {
   return MATERIAL_PROFILES[material]?.label || material || "不明";
+}
+
+function scenarioAssetUrl(file) {
+  return `./assets/scenarios/${String(file || "").replace(/^\.\//, "")}`;
 }
 
 function esc(value) {
@@ -323,17 +335,66 @@ function bindMaterialSwitch() {
     .map((material) => `<button type="button" class="material-chip${material === activeMaterial ? " is-active" : ""}" data-material="${esc(material)}">${esc(materialLabel(material))}</button>`)
     .join("");
   el.querySelectorAll("[data-material]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const next = button.getAttribute("data-material");
       if (!MATERIAL_PROFILES[next] || next === activeMaterial) return;
       activeMaterial = next;
+      const scenario = (scenarioIndex.scenarios || []).find((item) => item.material === next);
+      if (scenario) {
+        await loadScenario(scenario.id);
+      }
       stopDemo();
       demoStep = activeMaterial === "naphtha" ? Math.max(0, (demoConfig.stages || []).length - 1) : 0;
       mapInstance?.resetView();
       bindMaterialSwitch();
+      bindScenarioSwitch();
       renderCurrentDashboard();
     });
   });
+}
+
+function bindScenarioSwitch() {
+  const el = document.getElementById("scenario-switch");
+  if (!el) return;
+  const items = scenarioIndex.scenarios || [];
+  el.innerHTML = items
+    .map((item) => {
+      const active = item.id === activeScenarioId ? " is-active" : "";
+      return `<button type="button" class="scenario-chip${active}" data-scenario-id="${esc(item.id)}">${esc(item.short || item.label)}</button>`;
+    })
+    .join("");
+  el.querySelectorAll("[data-scenario-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const next = button.getAttribute("data-scenario-id");
+      if (!next || next === activeScenarioId) return;
+      await loadScenario(next);
+      activeMaterial = activeScenario?.material || activeMaterial;
+      stopDemo();
+      demoStep = Math.max(0, (demoConfig.stages || []).length - 1);
+      mapInstance?.resetView();
+      networkInstance?.clear();
+      bindMaterialSwitch();
+      bindScenarioSwitch();
+      renderCurrentDashboard();
+    });
+  });
+}
+
+async function loadScenario(id) {
+  if (!id) return;
+  const scenario = await fetchJson(scenarioAssetUrl(`${id}.json`));
+  const timeseriesFile = scenario.timeseries_ref
+    ? scenario.timeseries_ref.replace(/^\.\//, "")
+    : `${id}.timeseries.json`;
+  const timeseries = await fetchJson(scenarioAssetUrl(timeseriesFile)).catch(() => ({ scenario_id: id, months: [] }));
+  activeScenarioId = id;
+  activeScenario = scenario;
+  activeTimeseries = timeseries;
+  activeMonthIndex = Math.max(0, (timeseries.months || []).length - 1);
+}
+
+function scenarioByMaterial(material) {
+  return (scenarioIndex.scenarios || []).find((item) => item.material === material) || null;
 }
 
 function cloneJson(value) {
@@ -461,6 +522,323 @@ function buildRouteFlow(routes) {
   return { nodes, edges };
 }
 
+function networkColumnOf(node) {
+  if (node.kind === "customer") return 4;
+  if (node.kind === "product") return 3;
+  if (node.kind === "plant" || node.kind === "self") return 2;
+  if (node.tier === 1 || node.kind === "port") return 1;
+  return 0;
+}
+
+function buildFlowFromNetwork(network, propagation) {
+  const statusByNode = propagation?.node_status || {};
+  const statusByEdge = propagation?.edge_status || {};
+  const nodes = (network?.nodes || []).map((node) => ({
+    id: node.id,
+    stage: networkColumnOf(node),
+    label: node.name,
+    sublabel: node.makes || node.role_note || node.country || "",
+    type: node.kind,
+    value: node.priority || node.region || "",
+    status: statusByNode[node.id]?.status || "normal",
+  }));
+  const edges = (network?.edges || []).map((edge) => ({
+    source: edge.source,
+    target: edge.target,
+    value: edge.share_percent || edge.monthly_volume || 20,
+    status: statusByEdge[edge.id] || "normal",
+  }));
+  return { nodes, edges };
+}
+
+function networkNodeById(network) {
+  return new Map((network?.nodes || []).map((node) => [node.id, node]));
+}
+
+function inboundSelfEdges(network) {
+  const byId = networkNodeById(network);
+  return (network?.edges || []).filter((edge) => {
+    const target = byId.get(edge.target);
+    return target && (target.kind === "plant" || target.kind === "self") && edge.material === network.focal_material;
+  });
+}
+
+function buildRoutesFromNetwork(network, propagation, scenario) {
+  const byId = networkNodeById(network);
+  const edgeStatus = propagation?.edge_status || {};
+  return inboundSelfEdges(network).map((edge) => {
+    const source = byId.get(edge.source) || {};
+    const target = byId.get(edge.target) || {};
+    const status = edgeStatus[edge.id] || "normal";
+    return {
+      route_id: edge.id,
+      material: network.focal_material || scenario.material,
+      origin: { name: source.name, lat: source.lat, lng: source.lng },
+      port: null,
+      plant: { name: target.name, lat: target.lat, lng: target.lng },
+      region: source.region || target.region || scenario.region,
+      supplier: source.name,
+      share_percent: edge.share_percent,
+      monthly_spend_usd: edge.monthly_spend_usd,
+      lead_time_days: edge.lead_time_days,
+      transport_mode: edge.transport_mode,
+      status,
+      baseline_status: "normal",
+      affected: status === "disrupted" || status === "exposed",
+    };
+  });
+}
+
+function buildMapNodesFromNetwork(network, propagation) {
+  const nodeStatus = propagation?.node_status || {};
+  return (network?.nodes || [])
+    .filter((node) => Number.isFinite(Number(node.lat)) && Number.isFinite(Number(node.lng)))
+    .map((node) => ({
+      id: node.id,
+      label: node.name,
+      sublabel: node.makes || node.role_note || node.country || "",
+      lat: Number(node.lat),
+      lng: Number(node.lng),
+      type: node.kind === "plant" ? "plant" : "supplier",
+      affected: nodeStatus[node.id]?.status === "disrupted",
+    }));
+}
+
+function impactedPlants(network, propagation) {
+  const byId = networkNodeById(network);
+  const availability = propagation?.availability || {};
+  const plantIds = new Set();
+  for (const edge of network?.edges || []) {
+    const source = byId.get(edge.source);
+    const target = byId.get(edge.target);
+    if (source?.kind === "plant" && target?.kind === "product" && Number(availability[target.id] ?? 1) < 0.999) {
+      plantIds.add(source.name);
+    }
+  }
+  return [...plantIds];
+}
+
+function enrichOrders(network, orders) {
+  const byId = networkNodeById(network);
+  const productToPlant = new Map();
+  for (const edge of network?.edges || []) {
+    const source = byId.get(edge.source);
+    const target = byId.get(edge.target);
+    if (source?.kind === "plant" && target?.kind === "product") {
+      productToPlant.set(target.name, source.name);
+    }
+  }
+  return asArray(orders).map((order, index) => ({
+    order_id: order.order_id || `SO-DEMO-${index + 1}`,
+    customer: order.customer,
+    product: order.product,
+    plant: productToPlant.get(order.product) || "",
+    due_date: index === 0 ? "5営業日以内" : "月内",
+    quantity: order.quantity,
+    priority: order.priority,
+  }));
+}
+
+function sourceKindLabel(kind) {
+  const labels = {
+    news: "ニュース",
+    supplier_notice: "サプライヤ通知",
+    logistics: "物流情報",
+    price_feed: "価格情報",
+  };
+  return labels[kind] || kind || "情報源";
+}
+
+function riskTypeFromScenario(scenario) {
+  const type = scenario?.disruption?.type;
+  if (type === "logistics") return "logistics_delay";
+  if (type === "price") return "price_spike";
+  if (type === "allocation") return "allocation";
+  return type || "supply_delay";
+}
+
+function buildAiInputsFromProvenance(sources) {
+  return asArray(sources).map((source) => {
+    if (source.kind === "supplier_notice") {
+      return {
+        kind: "supplier",
+        supplier: source.source,
+        subject: source.label || "サプライヤ通知",
+        body: source.claim,
+      };
+    }
+    return {
+      kind: "news",
+      source: source.source || sourceKindLabel(source.kind),
+      headline: source.label || sourceKindLabel(source.kind),
+      summary: source.claim,
+    };
+  });
+}
+
+function activeSourcesForMonth(scenario, month) {
+  const selected = new Set(asArray(month?.sources));
+  const all = asArray(scenario?.provenance);
+  const filtered = selected.size ? all.filter((source) => selected.has(source.id)) : all;
+  return filtered.length ? filtered : all;
+}
+
+function buildRecommendedActions(scenario, metrics) {
+  const material = materialLabel(scenario.material);
+  if (!metrics || Number(metrics.risk_score || 0) < 45) return [];
+  const actions = [
+    `${material}の主要サプライヤへ、次回割当数量・出荷予定・代替ルート余力を確認する。`,
+    `在庫${metrics.inventory_days_min ?? "-"}日以内に影響する受注を優先順に並べ替える。`,
+    `影響顧客${asArray(metrics.impacted_customers).length}社向けに、説明文案と代替提案を準備する。`,
+  ];
+  if (Number(metrics.spend_at_risk_usd || 0) > 0) {
+    actions.splice(1, 0, `月間${compactUsdJa(metrics.spend_at_risk_usd)}相当の調達影響について、購買・生産管理で初動会議を設定する。`);
+  }
+  return actions;
+}
+
+function buildScenarioOverlayModel(baseModel) {
+  if (!activeScenario || !activeScenario.network) return baseModel;
+  const scenario = activeScenario;
+  const months = asArray(activeTimeseries?.months);
+  const month = months[Math.max(0, Math.min(activeMonthIndex, months.length - 1))] || {};
+  const propagation = computeMetrics(scenario.network, month.disruption || scenario.disruption || {}, {
+    inventory: month.inventory || scenario.inventory || [],
+    alternatives: scenario.alternatives || [],
+    risk_inputs: month.risk_inputs || scenario.risk_inputs || {},
+  });
+  const metrics = propagation.metrics || {};
+  const sources = activeSourcesForMonth(scenario, month);
+  const evidence = sources.map((source) => `${sourceKindLabel(source.kind)}: ${source.claim}`);
+  const routes = buildRoutesFromNetwork(scenario.network, propagation, scenario);
+  const affectedRoutes = routes.filter((route) => route.affected);
+  const affectedShare = metrics.affected_supply_ratio ?? affectedRoutes.reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
+  const spendAtRisk = metrics.spend_at_risk_usd ?? affectedRoutes.reduce((sum, route) => sum + (Number(route.monthly_spend_usd) || 0), 0);
+  const totalSpend = metrics.total_spend_usd ?? routes.reduce((sum, route) => sum + (Number(route.monthly_spend_usd) || 0), 0);
+  const inventory = asArray(month.inventory || scenario.inventory).map((row) => ({
+    ...row,
+    days_of_supply: Number.isFinite(Number(row.stock_qty) / Number(row.daily_usage))
+      ? trim1(Number(row.stock_qty) / Number(row.daily_usage))
+      : row.days_of_supply,
+  }));
+
+  const overlay = cloneJson(baseModel);
+  overlay.meta = overlay.meta || {};
+  overlay.meta.scenario = scenario.id;
+  overlay.meta.generated_at = month.month ? `${month.month}-28T09:00:00+09:00` : overlay.meta.generated_at;
+  overlay.meta.ai = {
+    ...(overlay.meta.ai || {}),
+    provider: "Azure OpenAI",
+    model: overlay.meta.ai?.model || "gpt-5.4-mini",
+    model_label: overlay.meta.ai?.model_label || "Azure OpenAI · gpt-5.4-mini",
+    run_mode: overlay.meta.ai?.run_mode || "cloud",
+    inputs: buildAiInputsFromProvenance(sources),
+  };
+  overlay.risk_event = {
+    ...(overlay.risk_event || {}),
+    material: scenario.material,
+    region: scenario.network.nodes?.find((node) => (month.disruption?.hit_nodes || scenario.disruption?.hit_nodes || []).includes(node.id))?.region || "Asia",
+    risk_type: riskTypeFromScenario(scenario),
+    severity: metrics.event_severity || metrics.severity || "medium",
+    confidence: month.risk_inputs?.confidence || scenario.risk_inputs?.confidence || "medium",
+    summary: scenario.headline,
+    affected_period: "今後2〜3週間",
+    delay_days_min: scenario.disruption?.type === "price" ? null : 5,
+    delay_days_max: scenario.disruption?.type === "price" ? null : 14,
+    allocation_rate_percent: scenario.disruption?.capacity_drop != null
+      ? Math.round((1 - Number(scenario.disruption.capacity_drop)) * 100)
+      : null,
+    evidence,
+  };
+  overlay.assessment = {
+    ...(overlay.assessment || {}),
+    material: scenario.material,
+    alert_id: scenario.id,
+    risk_score: metrics.risk_score,
+    severity: metrics.severity,
+    inventory_days_min: metrics.inventory_days_min,
+    evidence,
+    scoring_factors: metrics.scoring_factors || {},
+    impacted_products: metrics.impacted_products || [],
+    impacted_customers: metrics.impacted_customers || [],
+    impacted_orders: enrichOrders(scenario.network, metrics.impacted_orders || []),
+    impacted_plants: impactedPlants(scenario.network, propagation),
+    inventory,
+    alternatives: cloneJson(scenario.alternatives || []),
+    recommended_actions: buildRecommendedActions(scenario, metrics),
+    approval_required: Number(metrics.risk_score || 0) >= 70
+      ? ["Purchase order changes", "Supplier switching", "Formal customer notification", "Major production plan changes"]
+      : [],
+    generated_at: overlay.meta.generated_at,
+  };
+  const focal = {
+    material: scenario.material,
+    total_share: 100,
+    total_spend: totalSpend,
+    affected_share: affectedShare,
+    affected_spend: spendAtRisk,
+    route_count: routes.length,
+    affected_count: affectedRoutes.length,
+    routes: routes.map((route) => ({
+      route_id: route.route_id,
+      origin: route.origin?.name,
+      region: route.region,
+      supplier: route.supplier,
+      share_percent: route.share_percent,
+      monthly_spend_usd: route.monthly_spend_usd,
+      lead_time_days: route.lead_time_days,
+      status: route.status,
+      affected: route.affected,
+    })),
+  };
+  overlay.route_intel = {
+    ...(overlay.route_intel || {}),
+    routes,
+    map_nodes: buildMapNodesFromNetwork(scenario.network, propagation),
+    sourcing: { focal, by_material: { [scenario.material]: focal } },
+    kpis: {
+      focal_material: scenario.material,
+      total_routes: routes.length,
+      affected_routes: affectedRoutes.length,
+      affected_share_percent: affectedShare,
+      total_monthly_spend: totalSpend,
+      monthly_spend_at_risk: spendAtRisk,
+    },
+    flow: buildFlowFromNetwork(scenario.network, propagation),
+  };
+  overlay.supply_network = {
+    focal_material: scenario.material,
+    nodes: scenario.network.nodes,
+    edges: scenario.network.edges,
+    node_status: propagation.node_status,
+    edge_status: propagation.edge_status,
+  };
+  overlay.propagation = propagation;
+  overlay.provenance = sources;
+  overlay.month = month;
+  overlay.timeline = months;
+  overlay.story = scenario.layperson_story;
+  overlay.demo = {
+    ...(overlay.demo || {}),
+    title: scenario.headline,
+    detail: scenario.layperson_story,
+    time_label: month.label || overlay.demo?.time_label,
+    score_trend: months.map((item) => ({ time_label: item.label, score: item.metrics?.risk_score ?? computeMetrics(scenario.network, item.disruption || {}, {
+      inventory: item.inventory || scenario.inventory || [],
+      alternatives: scenario.alternatives || [],
+      risk_inputs: item.risk_inputs || scenario.risk_inputs || {},
+    }).metrics.risk_score })),
+    data_sources: asArray(scenario.provenance).map((source) => ({
+      name: source.label,
+      candidate: source.source,
+      status: sourceKindLabel(source.kind),
+      freshness: source.published_at || source.received_at ? formatDateTime(source.published_at || source.received_at) : "デモ",
+      confidence: source.confidence || "-",
+    })),
+  };
+  return overlay;
+}
+
 function updateFlow(model) {
   if (activeMaterial !== "naphtha") {
     model.route_intel.flow = buildRouteFlow((model.route_intel || {}).routes || []);
@@ -573,6 +951,130 @@ function renderFlowPanel(model) {
   }
 }
 
+function renderNetworkSelection(detail) {
+  const el = document.getElementById("network-selection");
+  if (!el) return;
+  if (!detail || !detail.node) {
+    el.innerHTML = `
+      <span class="network-selection-kicker">選択すると波及を追跡</span>
+      <strong>上流ノードをクリックしてください</strong>
+      <p>2次サプライヤや原産地を選ぶと、その影響が1次サプライヤ、自社工場、製品、顧客へどう流れるかをハイライトします。</p>`;
+    return;
+  }
+  el.innerHTML = `
+    <span class="network-selection-kicker">選択中</span>
+    <strong>${esc(detail.node.name)}</strong>
+    <p>${esc(detail.node.role_note || detail.node.makes || detail.node.country || "サプライチェーン上のノード")}</p>
+    <dl>
+      <div><dt>波及製品</dt><dd>${esc(detail.products.join("、") || "なし")}</dd></div>
+      <div><dt>影響受注</dt><dd>${esc(detail.orders.length)}件</dd></div>
+      <div><dt>月間調達額</dt><dd>${esc(compactUsdJa(detail.spend))}</dd></div>
+    </dl>`;
+}
+
+function renderNetworkStory(model) {
+  const el = document.getElementById("network-story");
+  if (!el) return;
+  const metrics = model.propagation?.metrics || {};
+  const month = model.month || {};
+  const scenario = activeScenario || {};
+  const material = materialLabel(scenario.material || model.assessment?.material);
+  el.innerHTML = `
+    <div class="network-story-main">
+      <span>${esc(month.label || "現在")} / ${esc(material)}</span>
+      <strong>${esc(scenario.headline || model.risk_event?.summary || "供給リスクを監視中")}</strong>
+      <p>${esc(scenario.layperson_story || "外部シグナルを自社の製品・顧客影響へ翻訳します。")}</p>
+    </div>
+    <div class="network-story-kpis">
+      <div><span>リスク</span><b>${esc(metrics.risk_score ?? model.assessment?.risk_score ?? "-")}</b></div>
+      <div><span>調達影響</span><b>${esc(metrics.affected_supply_ratio ?? 0)}%</b></div>
+      <div><span>在庫</span><b>${esc(metrics.inventory_days_min ?? "-")}日</b></div>
+      <div><span>金額</span><b>${esc(compactUsdJa(metrics.spend_at_risk_usd ?? 0))}</b></div>
+    </div>`;
+}
+
+function renderScenarioTimeline(model) {
+  const el = document.getElementById("scenario-timeline");
+  if (!el) return;
+  const months = asArray(model.timeline);
+  if (!months.length) {
+    el.innerHTML = `<p class="empty">時系列データがありません。</p>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="timeline-bars">
+      ${months
+        .map((month, index) => {
+          const metrics = month.metrics && Object.keys(month.metrics).length ? month.metrics : computeMetrics(activeScenario.network, month.disruption || {}, {
+            inventory: month.inventory || activeScenario.inventory || [],
+            alternatives: activeScenario.alternatives || [],
+            risk_inputs: month.risk_inputs || activeScenario.risk_inputs || {},
+          }).metrics;
+          const score = Number(metrics.risk_score) || 0;
+          const price = Number(month.price_index) || 100;
+          const active = index === activeMonthIndex ? " is-active" : "";
+          return `
+            <button type="button" class="timeline-month${active}" data-month-index="${index}" aria-label="${esc(month.label)}を表示">
+              <span>${esc(month.label || month.month)}</span>
+              <i style="height:${Math.max(8, Math.min(100, score))}%"></i>
+              <b>${esc(score)}</b>
+              <em>価格 ${esc(price)}</em>
+            </button>`;
+        })
+        .join("")}
+    </div>
+    <div class="timeline-events">
+      ${asArray(model.month?.events)
+        .map((event) => `<div><span>${esc(sourceKindLabel(event.kind))}</span><p>${esc(event.text)}</p></div>`)
+        .join("") || `<div><span>監視</span><p>この月は大きなシグナルなし。基準値として利用します。</p></div>`}
+    </div>`;
+  el.querySelectorAll("[data-month-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      activeMonthIndex = Number(button.getAttribute("data-month-index")) || 0;
+      stopDemo();
+      renderCurrentDashboard();
+    });
+  });
+}
+
+function renderProvenance(model) {
+  const el = document.getElementById("provenance-list");
+  if (!el) return;
+  const sources = asArray(model.provenance);
+  el.innerHTML = sources.length
+    ? sources
+        .map((source) => `
+          <article class="provenance-card">
+            <div>
+              <span>${esc(sourceKindLabel(source.kind))}</span>
+              <strong>${esc(source.label || source.source)}</strong>
+            </div>
+            <p>${esc(source.claim)}</p>
+            <footer>
+              <em>${esc(source.source || "デモ情報源")}</em>
+              <b>確度 ${esc(source.confidence || "-")}</b>
+            </footer>
+          </article>`)
+        .join("")
+    : `<p class="empty">根拠データはありません。</p>`;
+}
+
+function renderNetworkPanel(model) {
+  const legend = document.getElementById("network-legend");
+  if (legend) legend.innerHTML = networkLegendHtml();
+  renderNetworkStory(model);
+  renderScenarioTimeline(model);
+  renderProvenance(model);
+  renderNetworkSelection(null);
+  const container = document.getElementById("supply-network");
+  if (!container) return;
+  if (!networkInstance) {
+    networkInstance = createNetwork(container);
+    container.addEventListener("supply-network-select", (event) => renderNetworkSelection(event.detail));
+  }
+  networkInstance.render(model);
+}
+
 function updateDemoControls() {
   const stage = (currentDashboardData && currentDashboardData.demo) || {};
   const title = document.getElementById("demo-stage-title");
@@ -589,8 +1091,9 @@ function updateDemoControls() {
 }
 
 function renderCurrentDashboard() {
-  currentDashboardData = applyDemoStage(dashboardData, demoStep);
+  currentDashboardData = buildScenarioOverlayModel(applyDemoStage(dashboardData, demoStep));
   renderPanels(currentDashboardData);
+  renderNetworkPanel(currentDashboardData);
   renderFlowPanel(currentDashboardData);
   updateDemoControls();
   renderMapInsight(null);
@@ -689,19 +1192,37 @@ function applyInitialSidebarState() {
 }
 
 async function init() {
-  [dashboardData, worldGeojson, demoConfig] = await Promise.all([
+  [dashboardData, worldGeojson, demoConfig, scenarioIndex] = await Promise.all([
     fetchDashboardData(),
     fetchJson("./assets/world.geojson"),
     fetchJson("./demo_events.json").catch(() => demoConfig),
+    fetchJson("./assets/scenarios/index.json").catch(() => ({ scenarios: [] })),
   ]);
 
   const params = new URLSearchParams(window.location.search);
+  const scenarioParam = params.get("scenario");
+  const defaultScenario =
+    (scenarioParam && (scenarioIndex.scenarios || []).find((item) => item.id === scenarioParam)) ||
+    (scenarioIndex.scenarios || []).find((item) => item.default) ||
+    (scenarioIndex.scenarios || [])[0];
+  if (defaultScenario) {
+    await loadScenario(defaultScenario.id);
+    activeMaterial = activeScenario?.material || defaultScenario.material || activeMaterial;
+  }
   const materialParam = params.get("material");
   if (MATERIAL_PROFILES[materialParam]) {
     activeMaterial = materialParam;
+    const scenario = scenarioByMaterial(materialParam);
+    if (scenario) await loadScenario(scenario.id);
+  }
+  const monthParam = params.get("month");
+  if (monthParam && activeTimeseries?.months) {
+    const index = activeTimeseries.months.findIndex((item) => item.month === monthParam || item.label === monthParam);
+    if (index >= 0) activeMonthIndex = index;
   }
   demoStep = Math.max(0, (demoConfig.stages || []).length - 1);
   bindMaterialSwitch();
+  bindScenarioSwitch();
   renderCurrentDashboard();
 
   bindNavigation();

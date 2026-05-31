@@ -1,0 +1,59 @@
+{
+  "id": "adhesive-eu-logistics",
+  "label": "半導体接着材: 欧州物流遅延→ドイツ発供給の遅れ",
+  "material": "semiconductor-adhesive",
+  "focal_material": "semiconductor-adhesive",
+  "headline": "欧州の航空貨物混乱でドイツ発の半導体接着材が遅延・供給の55%が影響",
+  "layperson_story": "自社の名古屋工場は半導体接着材を使ってセンサー部材Dを作り、電子部品D社へ納めています。この接着材の55%はドイツの商社ユーロボンド経由で、さらに上流のフランクフルト特殊材工場と、その原料を作るルートヴィヒスハーフェンの特殊化学メーカーに支えられています。今回、欧州で航空貨物が混乱してドイツ発の出荷が遅れ、2段上流の遅れが名古屋工場まで波及し、センサー部材Dの受注SO-1004(電子部品D社)に影響が及びます。",
+  "network": {
+    "focal_material": "semiconductor-adhesive",
+    "nodes": [
+      { "id": "n_chem_ludwigshafen", "tier": 3, "kind": "refinery", "name": "ルートヴィヒスハーフェン特殊化学", "makes": "接着材原料(特殊化学品)の製造", "country": "ドイツ", "region": "Europe", "lat": 49.48, "lng": 8.44, "role_note": "供給網の最上流(原料)。ここの遅れが2段下の名古屋工場まで波及する" },
+      { "id": "n_plant_frankfurt", "tier": 2, "kind": "supplier", "name": "フランクフルト特殊材工場", "makes": "半導体接着材の配合・製造(独)", "country": "ドイツ", "region": "Europe", "lat": 50.11, "lng": 8.68, "role_note": "2次サプライヤ。ユーロボンドに供給する独の製造拠点" },
+      { "id": "n_chem_antwerp", "tier": 3, "kind": "refinery", "name": "アントワープ特殊化学", "makes": "接着材原料(代替候補)の製造", "country": "ベルギー", "region": "Europe", "lat": 51.26, "lng": 4.40, "role_note": "欧州内の代替原料候補。今回は航空貨物混乱の影響外だが認定が未完了" },
+
+      { "id": "n_sup_eurobond", "tier": 1, "kind": "supplier", "name": "ユーロボンド", "makes": "半導体接着材の供給商社(独)", "country": "ドイツ", "region": "Europe", "lat": 50.04, "lng": 8.56, "role_note": "名古屋工場へ空路で供給する1次サプライヤ。今回の遅延通知元" },
+      { "id": "n_sup_nipponadh", "tier": 1, "kind": "supplier", "name": "日本アドヘシブ", "makes": "半導体接着材の国内供給", "country": "日本", "region": "Japan", "lat": 34.60, "lng": 135.50, "role_note": "国内ルートの1次サプライヤ。今回は影響なし=供給を支える側" },
+      { "id": "n_plant_sakai", "tier": 2, "kind": "supplier", "name": "堺接着材工場", "makes": "半導体接着材の製造(国内)", "country": "日本", "region": "Japan", "lat": 34.57, "lng": 135.48, "role_note": "国内ルートの製造拠点(2次)。陸路で安定供給" },
+
+      { "id": "n_plant_nagoya", "tier": 0, "kind": "plant", "name": "名古屋工場", "makes": "センサー部材D", "country": "日本", "region": "Japan", "lat": 35.18, "lng": 136.91, "role_note": "自社。半導体接着材を使う主力工場" },
+
+      { "id": "n_prod_sensorD", "tier": 0, "kind": "product", "name": "センサー部材D", "makes": "半導体センサー向け接着部材", "role_note": "半導体接着材が原料" },
+
+      { "id": "n_cust_elecD", "tier": 0, "kind": "customer", "name": "電子部品D社", "makes": "電子部品", "priority": "medium", "role_note": "センサー部材Dの納入先" }
+    ],
+    "edges": [
+      { "id": "e_ludwig_frankfurt", "source": "n_chem_ludwigshafen", "target": "n_plant_frankfurt", "material": "semiconductor-adhesive", "monthly_volume": 2200, "unit": "kg", "unit_price_usd": 400, "monthly_spend_usd": 880000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 5, "transport_mode": "road", "status": "normal" },
+      { "id": "e_frankfurt_eurobond", "source": "n_plant_frankfurt", "target": "n_sup_eurobond", "material": "semiconductor-adhesive", "monthly_volume": 2200, "unit": "kg", "unit_price_usd": 450, "monthly_spend_usd": 990000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 3, "transport_mode": "road", "status": "normal" },
+      { "id": "e_eurobond_nagoya", "source": "n_sup_eurobond", "target": "n_plant_nagoya", "material": "semiconductor-adhesive", "monthly_volume": 2200, "unit": "kg", "unit_price_usd": 500, "monthly_spend_usd": 1100000, "share_percent": 55, "dependency": 0.55, "lead_time_days": 9, "transport_mode": "air", "status": "normal" },
+
+      { "id": "e_sakai_nipponadh", "source": "n_plant_sakai", "target": "n_sup_nipponadh", "material": "semiconductor-adhesive", "monthly_volume": 1600, "unit": "kg", "unit_price_usd": 420, "monthly_spend_usd": 672000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 2, "transport_mode": "road", "status": "normal" },
+      { "id": "e_nipponadh_nagoya", "source": "n_sup_nipponadh", "target": "n_plant_nagoya", "material": "semiconductor-adhesive", "monthly_volume": 1600, "unit": "kg", "unit_price_usd": 500, "monthly_spend_usd": 800000, "share_percent": 45, "dependency": 0.45, "lead_time_days": 3, "transport_mode": "road", "status": "normal" },
+
+      { "id": "e_nagoya_sensorD", "source": "n_plant_nagoya", "target": "n_prod_sensorD", "material": "semiconductor-adhesive", "share_percent": 100, "dependency": 1.0, "status": "normal" },
+
+      { "id": "e_sensorD_elecD", "source": "n_prod_sensorD", "target": "n_cust_elecD", "order_id": "SO-1004", "monthly_volume": 30, "dependency": 1.0, "priority": "medium", "status": "normal" }
+    ]
+  },
+  "disruption": {
+    "type": "logistics_delay",
+    "hit_nodes": ["n_chem_ludwigshafen"],
+    "capacity_drop": 0.55,
+    "note": "欧州の航空貨物混乱でドイツ発(ルートヴィヒスハーフェン→フランクフルト→ユーロボンド)の出荷が遅延。EUルート(55%)が影響を受け、国内ルート(45%)は安定。"
+  },
+  "inventory": [
+    { "plant": "名古屋工場", "material": "semiconductor-adhesive", "stock_qty": 480, "daily_usage": 80, "unit": "kg" }
+  ],
+  "alternatives": [
+    { "material": "semiconductor-adhesive", "alternative_material": "ADH-ALT-EU01", "approved": false, "lead_time_days": 18, "constraints": "アントワープ特殊化学の代替原料。半導体グレードの認定が未完了で顧客出荷品には未承認。" },
+    { "material": "semiconductor-adhesive", "alternative_material": "ADH-ALT-JP01", "approved": false, "lead_time_days": 25, "constraints": "国内増産分。設備認定と顧客承認が必要で即時の振替は不可。" }
+  ],
+  "risk_inputs": { "severity": "high", "confidence": "medium" },
+  "provenance": [
+    { "id": "src-logi", "kind": "logistics", "label": "物流シグナル", "source": "欧州航空貨物モニタ(想定)", "confidence": "高", "claim": "フランクフルト空港発の貨物に遅延が拡大・スペース確保が困難", "feeds": ["e_eurobond_nagoya", "n_sup_eurobond"] },
+    { "id": "src-news", "kind": "news", "label": "業界ニュース", "source": "Industry News Demo", "ref": "news-adh-2026-001", "published_at": "2026-05-18T08:00:00+09:00", "confidence": "中", "claim": "欧州の航空貨物混乱でドイツ発の電子材料出荷に遅れ(今後3〜4週間)", "feeds": ["n_chem_ludwigshafen", "n_plant_frankfurt"] },
+    { "id": "src-supplier", "kind": "supplier_notice", "label": "サプライヤ通知", "source": "Eurobond GmbH", "ref": "notice-adh-2026-001", "received_at": "2026-05-19T10:00:00+09:00", "confidence": "中", "claim": "上流原料の遅れにより次回出荷が5〜7日遅延・数量の一部後ろ倒し", "feeds": ["e_frankfurt_eurobond", "n_plant_frankfurt"] },
+    { "id": "src-price", "kind": "price_feed", "label": "価格フィード", "source": "半導体材料スポット(想定)", "confidence": "中", "claim": "半導体接着材の輸送割増で実効コストが基準比+9%", "feeds": ["material:semiconductor-adhesive"] }
+  ],
+  "timeseries_ref": "./adhesive-eu-logistics.timeseries.json"
+}

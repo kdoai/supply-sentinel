@@ -1,0 +1,216 @@
+{
+  "scenario_id": "naphtha-price-spike",
+  "unit": "month",
+  "note": "原油急騰によるナフサ価格スパイク。供給はほぼ維持(capacity_dropは小)だがprice_indexが急騰し、全ルートがコスト影響を受ける。metricsは各月のdisruption/inventory/risk_inputsからpropagationEngineでベイク。",
+  "months": [
+    {
+      "month": "2026-02",
+      "label": "2月",
+      "price_index": 100,
+      "naphtha_price_usd_per_ton": 400,
+      "disruption": {
+        "hit_nodes": [],
+        "capacity_drop": 0
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "naphtha",
+          "stock_qty": 1300,
+          "daily_usage": 100,
+          "unit": "ton"
+        },
+        {
+          "plant": "大阪工場",
+          "material": "naphtha",
+          "stock_qty": 1170,
+          "daily_usage": 90,
+          "unit": "ton"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "low",
+        "confidence": "low"
+      },
+      "metrics": {
+        "risk_score": 27,
+        "severity": "low",
+        "affected_supply_ratio": 0,
+        "spend_at_risk_usd": 0,
+        "total_spend_usd": 12000000,
+        "inventory_days_min": 13
+      },
+      "events": [],
+      "sources": []
+    },
+    {
+      "month": "2026-03",
+      "label": "3月",
+      "price_index": 120,
+      "naphtha_price_usd_per_ton": 480,
+      "disruption": {
+        "hit_nodes": [
+          "n_ref_jurong",
+          "n_ref_yanbu"
+        ],
+        "capacity_drop": 0.03
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "naphtha",
+          "stock_qty": 1000,
+          "daily_usage": 100,
+          "unit": "ton"
+        },
+        {
+          "plant": "大阪工場",
+          "material": "naphtha",
+          "stock_qty": 1080,
+          "daily_usage": 90,
+          "unit": "ton"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "medium",
+        "confidence": "medium"
+      },
+      "metrics": {
+        "risk_score": 56,
+        "severity": "medium",
+        "affected_supply_ratio": 65,
+        "spend_at_risk_usd": 7800000,
+        "total_spend_usd": 12000000,
+        "inventory_days_min": 10
+      },
+      "events": [
+        {
+          "kind": "price_feed",
+          "text": "原油先物の上昇を受けナフサスポットが基準比+20%。供給量への影響は軽微。",
+          "ref": "price-2026-031"
+        }
+      ],
+      "sources": [
+        "src-price"
+      ]
+    },
+    {
+      "month": "2026-04",
+      "label": "4月",
+      "price_index": 140,
+      "naphtha_price_usd_per_ton": 560,
+      "disruption": {
+        "hit_nodes": [
+          "n_ref_jurong",
+          "n_ref_yanbu",
+          "n_ref_ulsan"
+        ],
+        "capacity_drop": 0.05
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "naphtha",
+          "stock_qty": 800,
+          "daily_usage": 100,
+          "unit": "ton"
+        },
+        {
+          "plant": "大阪工場",
+          "material": "naphtha",
+          "stock_qty": 990,
+          "daily_usage": 90,
+          "unit": "ton"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "high",
+        "confidence": "medium"
+      },
+      "metrics": {
+        "risk_score": 66,
+        "severity": "medium",
+        "affected_supply_ratio": 85,
+        "spend_at_risk_usd": 10200000,
+        "total_spend_usd": 12000000,
+        "inventory_days_min": 8
+      },
+      "events": [
+        {
+          "kind": "news",
+          "text": "地政学リスクで原油急騰。石化各社が採算悪化を警戒。供給途絶ではなくコスト要因。",
+          "ref": "news-2026-050"
+        },
+        {
+          "kind": "price_feed",
+          "text": "ナフサ価格が基準比+40%。価格スライドで仕入れ単価が上昇。",
+          "ref": null
+        }
+      ],
+      "sources": [
+        "src-news",
+        "src-price"
+      ]
+    },
+    {
+      "month": "2026-05",
+      "label": "5月(現在)",
+      "price_index": 155,
+      "naphtha_price_usd_per_ton": 620,
+      "disruption": {
+        "hit_nodes": [
+          "n_ref_jurong",
+          "n_ref_yanbu",
+          "n_ref_ulsan",
+          "n_ref_maptaput"
+        ],
+        "capacity_drop": 0.08
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "naphtha",
+          "stock_qty": 600,
+          "daily_usage": 100,
+          "unit": "ton"
+        },
+        {
+          "plant": "大阪工場",
+          "material": "naphtha",
+          "stock_qty": 990,
+          "daily_usage": 90,
+          "unit": "ton"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "high",
+        "confidence": "high"
+      },
+      "metrics": {
+        "risk_score": 82,
+        "severity": "high",
+        "affected_supply_ratio": 100,
+        "spend_at_risk_usd": 12000000,
+        "total_spend_usd": 12000000,
+        "inventory_days_min": 6
+      },
+      "events": [
+        {
+          "kind": "price_feed",
+          "text": "ナフサスポットが基準比+55%・前月比+10%。全ルートで価格上昇、調達コストが急騰。",
+          "ref": "price-2026-051"
+        },
+        {
+          "kind": "supplier_notice",
+          "text": "デモ石化サプライヤが価格スライド条項で次回出荷分の単価を引き上げ。数量は通常どおり供給予定。",
+          "ref": "notice-2026-050"
+        }
+      ],
+      "sources": [
+        "src-price",
+        "src-news",
+        "src-supplier"
+      ]
+    }
+  ]
+}

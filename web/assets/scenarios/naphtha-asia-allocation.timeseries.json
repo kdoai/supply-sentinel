@@ -1,0 +1,208 @@
+{
+  "scenario_id": "naphtha-asia-allocation",
+  "unit": "month",
+  "note": "エージェントが過去をリサーチし事前生成した月次の変動。metricsは各月の disruption/inventory/risk_inputs から propagationEngine で算出済み(ベイク)。",
+  "months": [
+    {
+      "month": "2025-12",
+      "label": "12月",
+      "price_index": 100,
+      "naphtha_price_usd_per_ton": 400,
+      "disruption": {
+        "hit_nodes": [],
+        "capacity_drop": 0
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "naphtha",
+          "stock_qty": 1200,
+          "daily_usage": 100,
+          "unit": "ton"
+        },
+        {
+          "plant": "大阪工場",
+          "material": "naphtha",
+          "stock_qty": 1170,
+          "daily_usage": 90,
+          "unit": "ton"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "low",
+        "confidence": "low"
+      },
+      "metrics": {
+        "risk_score": 27,
+        "severity": "low",
+        "affected_supply_ratio": 0,
+        "spend_at_risk_usd": 0,
+        "total_spend_usd": 12000000,
+        "inventory_days_min": 12
+      },
+      "events": [],
+      "sources": []
+    },
+    {
+      "month": "2026-02",
+      "label": "2月",
+      "price_index": 106,
+      "naphtha_price_usd_per_ton": 424,
+      "disruption": {
+        "hit_nodes": [
+          "n_ref_jurong"
+        ],
+        "capacity_drop": 0.1
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "naphtha",
+          "stock_qty": 900,
+          "daily_usage": 100,
+          "unit": "ton"
+        },
+        {
+          "plant": "大阪工場",
+          "material": "naphtha",
+          "stock_qty": 1080,
+          "daily_usage": 90,
+          "unit": "ton"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "medium",
+        "confidence": "medium"
+      },
+      "metrics": {
+        "risk_score": 56,
+        "severity": "medium",
+        "affected_supply_ratio": 30,
+        "spend_at_risk_usd": 3600000,
+        "total_spend_usd": 12000000,
+        "inventory_days_min": 9
+      },
+      "events": [
+        {
+          "kind": "news",
+          "text": "アジアの製油所で計画外停止の報道。ナフサ需給の逼迫観測。",
+          "ref": "news-2026-001"
+        }
+      ],
+      "sources": [
+        "src-news"
+      ]
+    },
+    {
+      "month": "2026-04",
+      "label": "4月",
+      "price_index": 110,
+      "naphtha_price_usd_per_ton": 440,
+      "disruption": {
+        "hit_nodes": [
+          "n_ref_jurong",
+          "n_ref_ulsan"
+        ],
+        "capacity_drop": 0.2
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "naphtha",
+          "stock_qty": 700,
+          "daily_usage": 100,
+          "unit": "ton"
+        },
+        {
+          "plant": "大阪工場",
+          "material": "naphtha",
+          "stock_qty": 990,
+          "daily_usage": 90,
+          "unit": "ton"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "high",
+        "confidence": "medium"
+      },
+      "metrics": {
+        "risk_score": 76,
+        "severity": "high",
+        "affected_supply_ratio": 50,
+        "spend_at_risk_usd": 6000000,
+        "total_spend_usd": 12000000,
+        "inventory_days_min": 7
+      },
+      "events": [
+        {
+          "kind": "logistics",
+          "text": "シンガポール・韓国港で滞留増。輸送リードタイム悪化。",
+          "ref": null
+        },
+        {
+          "kind": "price_feed",
+          "text": "ナフサ価格が基準比+10%。",
+          "ref": null
+        }
+      ],
+      "sources": [
+        "src-news",
+        "src-logi"
+      ]
+    },
+    {
+      "month": "2026-05",
+      "label": "5月(現在)",
+      "price_index": 112,
+      "naphtha_price_usd_per_ton": 448,
+      "disruption": {
+        "hit_nodes": [
+          "n_ref_jurong",
+          "n_ref_ulsan",
+          "n_ref_maptaput"
+        ],
+        "capacity_drop": 0.3
+      },
+      "inventory": [
+        {
+          "plant": "千葉工場",
+          "material": "naphtha",
+          "stock_qty": 500,
+          "daily_usage": 100,
+          "unit": "ton"
+        },
+        {
+          "plant": "大阪工場",
+          "material": "naphtha",
+          "stock_qty": 900,
+          "daily_usage": 90,
+          "unit": "ton"
+        }
+      ],
+      "risk_inputs": {
+        "severity": "high",
+        "confidence": "high"
+      },
+      "metrics": {
+        "risk_score": 82,
+        "severity": "high",
+        "affected_supply_ratio": 65,
+        "spend_at_risk_usd": 7800000,
+        "total_spend_usd": 12000000,
+        "inventory_days_min": 5
+      },
+      "events": [
+        {
+          "kind": "supplier_notice",
+          "text": "デモ石化サプライヤが次回割当を通常の70%へ制限する通知。出荷5〜7日遅延。",
+          "ref": "notice-2026-001"
+        }
+      ],
+      "sources": [
+        "src-supplier",
+        "src-logi",
+        "src-price"
+      ]
+    }
+  ]
+}

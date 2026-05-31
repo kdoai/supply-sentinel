@@ -1,0 +1,79 @@
+{
+  "id": "naphtha-asia-allocation",
+  "label": "ナフサ: アジア製油所障害→割当制限",
+  "material": "naphtha",
+  "focal_material": "naphtha",
+  "headline": "アジアの製油所障害でナフサ割当が通常の70%に制限",
+  "layperson_story": "自社はナフサ(原油由来の原料)を使って樹脂A・溶剤B・コーティングCを製造しています。今回アジアの製油所で障害が起き、サプライヤのさらに上流(2次サプライヤ・製油所)で供給が細りました。結果、千葉工場の在庫は残り5日、自動車部品A社向けの受注SO-1001など3件に波及します。",
+  "network": {
+    "focal_material": "naphtha",
+    "nodes": [
+      { "id": "n_ref_jurong", "tier": 3, "kind": "refinery", "name": "ジュロン製油所", "makes": "原油精製→ナフサ", "country": "シンガポール", "region": "Southeast Asia", "lat": 1.27, "lng": 103.7, "role_note": "供給網の最上流。ここの障害が2段下の自社まで波及する" },
+      { "id": "n_ref_yanbu", "tier": 3, "kind": "refinery", "name": "ヤンブー製油所", "makes": "原油精製→ナフサ", "country": "サウジアラビア", "region": "Middle East", "lat": 24.09, "lng": 38.06, "role_note": "中東ルートの原産地。今回は影響なし" },
+      { "id": "n_ref_ulsan", "tier": 3, "kind": "refinery", "name": "蔚山製油所", "makes": "原油精製→ナフサ", "country": "韓国", "region": "East Asia", "lat": 35.54, "lng": 129.31 },
+      { "id": "n_ref_maptaput", "tier": 3, "kind": "refinery", "name": "マプタプット石化団地", "makes": "原油精製→ナフサ", "country": "タイ", "region": "Southeast Asia", "lat": 12.68, "lng": 101.15 },
+
+      { "id": "n_t2_jurong_trader", "tier": 2, "kind": "supplier", "name": "Jurong原料トレーダー", "makes": "ナフサ中間流通(2次)", "country": "シンガポール", "region": "Southeast Asia", "lat": 1.29, "lng": 103.75, "role_note": "デモ石化サプライヤに供給する2次サプライヤ。今回の通知元のさらに上流" },
+
+      { "id": "n_sup_demo", "tier": 1, "kind": "supplier", "name": "デモ石化サプライヤ", "makes": "ナフサ供給(東南アジア)", "country": "シンガポール", "region": "Southeast Asia", "lat": 1.26, "lng": 103.83, "role_note": "今回の割当制限を通知してきた1次サプライヤ" },
+      { "id": "n_sup_gulf", "tier": 1, "kind": "supplier", "name": "ガルフ石化", "makes": "ナフサ供給(中東)", "country": "サウジアラビア", "region": "Middle East", "lat": 27.0, "lng": 49.66, "role_note": "中東ルートの1次サプライヤ。今回は影響なし=代替の出し手" },
+      { "id": "n_sup_hanmi", "tier": 1, "kind": "supplier", "name": "韓美ケム", "makes": "ナフサ供給(東アジア)", "country": "韓国", "region": "East Asia", "lat": 35.5, "lng": 129.38 },
+      { "id": "n_sup_siam", "tier": 1, "kind": "supplier", "name": "サイアム原料", "makes": "ナフサ供給(タイ)", "country": "タイ", "region": "Southeast Asia", "lat": 13.08, "lng": 100.88 },
+
+      { "id": "n_plant_chiba", "tier": 0, "kind": "plant", "name": "千葉工場", "makes": "樹脂A・溶剤B", "country": "日本", "region": "Japan", "lat": 35.6, "lng": 140.12, "role_note": "自社。ナフサ依存度が高い主力工場" },
+      { "id": "n_plant_osaka", "tier": 0, "kind": "plant", "name": "大阪工場", "makes": "コーティングC", "country": "日本", "region": "Japan", "lat": 34.69, "lng": 135.5, "role_note": "自社" },
+
+      { "id": "n_prod_resinA", "tier": 0, "kind": "product", "name": "樹脂A", "makes": "自動車部品向け樹脂", "role_note": "ナフサが原料" },
+      { "id": "n_prod_solventB", "tier": 0, "kind": "product", "name": "溶剤B", "makes": "包装材向け溶剤", "role_note": "ナフサが原料" },
+      { "id": "n_prod_coatC", "tier": 0, "kind": "product", "name": "コーティングC", "makes": "化学品向けコーティング", "role_note": "ナフサが原料" },
+
+      { "id": "n_cust_autoA", "tier": 0, "kind": "customer", "name": "自動車部品A社", "makes": "自動車部品", "priority": "high", "role_note": "重点顧客" },
+      { "id": "n_cust_pkgB", "tier": 0, "kind": "customer", "name": "包装材B社", "makes": "包装材", "priority": "high" },
+      { "id": "n_cust_chemC", "tier": 0, "kind": "customer", "name": "化学品C社", "makes": "化学品", "priority": "medium" }
+    ],
+    "edges": [
+      { "id": "e_jurong_trader", "source": "n_ref_jurong", "target": "n_t2_jurong_trader", "material": "naphtha", "monthly_volume": 9000, "unit": "ton", "unit_price_usd": 400, "monthly_spend_usd": 3600000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 4, "transport_mode": "pipe", "status": "normal" },
+      { "id": "e_trader_demo", "source": "n_t2_jurong_trader", "target": "n_sup_demo", "material": "naphtha", "monthly_volume": 9000, "unit": "ton", "unit_price_usd": 400, "monthly_spend_usd": 3600000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 6, "transport_mode": "sea", "status": "normal" },
+      { "id": "e_demo_chiba", "source": "n_sup_demo", "target": "n_plant_chiba", "material": "naphtha", "monthly_volume": 9000, "unit": "ton", "unit_price_usd": 400, "monthly_spend_usd": 3600000, "share_percent": 46, "dependency": 0.4615, "lead_time_days": 12, "transport_mode": "sea", "status": "normal" },
+
+      { "id": "e_yanbu_gulf", "source": "n_ref_yanbu", "target": "n_sup_gulf", "material": "naphtha", "monthly_volume": 10500, "unit": "ton", "unit_price_usd": 400, "monthly_spend_usd": 4200000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 14, "transport_mode": "pipe", "status": "normal" },
+      { "id": "e_gulf_chiba", "source": "n_sup_gulf", "target": "n_plant_chiba", "material": "naphtha", "monthly_volume": 10500, "unit": "ton", "unit_price_usd": 400, "monthly_spend_usd": 4200000, "share_percent": 54, "dependency": 0.5385, "lead_time_days": 24, "transport_mode": "sea", "status": "normal" },
+
+      { "id": "e_ulsan_hanmi", "source": "n_ref_ulsan", "target": "n_sup_hanmi", "material": "naphtha", "monthly_volume": 6000, "unit": "ton", "unit_price_usd": 400, "monthly_spend_usd": 2400000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 3, "transport_mode": "pipe", "status": "normal" },
+      { "id": "e_hanmi_osaka", "source": "n_sup_hanmi", "target": "n_plant_osaka", "material": "naphtha", "monthly_volume": 6000, "unit": "ton", "unit_price_usd": 400, "monthly_spend_usd": 2400000, "share_percent": 57, "dependency": 0.5714, "lead_time_days": 6, "transport_mode": "sea", "status": "normal" },
+
+      { "id": "e_maptaput_siam", "source": "n_ref_maptaput", "target": "n_sup_siam", "material": "naphtha", "monthly_volume": 4500, "unit": "ton", "unit_price_usd": 400, "monthly_spend_usd": 1800000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 7, "transport_mode": "pipe", "status": "normal" },
+      { "id": "e_siam_osaka", "source": "n_sup_siam", "target": "n_plant_osaka", "material": "naphtha", "monthly_volume": 4500, "unit": "ton", "unit_price_usd": 400, "monthly_spend_usd": 1800000, "share_percent": 43, "dependency": 0.4286, "lead_time_days": 10, "transport_mode": "sea", "status": "normal" },
+
+      { "id": "e_chiba_resinA", "source": "n_plant_chiba", "target": "n_prod_resinA", "material": "naphtha", "share_percent": 100, "dependency": 1.0, "status": "normal" },
+      { "id": "e_chiba_solventB", "source": "n_plant_chiba", "target": "n_prod_solventB", "material": "naphtha", "share_percent": 100, "dependency": 1.0, "status": "normal" },
+      { "id": "e_osaka_coatC", "source": "n_plant_osaka", "target": "n_prod_coatC", "material": "naphtha", "share_percent": 100, "dependency": 1.0, "status": "normal" },
+
+      { "id": "e_resinA_autoA", "source": "n_prod_resinA", "target": "n_cust_autoA", "order_id": "SO-1001", "monthly_volume": 120, "dependency": 1.0, "priority": "high", "status": "normal" },
+      { "id": "e_solventB_pkgB", "source": "n_prod_solventB", "target": "n_cust_pkgB", "order_id": "SO-1002", "monthly_volume": 80, "dependency": 1.0, "priority": "high", "status": "normal" },
+      { "id": "e_coatC_chemC", "source": "n_prod_coatC", "target": "n_cust_chemC", "order_id": "SO-1003", "monthly_volume": 60, "dependency": 1.0, "priority": "medium", "status": "normal" }
+    ]
+  },
+  "disruption": {
+    "type": "allocation",
+    "hit_nodes": ["n_ref_jurong", "n_ref_ulsan", "n_ref_maptaput"],
+    "capacity_drop": 0.30,
+    "note": "アジア3製油所が割当を通常の70%へ。中東ルートは影響なし。"
+  },
+  "inventory": [
+    { "plant": "千葉工場", "material": "naphtha", "stock_qty": 500, "daily_usage": 100, "unit": "ton" },
+    { "plant": "大阪工場", "material": "naphtha", "stock_qty": 900, "daily_usage": 90, "unit": "ton" }
+  ],
+  "alternatives": [
+    { "material": "naphtha", "alternative_material": "NAP-ALT-01", "approved": true, "lead_time_days": 10, "constraints": "樹脂Aのみ承認済み。溶剤Bへの適用には品質確認が必要。" },
+    { "material": "naphtha", "alternative_material": "NAP-ALT-02", "approved": false, "lead_time_days": 21, "constraints": "評価中。顧客出荷品には未承認。" }
+  ],
+  "risk_inputs": { "severity": "high", "confidence": "high" },
+  "provenance": [
+    { "id": "src-news", "kind": "news", "label": "業界ニュース", "source": "Industry News Demo", "ref": "news-2026-001", "published_at": "2026-05-16T08:00:00+09:00", "confidence": "中", "claim": "アジアの製油所障害でナフサ供給が逼迫(今後2〜3週間)", "feeds": ["n_ref_jurong", "n_ref_ulsan", "n_ref_maptaput"] },
+    { "id": "src-supplier", "kind": "supplier_notice", "label": "サプライヤ通知", "source": "Demo Petrochemical Supplier", "ref": "notice-2026-001", "received_at": "2026-05-16T09:15:00+09:00", "confidence": "高", "claim": "出荷5〜7日遅延・次回割当は通常の70%に制限", "feeds": ["e_demo_chiba", "n_sup_demo"] },
+    { "id": "src-logi", "kind": "logistics", "label": "物流シグナル", "source": "港湾混雑モニタ(想定)", "confidence": "中", "claim": "シンガポール港の滞留が増加", "feeds": ["e_trader_demo", "n_t2_jurong_trader"] },
+    { "id": "src-price", "kind": "price_feed", "label": "価格フィード", "source": "ナフサスポット(想定)", "confidence": "中", "claim": "ナフサ価格は前月比+2%・基準比+12%", "feeds": ["material:naphtha"] }
+  ],
+  "timeseries_ref": "./naphtha-asia-allocation.timeseries.json"
+}

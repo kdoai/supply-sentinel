@@ -42,6 +42,8 @@ jobs:
           node --check web/js/panels.js
           node --check web/js/map.js
           node --check web/js/flow.js
+          node --check web/js/network.js
+          node --check web/js/propagation.js
           node --check src/serve.mjs
           node --check src/build-web.mjs
           node --check src/function_app/app.mjs
@@ -49,9 +51,20 @@ jobs:
           node --check src/function_app/httpLatestDashboard.mjs
           node --check src/supply_sentinel/config.mjs
           node --check src/supply_sentinel/stateStore.mjs
+          node --check src/supply_sentinel/aiClient.mjs
+          node --check src/supply_sentinel/networkSchema.mjs
+          node --check src/supply_sentinel/propagationEngine.mjs
+          node --check scripts/validate-scenario.mjs
 
       - name: Run tests
         run: npm test
+
+      - name: Validate scenario contracts
+        run: |
+          node scripts/validate-scenario.mjs naphtha-asia-allocation
+          node scripts/validate-scenario.mjs packaging-film-typhoon
+          node scripts/validate-scenario.mjs adhesive-eu-logistics
+          node scripts/validate-scenario.mjs naphtha-price-spike
 
       - name: Build static demo data
         run: npm run build:web

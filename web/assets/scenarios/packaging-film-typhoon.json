@@ -1,0 +1,64 @@
+{
+  "id": "packaging-film-typhoon",
+  "label": "包装フィルム: 台湾の台風→港湾混雑で供給停滞",
+  "material": "packaging-film",
+  "focal_material": "packaging-film",
+  "headline": "台風による台湾の港湾混雑で包装フィルム供給の70%が停滞",
+  "layperson_story": "自社は包装フィルムを使って食品向けの「包装済み樹脂A」を製造しています。主力フィルムは台湾の工場から来ますが、そのさらに上流(原反となる樹脂ペレット・原反メーカー)が台風による港湾混雑で出荷できず、2段下の千葉工場まで供給が細りました。結果、千葉工場の在庫は残り数日となり、食品包装E社向けの優先受注SO-1005に波及します。",
+  "network": {
+    "focal_material": "packaging-film",
+    "nodes": [
+      { "id": "n_raw_taoyuan_resin", "tier": 3, "kind": "refinery", "name": "桃園樹脂ペレット工場", "makes": "原反向け樹脂ペレット・フィルム原反", "country": "台湾", "region": "East Asia", "lat": 25.01, "lng": 121.22, "role_note": "供給網の最上流。ここの停滞が2段下の自社まで波及する" },
+      { "id": "n_raw_busan_resin", "tier": 3, "kind": "refinery", "name": "麗水樹脂ペレット工場", "makes": "原反向け樹脂ペレット", "country": "韓国", "region": "East Asia", "lat": 34.76, "lng": 127.66, "role_note": "韓国ルートの最上流。今回は影響なし" },
+
+      { "id": "n_mill_taoyuan", "tier": 2, "kind": "supplier", "name": "桃園フィルム工場", "makes": "包装フィルム製膜(2次)", "country": "台湾", "region": "East Asia", "lat": 24.99, "lng": 121.3, "role_note": "台湾原反を製膜する2次サプライヤ。台風で原反が届かず停滞" },
+      { "id": "n_mill_busan", "tier": 2, "kind": "supplier", "name": "釜山フィルム工場", "makes": "包装フィルム製膜(2次)", "country": "韓国", "region": "East Asia", "lat": 35.18, "lng": 129.08, "role_note": "韓国ルートの2次サプライヤ。今回は影響なし=代替の出し手" },
+
+      { "id": "n_sup_filmtech", "tier": 1, "kind": "supplier", "name": "商社フィルムテック", "makes": "包装フィルム調達・供給(台湾)", "country": "台湾", "region": "East Asia", "lat": 22.61, "lng": 120.3, "role_note": "高雄港経由で千葉に納める1次サプライヤ。今回の停滞を通知してきた" },
+      { "id": "n_sup_kfilm", "tier": 1, "kind": "supplier", "name": "Kフィルム", "makes": "包装フィルム調達・供給(韓国)", "country": "韓国", "region": "East Asia", "lat": 35.1, "lng": 129.04, "role_note": "釜山港経由の1次サプライヤ。今回は影響なし" },
+
+      { "id": "n_port_kaohsiung", "tier": 1, "kind": "port", "name": "高雄港", "makes": "台湾積出港", "country": "台湾", "region": "East Asia", "lat": 22.61, "lng": 120.3, "role_note": "台風で滞留が急増した港" },
+
+      { "id": "n_plant_chiba", "tier": 0, "kind": "plant", "name": "千葉工場", "makes": "包装済み樹脂A", "country": "日本", "region": "Japan", "lat": 35.6, "lng": 140.12, "role_note": "自社。包装フィルム依存度が高い主力工場" },
+
+      { "id": "n_prod_packresinA", "tier": 0, "kind": "product", "name": "包装済み樹脂A", "makes": "食品向け包装済み樹脂製品", "role_note": "包装フィルムが原料" },
+
+      { "id": "n_cust_foodE", "tier": 0, "kind": "customer", "name": "食品包装E社", "makes": "食品包装", "priority": "high", "role_note": "重点顧客。優先受注SO-1005の出荷先" }
+    ],
+    "edges": [
+      { "id": "e_taoyuanresin_mill", "source": "n_raw_taoyuan_resin", "target": "n_mill_taoyuan", "material": "packaging-film", "monthly_volume": 18000, "unit": "roll", "unit_price_usd": 38, "monthly_spend_usd": 684000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 5, "transport_mode": "road", "status": "normal" },
+      { "id": "e_mill_filmtech", "source": "n_mill_taoyuan", "target": "n_sup_filmtech", "material": "packaging-film", "monthly_volume": 18000, "unit": "roll", "unit_price_usd": 44, "monthly_spend_usd": 792000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 4, "transport_mode": "road", "status": "normal" },
+      { "id": "e_filmtech_port", "source": "n_sup_filmtech", "target": "n_port_kaohsiung", "material": "packaging-film", "monthly_volume": 18000, "unit": "roll", "unit_price_usd": 50, "monthly_spend_usd": 900000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 2, "transport_mode": "road", "status": "normal" },
+      { "id": "e_port_chiba", "source": "n_port_kaohsiung", "target": "n_plant_chiba", "material": "packaging-film", "monthly_volume": 18000, "unit": "roll", "unit_price_usd": 50, "monthly_spend_usd": 900000, "share_percent": 70, "dependency": 0.7, "lead_time_days": 14, "transport_mode": "sea", "status": "normal" },
+
+      { "id": "e_busanresin_mill", "source": "n_raw_busan_resin", "target": "n_mill_busan", "material": "packaging-film", "monthly_volume": 8000, "unit": "roll", "unit_price_usd": 36, "monthly_spend_usd": 288000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 4, "transport_mode": "road", "status": "normal" },
+      { "id": "e_mill_kfilm", "source": "n_mill_busan", "target": "n_sup_kfilm", "material": "packaging-film", "monthly_volume": 8000, "unit": "roll", "unit_price_usd": 44, "monthly_spend_usd": 352000, "share_percent": 100, "dependency": 1.0, "lead_time_days": 3, "transport_mode": "road", "status": "normal" },
+      { "id": "e_kfilm_chiba", "source": "n_sup_kfilm", "target": "n_plant_chiba", "material": "packaging-film", "monthly_volume": 8000, "unit": "roll", "unit_price_usd": 50, "monthly_spend_usd": 400000, "share_percent": 30, "dependency": 0.3, "lead_time_days": 8, "transport_mode": "sea", "status": "normal" },
+
+      { "id": "e_chiba_packresinA", "source": "n_plant_chiba", "target": "n_prod_packresinA", "material": "packaging-film", "share_percent": 100, "dependency": 1.0, "status": "normal" },
+
+      { "id": "e_packresinA_foodE", "source": "n_prod_packresinA", "target": "n_cust_foodE", "order_id": "SO-1005", "monthly_volume": 200, "dependency": 1.0, "priority": "high", "status": "normal" }
+    ]
+  },
+  "disruption": {
+    "type": "logistics",
+    "hit_nodes": ["n_raw_taoyuan_resin", "n_mill_taoyuan", "n_port_kaohsiung"],
+    "capacity_drop": 0.55,
+    "note": "台風で台湾の港湾が混雑。原反メーカー・製膜・高雄港が停滞し、台湾ルート(70%)の供給が細る。韓国ルートは影響なし。"
+  },
+  "inventory": [
+    { "plant": "千葉工場", "material": "packaging-film", "stock_qty": 720, "daily_usage": 120, "unit": "roll" }
+  ],
+  "alternatives": [
+    { "material": "packaging-film", "alternative_material": "PKG-ALT-01", "approved": true, "lead_time_days": 12, "constraints": "釜山フィルム工場(韓国)経由の増量分。包装済み樹脂Aの食品グレードは承認済みだが、増産枠に上限あり。" },
+    { "material": "packaging-film", "alternative_material": "PKG-ALT-02", "approved": false, "lead_time_days": 25, "constraints": "国内代替フィルム。食品接触グレードの認定が未完了で顧客出荷品には未承認。" }
+  ],
+  "risk_inputs": { "severity": "high", "confidence": "high" },
+  "provenance": [
+    { "id": "src-logi", "kind": "logistics", "label": "物流シグナル", "source": "港湾混雑モニタ(想定)", "ref": "logi-2026-051", "confidence": "高", "claim": "台風接近で高雄港の滞留が急増・本船遅延が拡大", "feeds": ["n_port_kaohsiung", "e_port_chiba"] },
+    { "id": "src-supplier", "kind": "supplier_notice", "label": "サプライヤ通知", "source": "商社フィルムテック", "ref": "notice-2026-051", "received_at": "2026-05-29T10:00:00+09:00", "confidence": "高", "claim": "原反入荷停止と港湾混雑で出荷を当面55%に制限・10〜14日遅延", "feeds": ["n_sup_filmtech", "e_port_chiba", "n_mill_taoyuan"] },
+    { "id": "src-news", "kind": "news", "label": "業界ニュース", "source": "Industry News Demo", "ref": "news-2026-051", "published_at": "2026-05-28T08:00:00+09:00", "confidence": "中", "claim": "台風で台湾の原反・フィルム生産が一時停止、包装材の需給逼迫観測", "feeds": ["n_raw_taoyuan_resin", "n_mill_taoyuan"] },
+    { "id": "src-price", "kind": "price_feed", "label": "価格フィード", "source": "包装フィルムスポット(想定)", "confidence": "中", "claim": "包装フィルム価格は前月比+4%・基準比+14%", "feeds": ["material:packaging-film"] }
+  ],
+  "timeseries_ref": "./packaging-film-typhoon.timeseries.json"
+}

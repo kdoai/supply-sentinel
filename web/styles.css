@@ -272,6 +272,45 @@ button {
   background: var(--panel-soft);
 }
 
+.scenario-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  max-width: 440px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  overflow-x: auto;
+}
+
+.scenario-chip {
+  flex: 0 0 auto;
+  min-height: 24px;
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 9px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.scenario-chip:hover,
+.scenario-chip:focus-visible {
+  color: var(--blue-700);
+  background: #eaf2fb;
+  outline: none;
+}
+
+.scenario-chip.is-active {
+  color: #fff;
+  background: var(--navy-800);
+}
+
 .material-chip {
   min-height: 24px;
   border: 0;
@@ -951,21 +990,39 @@ button {
 
 .analysis-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-  grid-template-rows: minmax(0, 1fr) 240px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  grid-template-rows: minmax(430px, 1.1fr) 220px 260px 220px;
   grid-template-areas:
+    "network timeline"
+    "network provenance"
     "flow inventory"
     "orders alternatives";
   gap: 16px;
   height: calc(100vh - 114px);
+  overflow: auto;
 }
 
 .flow-panel,
 .orders-panel,
 .inventory-panel,
-.alternatives-panel {
+.alternatives-panel,
+.network-panel,
+.timeline-panel,
+.provenance-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+}
+
+.network-panel {
+  grid-area: network;
+}
+
+.timeline-panel {
+  grid-area: timeline;
+}
+
+.provenance-panel {
+  grid-area: provenance;
 }
 
 .flow-panel {
@@ -989,6 +1046,300 @@ button {
   overflow: hidden;
   padding: 12px;
   background: #fbfcfe;
+}
+
+#network-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.net-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.net-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.network-body {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  padding: 12px;
+  background: linear-gradient(180deg, #0b1222, #08101f);
+}
+
+.network-story {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: #eef6ff;
+}
+
+.network-story-main span {
+  display: block;
+  color: #72d2ff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.network-story-main strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+}
+
+.network-story-main p {
+  margin: 4px 0 0;
+  color: #c5d6ea;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.network-story-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, 88px);
+  gap: 6px;
+}
+
+.network-story-kpis div {
+  border: 1px solid rgba(155, 180, 220, 0.22);
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.network-story-kpis span,
+.network-story-kpis b {
+  display: block;
+}
+
+.network-story-kpis span {
+  color: #9fb6d3;
+  font-size: 10px;
+}
+
+.network-story-kpis b {
+  color: #fff;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.network-canvas {
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(155, 180, 220, 0.18);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 18% 30%, rgba(114, 210, 255, 0.09), transparent 28%),
+    radial-gradient(circle at 82% 45%, rgba(255, 90, 90, 0.11), transparent 22%),
+    #071426;
+}
+
+.network-svg {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+}
+
+.net-edge-flow {
+  stroke-dasharray: 12 10;
+  animation: net-flow 1.2s linear infinite;
+}
+
+.net-node-pulse {
+  animation: net-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes net-flow {
+  to { stroke-dashoffset: -22; }
+}
+
+@keyframes net-pulse {
+  0%, 100% { opacity: 0.45; r: 4; }
+  50% { opacity: 1; r: 6; }
+}
+
+.network-selection {
+  margin-top: 10px;
+  border: 1px solid rgba(155, 180, 220, 0.22);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #eef6ff;
+  background: rgba(7, 20, 38, 0.78);
+}
+
+.network-selection-kicker {
+  display: block;
+  color: #72d2ff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.network-selection strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.network-selection p {
+  margin: 4px 0 0;
+  color: #c5d6ea;
+  font-size: 11px;
+}
+
+.network-selection dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+}
+
+.network-selection dt {
+  color: #9fb6d3;
+  font-size: 10px;
+}
+
+.network-selection dd {
+  margin: 1px 0 0;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+#scenario-timeline,
+#provenance-list {
+  overflow: auto;
+  padding: 12px;
+}
+
+.timeline-bars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 128px;
+  align-items: end;
+}
+
+.timeline-month {
+  display: grid;
+  grid-template-rows: auto minmax(56px, 1fr) auto auto;
+  gap: 4px;
+  min-width: 0;
+  min-height: 118px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 7px;
+  color: var(--text);
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+}
+
+.timeline-month:hover,
+.timeline-month:focus-visible,
+.timeline-month.is-active {
+  border-color: var(--blue-600);
+  box-shadow: 0 0 0 2px rgba(37, 99, 168, 0.18);
+  outline: none;
+}
+
+.timeline-month span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.timeline-month i {
+  align-self: end;
+  justify-self: center;
+  display: block;
+  width: 18px;
+  border-radius: 999px 999px 3px 3px;
+  background: linear-gradient(180deg, var(--red), var(--amber));
+}
+
+.timeline-month b {
+  color: var(--red);
+  font-size: 16px;
+}
+
+.timeline-month em {
+  color: var(--muted);
+  font-size: 9px;
+  font-style: normal;
+}
+
+.timeline-events {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.timeline-events div,
+.provenance-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #fff;
+}
+
+.timeline-events span,
+.provenance-card span {
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+  margin-bottom: 4px;
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--blue-700);
+  background: #eaf2fb;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.timeline-events p,
+.provenance-card p {
+  margin: 0;
+  color: var(--text);
+  font-size: 11.5px;
+}
+
+.provenance-card {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.provenance-card strong {
+  display: block;
+  font-size: 12.5px;
+}
+
+.provenance-card footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.provenance-card em {
+  font-style: normal;
+}
+
+.provenance-card b {
+  color: var(--green);
 }
 
 #flow-graph svg {
@@ -1868,6 +2219,11 @@ li {
     flex-direction: column;
   }
 
+  .scenario-switch {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .dashboard-grid,
   .analysis-grid,
   .response-grid {
@@ -1908,6 +2264,18 @@ li {
   .analysis-grid,
   .response-grid {
     grid-template-areas: none;
+  }
+
+  .network-panel {
+    min-height: 720px;
+  }
+
+  .network-story {
+    grid-template-columns: 1fr;
+  }
+
+  .network-story-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .map-panel {
@@ -2043,9 +2411,18 @@ li {
     overflow-x: auto;
   }
 
+  .scenario-switch {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .material-chip {
     flex: 1 0 auto;
     padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .scenario-chip {
     font-size: 11px;
   }
 
@@ -2194,6 +2571,20 @@ li {
 
   .flow-panel {
     min-height: 460px;
+  }
+
+  .network-panel {
+    min-height: 760px;
+  }
+
+  .network-story-kpis,
+  .network-selection dl,
+  .timeline-bars {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .network-svg {
+    min-height: 420px;
   }
 
   .orders-panel {

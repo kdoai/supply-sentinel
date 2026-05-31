@@ -1,8 +1,9 @@
 // Runtime configuration seam.
 //
-// The local/hackathon build runs entirely in "demo" mode with deterministic
-// mocks and no cloud credentials. These helpers centralize how the app decides
-// between the local mock and the Azure path, matching the environment variables
+// The local build can run in "demo" mode with deterministic mocks and no cloud
+// credentials, while Azure runs in "cloud" mode with Managed Identity. These
+// helpers centralize how the app decides between the local mock and the Azure
+// path, matching the environment variables
 // documented in docs/13_azure_basic_design_ja.md and docs/14_github_cicd_azure_ja.md.
 //
 // Nothing here performs network calls. It only reads env vars so the Azure
@@ -38,8 +39,8 @@ export function dataSourceMode(options = {}) {
 }
 
 // State/result storage. "local" keeps the current file-based outputs under
-// outputs/latest. "cosmos" is the Azure boundary for Cosmos DB and is wired as
-// an explicit stub until cloud credentials and dependencies are added.
+// outputs/latest. "cosmos" uses Cosmos DB when credentials or Managed Identity
+// are available.
 export function stateStoreMode(options = {}) {
   const mode = options.stateStore || process.env.SUPPLY_SENTINEL_STATE_STORE || "local";
   return String(mode).toLowerCase();

@@ -1,0 +1,9 @@
+{
+  "default": "naphtha-asia-allocation",
+  "scenarios": [
+    { "id": "naphtha-asia-allocation", "label": "ナフサ: アジア製油所障害→割当制限", "material": "naphtha", "short": "ナフサ/製油所障害", "default": true },
+    { "id": "packaging-film-typhoon", "label": "包装フィルム: 台湾の港湾混雑", "material": "packaging-film", "short": "フィルム/港湾混雑" },
+    { "id": "adhesive-eu-logistics", "label": "半導体接着材: 欧州の物流遅延", "material": "semiconductor-adhesive", "short": "接着材/物流遅延" },
+    { "id": "naphtha-price-spike", "label": "ナフサ: 原油急騰による価格スパイク", "material": "naphtha", "short": "ナフサ/価格急騰" }
+  ]
+}

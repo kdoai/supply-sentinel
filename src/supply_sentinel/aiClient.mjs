@@ -4,9 +4,9 @@
 // translation into business impact stays rule-based (impactEngine/routeEngine).
 // This module is the single seam where the extractor swaps between:
 //   - the deterministic local mock (riskExtraction.mjs) -> used in demo mode
-//   - Azure AI Foundry / Azure OpenAI GPT          -> stub, wired post-cloud
+//   - Azure AI Foundry / Azure OpenAI GPT          -> used in cloud mode
 //
-// The local build NEVER calls the network: with no RUN_MODE=azure or no
+// The local build NEVER calls the network: with no RUN_MODE=cloud/azure or no
 // AZURE_OPENAI_* credentials it always uses the deterministic mock, so demos
 // are fully reproducible offline. See docs/13 and docs/14.
 
