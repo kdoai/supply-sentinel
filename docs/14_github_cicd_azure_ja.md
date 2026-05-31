@@ -46,10 +46,11 @@ AZURE_RESOURCE_GROUP=rg-supply-sentinel-demo
 AZURE_LOCATION=japaneast
 AZURE_APP_NAME=supplysentinel
 AZURE_GITHUB_PRINCIPAL_ID=<service-principal-object-id>
-AZURE_OPENAI_ENDPOINT=https://supplysentinel-ai-xh5yr4.openai.azure.com/
-AZURE_OPENAI_ACCOUNT_NAME=supplysentinel-ai-xh5yr4
-AZURE_OPENAI_DEPLOYMENT=gpt-5.4
+AZURE_OPENAI_ENDPOINT=https://supplysentinel-ai-eus2-xh5yr4.cognitiveservices.azure.com/
+AZURE_OPENAI_ACCOUNT_NAME=supplysentinel-ai-eus2-xh5yr4
+AZURE_OPENAI_DEPLOYMENT=gpt-5.4-mini
 AZURE_OPENAI_SUBAGENT_DEPLOYMENT=gpt-5.4-mini
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
 ```
 
 OpenAI endpoint と deployment 名は機密ではない。API キーは使わない。
@@ -71,7 +72,7 @@ OpenAI endpoint と deployment 名は機密ではない。API キーは使わな
 Container Apps API と Job の両方に同じ環境変数を渡す。
 
 ```text
-RUN_MODE=demo
+RUN_MODE=cloud
 SUPPLY_SENTINEL_STATE_STORE=cosmos
 COSMOS_DB_ENDPOINT=<cosmos endpoint>
 COSMOS_DB_DATABASE=supply-sentinel
@@ -79,9 +80,10 @@ COSMOS_DB_CONTAINER=runs
 COSMOS_DB_USE_AAD=true
 AZURE_CLIENT_ID=<runtime managed identity client id>
 AZURE_OPENAI_ENDPOINT=<openai endpoint>
-AZURE_OPENAI_DEPLOYMENT=gpt-5.4
+AZURE_OPENAI_DEPLOYMENT=gpt-5.4-mini
 AZURE_OPENAI_SUBAGENT_DEPLOYMENT=gpt-5.4-mini
 AZURE_OPENAI_USE_AAD=true
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
 HOST=0.0.0.0
 PORT=4173
 ```
@@ -91,7 +93,7 @@ PORT=4173
 | mode | CI/CD での指定 | 用途 |
 | --- | --- | --- |
 | `demo` | `workflow_dispatch -f run_mode=demo` | 安定デモ。GPT quota がなくても動く。 |
-| `cloud` | `workflow_dispatch -f run_mode=cloud` | Azure OpenAI 実呼び出し。quota 通過後に使う。 |
+| `cloud` | `workflow_dispatch -f run_mode=cloud` | Azure OpenAI 実呼び出し。本番デモで使う。 |
 
 ## 9. デプロイ確認
 

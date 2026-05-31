@@ -108,7 +108,7 @@
       <h2>データフロー</h2>
       <div class="code">Container Apps Job
   -> news / supplier notice / inventory / BOM / routes / orders
-  -> Azure OpenAI boundary (gpt-5.4 / gpt-5.4-mini)
+  -> Azure OpenAI boundary (gpt-5.4-mini / cloud)
   -> RiskEvent
   -> impact assessment
   -> Cosmos DB
@@ -128,8 +128,8 @@
           <span>対象材料、リスク種別、深刻度、遅延日数、割当率、対象期間、根拠を JSON として表示。</span>
         </div>
       </div>
-      <p><span class="pill">Azure OpenAI · gpt-5.4</span><span class="pill">Sub-agent · gpt-5.4-mini</span><span class="pill">RUN_MODE=demo</span></p>
-      <p>quota 通過前は deterministic mock で安定デモ。quota 通過後は `RUN_MODE=cloud` に切り替える。</p>
+      <p><span class="pill">Azure OpenAI · gpt-5.4-mini</span><span class="pill">East US 2 · DataZoneStandard</span><span class="pill">RUN_MODE=cloud</span></p>
+      <p>本番デモでは Azure OpenAI を実呼び出しし、Cloud API の実行時刻・実行ID・Cosmos DB 保存状態を画面で確認できる。障害時のみ deterministic fallback に切り替える。</p>
     </section>
 
     <section>
@@ -167,7 +167,7 @@
 
     <section>
       <h2>残課題</h2>
-      <p class="warn">Azure OpenAI の `gpt-5.4` / `gpt-5.4-mini` はモデル一覧には存在するが、現在の TPM quota が 0。quota 申請後に deployment を作成し、`RUN_MODE=cloud` に切り替える。</p>
+      <p class="warn">外部ニュース、サプライヤ通知、社内在庫/BOM はデモデータ。次の精緻化では RSS・メール添付・価格情報 API・社内CSV連携を段階的に追加する。</p>
     </section>
   </main>
 </body>

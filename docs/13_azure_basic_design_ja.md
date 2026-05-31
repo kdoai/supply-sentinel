@@ -11,7 +11,7 @@ flowchart LR
   API --> CDB["Azure Cosmos DB Serverless"]
 
   JOB["Azure Container Apps Job<br>cron 0 */6 * * *"] --> WF["Supply Sentinel Workflow"]
-  WF --> AI["Azure OpenAI / Azure AI Foundry<br>gpt-5.4 / gpt-5.4-mini"]
+  WF --> AI["Azure OpenAI / Azure AI Foundry<br>gpt-5.4-mini"]
   WF --> CDB
   WF --> DATA["Demo Data<br>news / supplier / inventory / BOM / routes / orders"]
 
@@ -73,17 +73,17 @@ sequenceDiagram
 
 | 用途 | Deployment 名 | Azure model |
 | --- | --- | --- |
-| メインエージェント | `gpt-5.4` | `gpt-5.4` |
+| メインエージェント | `gpt-5.4-mini` | `gpt-5.4-mini` |
 | サブエージェント | `gpt-5.4-mini` | `gpt-5.4-mini` |
 
-Azure 上の正式モデル名はハイフン付きの `gpt-5.4` / `gpt-5.4-mini`。ユーザー向け説明で `gpt5.4` と言う場合も、実装では Azure の deployment 名に合わせる。
+Azure 上の正式モデル名はハイフン付きの `gpt-5.4-mini`。ユーザー向け説明で `gpt5.4 mini` と言う場合も、実装では Azure の deployment 名に合わせる。
 
 ### RUN_MODE
 
 | mode | 動き |
 | --- | --- |
 | `demo` | deterministic mock。審査デモで安定して同じ結果を返す。 |
-| `cloud` | Azure OpenAI に実リクエスト。quota 通過後に有効化。 |
+| `cloud` | Azure OpenAI に実リクエスト。East US 2 の `gpt-5.4-mini` deployment を利用。 |
 
 ### meta.ai
 
@@ -94,7 +94,7 @@ Azure 上の正式モデル名はハイフン付きの `gpt-5.4` / `gpt-5.4-mini
   "meta": {
     "ai": {
       "provider": "Azure OpenAI",
-      "model": "gpt-5.4",
+      "model": "gpt-5.4-mini",
       "subagent_model": "gpt-5.4-mini",
       "run_mode": "demo",
       "inputs": [
@@ -148,7 +148,7 @@ local auth は disabled。Container Apps の Managed Identity に Cosmos DB Buil
 | ACR | Basic。 |
 | Storage | LRS、静的ファイルのみ。 |
 | Log Analytics | 30日保持。 |
-| Azure OpenAI | quota 通過後も短いプロンプトに限定。 |
+| Azure OpenAI | `gpt-5.4-mini` に限定し、短いプロンプトで実行。 |
 
 ## 10. 現実装との差分
 
@@ -156,7 +156,7 @@ local auth は disabled。Container Apps の Managed Identity に Cosmos DB Buil
 | --- | --- | --- |
 | 実行 | `node src/serve.mjs` / `npm run build:web` | Container Apps API + Container Apps Job |
 | 状態 | `outputs/latest` / `web/dashboard_data.json` | Cosmos DB `runs` container |
-| AI | deterministic extractor | Azure OpenAI `gpt-5.4` |
+| AI | deterministic extractor | Azure OpenAI `gpt-5.4-mini` |
 | フロント | 静的JSON fallback | API `/api/latest-dashboard` |
 | 認証 | なし | Managed Identity / OIDC |
 
