@@ -1,166 +1,138 @@
-# Azure化 要件定義
+# Azure Cloud 要件定義
 
 ## 1. 目的
 
-Supply Sentinel を、Hackathon デモで「実務に導入できる早期警戒型サプライチェーン支援システム」として説明できる状態にする。
+Supply Sentinel をハッカソンで「実務に使える早期警戒型サプライチェーン支援システム」として見せるため、Azure 上で最小コスト・最小権限・自動定期実行を満たす構成にする。
 
-現時点のローカル/静的モックは、ナフサ供給リスクのデモ体験として成立している。次段階では、同じ設計思想を維持しつつ、Azure 上で以下を実現する。
-
-- Agent が定期的に外部シグナルを巡回する
-- GPT 系モデルで供給リスクを構造化する
-- 在庫、BOM、代替材、受注と照合する
-- 自社影響、初動タスク、管理職レポートを生成する
-- ナフサ以外の原材料にも、データ差し替えで対応できる
-- 1か月 1万円以内を目指す最小構成で運用できる
+本番相当の狙いは、外部シグナルをただ要約することではなく、AI が外部テキストからリスクイベントを構造化し、自社の在庫・BOM・調達ルート・受注データに照らして業務影響へ翻訳すること。
 
 ## 2. ハッカソン要件への対応
 
-| 要件 | 対応方針 |
-|---|---|
-| Azure アプリケーション実行基盤 | Azure Functions Timer Trigger を必須採用。必要に応じて HTTP Trigger でデモAPIも提供する。 |
-| Microsoft AI 技術 | Azure AI Foundry / Azure OpenAI の GPT 系モデルを利用する。Agent Service はマルチエージェント実行基盤として採用候補にする。 |
-| Agentic AI | Scheduler Agent、Signal Collector Agent、Risk Extraction Agent、Impact Assessment Agent、Response Planner Agent、Supervisor Agent に分割する。 |
-| 定期自動実行 | Azure Functions Timer Trigger で 1時間ごと、またはデモ時のみ手動実行可能にする。 |
-| 実務を動かせること | 「ニュース要約」ではなく、「自社影響に翻訳し、初動を準備する」ことを主価値にする。 |
-| 低コスト | Consumption/Flex Consumption、短いプロンプト、候補イベントのみAI処理、キャッシュ、デモデータ利用で月1万円以内を狙う。 |
-
-参考:
-
-- Azure Functions Timer Trigger: https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer
-- Azure Functions Consumption cost: https://learn.microsoft.com/en-us/azure/azure-functions/functions-consumption-costs
-- Azure Functions pricing: https://azure.microsoft.com/pricing/details/functions/
-- Azure AI Foundry Agent Service: https://learn.microsoft.com/azure/ai-services/agents/overview
-- Azure AI Foundry: https://learn.microsoft.com/azure/ai-foundry/
+| 要件 | 採用方針 | 状態 |
+| --- | --- | --- |
+| Azure アプリケーション実行基盤 | Azure Container Apps Consumption | 採用済み |
+| 自動定期実行 | Azure Container Apps Job、cron `0 */6 * * *` | 採用済み |
+| Microsoft AI 技術 | Azure OpenAI / Azure AI Foundry の GPT 系モデル | 接続設計済み |
+| GPT モデル | メイン `gpt-5.4`、サブエージェント `gpt-5.4-mini` | quota 通過後に有効化 |
+| 状態管理 | Azure Cosmos DB for NoSQL Serverless | 採用済み |
+| CI/CD | GitHub Actions + OIDC | 採用済み |
+| 認証 | Microsoft Entra ID / Managed Identity | 採用済み |
+| コスト管理 | 月 3,000 円 Budget アラート | 採用済み |
 
 ## 3. スコープ
 
-### 3.1 Hackathon Cloud MVP でやること
+### Must
+
+- 外部ニュース・サプライヤ通知・社内デモデータを取り込み、ナフサ供給リスクを検知する。
+- AI リスク抽出の入力テキストと構造化結果を画面で対比表示する。
+- 在庫、BOM、調達ルート、受注情報から自社影響を算出する。
+- 影響製品、影響顧客、影響工場、在庫残日数、調達ルート影響、初動対応案を表示する。
+- Cosmos DB に最新ダッシュボードと実行履歴を保存する。
+- GitHub Actions から Azure へ OIDC でデプロイする。
+- API キーや接続文字列を Git に保存しない。
+
+### Should
+
+- 素材データを差し替えるだけで、包装材・半導体材料など別素材へ横展開できる。
+- `RUN_MODE=demo` では deterministic mock で安定デモできる。
+- quota 通過後、`RUN_MODE=cloud` で Azure OpenAI の GPT 呼び出しに切り替えられる。
+
+### Won't
+
+- ログイン画面やユーザー管理は作らない。
+- Teams 通知は今回の Cloud デモでは外す。
+- 発注変更、サプライヤ切替、顧客正式通知は AI が自動実行しない。Human-in-the-loop を前提にする。
+
+## 4. 機能要件
 
 | ID | 要件 | 優先度 |
-|---|---|---|
-| FR-C-001 | Azure Functions の Timer Trigger で巡回処理を起動する | Must |
-| FR-C-002 | デモデータ、外部シグナル、社内マスタを Storage から読み込む | Must |
-| FR-C-003 | GPT 系モデルでニュース/通知から RiskEvent を抽出する | Must |
-| FR-C-004 | BOM、在庫、受注、代替材と照合し ImpactAssessment を生成する | Must |
-| FR-C-005 | Cosmos DB に実行履歴、検知イベント、未解決アラートを保存する | Must |
-| FR-C-006 | ダッシュボードが最新の評価結果を表示できる | Must |
-| FR-C-007 | 管理職レポートと部門別初動タスクを生成する | Must |
-| FR-C-008 | データを変えるだけで対象原材料を差し替えられる | Must |
-| FR-C-009 | GitHub Actions でテスト、ビルド、Azure デプロイを実行する | Must |
-| FR-C-010 | Teams通知は今回スコープ外にする | Must |
+| --- | --- | --- |
+| FR-001 | Container Apps Job が 6 時間ごとに監視ワークフローを起動する | Must |
+| FR-002 | 外部シグナルを AI 入力テキストとして `meta.ai.inputs` に保持する | Must |
+| FR-003 | AI 抽出結果を RiskEvent として構造化する | Must |
+| FR-004 | `RUN_MODE=demo` では同じ入力から同じ結果を返す | Must |
+| FR-005 | `RUN_MODE=cloud` では Azure OpenAI の `gpt-5.4` をメインモデルとして使う | Should |
+| FR-006 | サブエージェント用途のモデル設定として `gpt-5.4-mini` を保持する | Should |
+| FR-007 | Cosmos DB に最新ダッシュボード、実行履歴、アラート履歴を保存する | Must |
+| FR-008 | Web フロントは Cloud API `/api/latest-dashboard` から最新データを取得する | Must |
+| FR-009 | Cloud API が落ちた場合は静的 `dashboard_data.json` にフォールバックできる | Should |
+| FR-010 | 初動対応画面で「AIが読んだ生テキスト」と「構造化JSON」を対比する | Must |
 
-### 3.2 今回やらないこと
+## 5. 非機能要件
 
-- ログイン画面、ユーザー管理、細かい権限制御
-- ERP/PLM/MES との本番接続
-- 自動発注、自動サプライヤ切替、顧客への自動正式通知
-- 株価予測、投資判断
-- 大規模ストリーミング基盤
-- Azure AI Search など固定費が出やすい構成
+| 項目 | 要件 |
+| --- | --- |
+| コスト | 月数千円、目標 3,000 円。API は max 1 replica、Job は 6 時間ごと。 |
+| セキュリティ | GitHub OIDC、Managed Identity、Cosmos DB local auth disabled。 |
+| 可用性 | ハッカソンデモでは単一リージョンでよい。 |
+| 運用性 | GitHub Actions から再現可能にデプロイできる。 |
+| 監査性 | AI 入力、抽出結果、判定根拠、生成時刻を画面とデータに残す。 |
+| 拡張性 | 素材マスタ・BOM・在庫・調達ルートを差し替えれば別素材に展開できる。 |
 
-## 4. 非機能要件
+## 6. エージェント設計
 
-| ID | 要件 | 内容 |
-|---|---|---|
-| NFR-C-001 | 低コスト | 月額 1万円以内を目標。常時起動を避け、従量課金中心にする。 |
-| NFR-C-002 | 再現性 | デモデータだけで同じシナリオを安定再現できる。 |
-| NFR-C-003 | 説明可能性 | RiskEvent、スコア根拠、照合した社内データ、推奨初動を保存・表示する。 |
-| NFR-C-004 | データ品質 | サンプルでも、実務投入を想定したスキーマ、発生時刻、ソース、信頼度、重複排除キーを持つ。 |
-| NFR-C-005 | セキュリティ | APIキーをGitHubに置かない。Azure Managed Identity、Key Vault、GitHub OIDCを使う。 |
-| NFR-C-006 | 拡張性 | ナフサ以外も material master / BOM / supplier route / signal rules を差し替えて対応する。 |
-| NFR-C-007 | Human-in-the-loop | 発注変更、サプライヤ切替、顧客通知、生産計画変更はAIが実行せず、人の承認対象として出力する。 |
+| Agent | 役割 | GPT 利用 |
+| --- | --- | --- |
+| Scheduler Agent | Container Apps Job から定期実行を開始 | なし |
+| Signal Collector Agent | ニュース、サプライヤ通知、社内データを正規化 | 原則なし |
+| Risk Extraction Agent | 外部テキストから RiskEvent を抽出 | `gpt-5.4` |
+| Impact Assessment Agent | BOM・在庫・受注・調達ルートから影響を算出 | ルール中心 |
+| Response Planner Agent | 初動対応案、承認事項、管理職向けサマリを生成 | `gpt-5.4` / `gpt-5.4-mini` |
+| Supervisor Agent | 未解決アラート、前回結果、再評価対象を管理 | なし |
 
-## 5. データ要件
+## 7. Human-in-the-loop
 
-ハッカソンではデモデータでよい。ただし「ハリボテ」に見えないよう、実務のデータ粒度に寄せる。
+AI が自動で行うのは、検知、構造化、影響評価、初動案作成、レポート生成まで。
 
-### 5.1 外部シグナル
+人が承認すること:
 
-| 種別 | デモデータ | 将来の接続元候補 | 役割 |
-|---|---|---|---|
-| 業界ニュース | `news_events.json` | GDELT、業界紙RSS、企業ニュースリリース | 早期兆候、広域リスクの検知 |
-| サプライヤ通知 | `supplier_notices.json` | メール、PDF、サプライヤポータル、SharePoint | 自社関連性と確度の高い遅延・割当情報 |
-| 物流情報 | `supply_routes.csv` + demo event | 港湾混雑情報、AIS、フォワーダ通知 | 輸送遅延の補助シグナル |
-| 災害・気象 | demo event | 気象庁防災情報XML、災害情報API | 工場・港湾・輸送ルート影響 |
-| 価格情報 | demo event | 商品市況、World Bank Pink Sheet 等 | 需給逼迫の補助シグナル |
+- 発注変更
+- サプライヤ切替
+- 代替材採用
+- 顧客への正式通知
+- 価格改定
+- 生産計画の大幅変更
 
-### 5.2 社内データ
+これにより、実務で導入しやすい「判断支援」に留める。
 
-| 種別 | デモファイル | 必須項目 | 差し替え単位 |
-|---|---|---|---|
-| 原材料マスタ | 追加対象 | material_id, display_name, category, criticality, aliases | ナフサ以外へ横展開する中心 |
-| BOM | `bom.csv` | product_id, material_id, usage_qty, plant_id | 製品別影響判定 |
-| 在庫 | `inventory.csv` | material_id, plant_id, stock_qty, daily_usage, days_of_supply | 残日在庫算出 |
-| 代替材 | `alternatives.csv` | material_id, alternative_material_id, approved, lead_time_days, constraints | 初動提案 |
-| 受注 | `orders.csv` | order_id, customer_id, product_id, plant_id, due_date, priority, amount | 顧客影響・優先順位 |
-| 調達ルート | `supply_routes.csv` | material_id, supplier, origin, port, plant, share_percent, lead_time_days, spend | 地図・調達構成 |
+## 8. コスト設計
 
-## 6. マルチエージェント要件
+| リソース | 方針 |
+| --- | --- |
+| Azure Container Apps | Consumption、API は `0.25 CPU / 0.5Gi`、max 1 replica。 |
+| Container Apps Job | cron `0 */6 * * *`。デモ中のみ手動実行可能。 |
+| Cosmos DB | Serverless、1 container、少量ドキュメント。 |
+| ACR | Basic。admin user disabled。 |
+| Storage Static Website | LRS、小容量静的ファイルのみ。 |
+| Log Analytics | 30 日保持。必要に応じて短縮可能。 |
+| Azure OpenAI | quota 通過後に短いプロンプトで利用。demo 中は deterministic mock。 |
+| Budget | 月 3,000 円アラート。課金停止ではなく通知。 |
 
-| Agent | 役割 | 入力 | 出力 | GPT利用 |
-|---|---|---|---|---|
-| Scheduler Agent | Timer Trigger から全体実行を開始 | cron, last_run | run_id | なし |
-| Signal Collector Agent | 外部/社内データを収集・正規化 | news, supplier notice, csv/json | SignalEnvelope[] | 原則なし |
-| Risk Extraction Agent | 外部シグナルから供給リスクを抽出 | SignalEnvelope[] | RiskEvent | あり |
-| Impact Assessment Agent | 自社データと照合 | RiskEvent, inventory, BOM, orders | ImpactAssessment | 原則ルール、必要時GPT |
-| Response Planner Agent | 初動タスク、承認事項、管理職レポート生成 | ImpactAssessment | ActionPlan, Report | あり |
-| Supervisor Agent | 重複排除、未解決アラート管理、再評価 | previous state, current run | state update | 原則なし |
+## 9. セキュリティ要件
 
-## 7. コスト要件
+- GitHub に Azure client secret を置かない。
+- GitHub Actions は OIDC federation で Azure にログインする。
+- Container Apps と Job は User Assigned Managed Identity を使う。
+- Cosmos DB は local auth disabled。
+- ACR は admin user disabled。
+- フロントには API キーを置かない。
+- 公開 API は読み取り専用の `/api/latest-dashboard` と `/api/health` に限定する。
 
-月 1万円以内を目指す最小構成。
+## 10. デモ成功条件
 
-| 項目 | 方針 |
-|---|---|
-| Azure Functions | Consumption/Flex Consumption。常時起動しない。デモは手動または1時間間隔。 |
-| Azure OpenAI | GPT-4o mini または同等の低コストGPT系モデルを優先。高価なモデルは最終レポートだけに限定可能。 |
-| Cosmos DB | Serverless または Free Tier を候補。履歴件数を制限しTTLを設定。 |
-| Storage | Blob/Queue/Table相当の小容量利用。 |
-| Application Insights | サンプリングと保存期間短縮。 |
-| AI Search | 初期構成では使わない。RAGが必要になった段階で検討。 |
+- ダッシュボードが Azure Static Website から開ける。
+- Cloud API が Cosmos DB 由来の `dashboard` を返す。
+- AI リスク抽出パネルで「入力テキスト → 構造化結果」が一目で伝わる。
+- 不変条件が崩れない:
+  - risk score: 82
+  - 影響調達比率: 65%
+  - 月間調達額: 7.8M USD / 12M USD
+  - 影響ルート: 3 of 4
+  - 最短在庫残日数: 5日
+  - 素材: 3種類
 
-コスト低減策:
+## 11. 残課題
 
-- ニュース全件をGPTに投げない。キーワード/ルールで候補を絞る。
-- 同一URL/同一通知本文はハッシュで重複排除する。
-- RiskEvent 抽出は Structured Output で短く返す。
-- 管理職レポートは高リスク時だけ生成する。
-- デモではAI応答をキャッシュし、失敗時は deterministic mock にフォールバックする。
-- 未解決アラートだけ再評価し、解決済みはスキップする。
-
-### 7.1 月額1万円以内の目安
-
-正確な金額はリージョン、為替、モデル単価で変動するため、提出時はAzure Pricing Calculatorで再確認する。ただし Hackathon MVP では以下の制約で1万円以内を狙える。
-
-| サービス | 最小構成 | コスト抑制条件 |
-|---|---|---|
-| Azure Functions | Consumption/Flex Consumption | 1時間ごと、またはデモ時手動。Always Ready を使わない。Functionsには無料実行枠がある。 |
-| Azure OpenAI / Foundry model | GPT-4o mini 相当 | 1回の巡回で候補10件以下、Risk抽出とReport生成だけに限定。キャッシュ利用。 |
-| Cosmos DB | Free Tier または Serverless | Free Tierは開発/小規模用途に向く。Serverlessは利用量課金だがFree Tier対象外。どちらかを選ぶ。 |
-| Storage Account | Hot tier small dataset | デモデータ、PDF数件、出力JSONのみ。ライフサイクルで古い成果物を削除。 |
-| Application Insights | 最小ログ + サンプリング | デバッグログを絞り、保持期間を短くする。 |
-
-設計判断:
-
-- 初期は Cosmos DB Free Tier を第一候補にする。
-- スパイクが少なく、実行頻度が低い場合は Cosmos DB Serverless も候補。
-- Azure AI Search は固定費が出やすいため初期構成から外す。
-- Container Apps / AKS / VM は常時費用が出やすいため使わない。
-
-参考:
-
-- Azure Cosmos DB Free Tier: https://learn.microsoft.com/azure/cosmos-db/free-tier
-- Azure Cosmos DB Serverless: https://learn.microsoft.com/azure/cosmos-db/serverless
-- Azure Blob Storage pricing: https://azure.microsoft.com/pricing/details/storage/blobs/
-- Azure Monitor pricing: https://azure.microsoft.com/pricing/details/monitor/
-
-## 8. 受入条件
-
-Hackathon デモ前の完了条件:
-
-- GitHub Actions の CI が通る
-- Azure デプロイ用 workflow が用意されている
-- Timer Trigger 相当の実行設計が説明できる
-- Azure AI Foundry / Azure OpenAI を使う境界がコード/設計で明確
-- デモデータをナフサ以外に差し替えられるスキーマになっている
-- 画面上で「外部リスクを自社影響へ翻訳する」価値が一目で伝わる
+- Azure OpenAI の `gpt-5.4` / `gpt-5.4-mini` quota 申請。
+- quota 通過後、モデルデプロイ名を `gpt-5.4` / `gpt-5.4-mini` として作成する。
+- `RUN_MODE=cloud` で AI 抽出を本番呼び出しに切り替える。

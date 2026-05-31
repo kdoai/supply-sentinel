@@ -787,7 +787,8 @@ button {
 #event-log,
 #evidence-list,
 #actions-list,
-#approval-list {
+#approval-list,
+#ai-extraction {
   overflow: auto;
   padding: 14px 18px;
 }
@@ -1427,9 +1428,209 @@ li {
   font-weight: 700;
 }
 
+/* --- 初動対応: AIリスク抽出 (入力 → 構造化) --- */
+#ai-extraction .ai-extract-empty strong {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.ai-extract-empty p,
+.ai-extract-note {
+  margin: 6px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* #ai-extraction が外側で余白を持つため、内包する #evidence-list は余白を相殺 */
+#ai-extraction #evidence-list {
+  padding: 0 0 0 20px;
+  overflow: visible;
+}
+
+.ai-extract-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.ai-extract-badges span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ai-extract-model {
+  color: #fff;
+  background: var(--navy-800);
+}
+
+.ai-extract-mode-demo {
+  color: var(--blue-700);
+  background: #eaf2fb;
+}
+
+.ai-extract-mode-cloud {
+  color: #fff;
+  background: var(--green);
+}
+
+.ai-extract-confidence {
+  color: var(--muted);
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+}
+
+.ai-extract-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+}
+
+.ai-extract-col h4 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.ai-extract-arrow {
+  display: grid;
+  place-items: center;
+  color: var(--blue-600);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.ai-extract-cards {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-extract-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: var(--panel-soft);
+}
+
+.ai-extract-kind {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  margin-bottom: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.ai-extract-kind-news {
+  color: var(--blue-700);
+  background: #eaf2fb;
+}
+
+.ai-extract-kind-supplier {
+  color: var(--amber);
+  background: #fdf3e3;
+}
+
+.ai-extract-card strong {
+  display: block;
+  font-size: 12px;
+}
+
+.ai-extract-card-title {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ai-extract-card-body {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ai-extract-fields {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ai-extract-fields div {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+
+.ai-extract-fields div:first-child {
+  border-top: 0;
+}
+
+.ai-extract-fields dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.ai-extract-fields dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.ai-extract-fields .ai-extract-sev {
+  color: var(--red);
+}
+
+.ai-extract-evidence {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.ai-extract-evidence-head {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.ai-extract-evidence #evidence-list li {
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
 @media (max-width: 1120px) {
   body {
     overflow: auto;
+  }
+
+  .ai-extract-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-extract-arrow {
+    transform: rotate(90deg);
   }
 
   .app-shell,
@@ -1770,7 +1971,8 @@ li {
   .summary-panel ul,
   #evidence-list,
   #actions-list,
-  #approval-list {
+  #approval-list,
+  #ai-extraction {
     max-height: none;
     padding: 12px 14px;
   }

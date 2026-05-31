@@ -7,759 +7,168 @@
   <style>
     :root {
       color-scheme: light;
-      --navy-950: #071426;
-      --navy-900: #0f2742;
-      --blue-700: #174a8b;
-      --blue-600: #2563a8;
-      --cyan: #1297b8;
-      --green: #18794e;
-      --red: #c9362f;
-      --amber: #b66a00;
-      --bg: #f4f6f9;
-      --panel: #ffffff;
-      --soft: #f8fafc;
-      --line: #d9e0ea;
-      --text: #1d2733;
-      --muted: #637083;
-      --font: "Segoe UI", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui, sans-serif;
-      --mono: "Cascadia Code", Consolas, ui-monospace, monospace;
+      --ink: #102033;
+      --muted: #5d6b7a;
+      --line: #d9e2ec;
+      --blue: #0b4f9f;
+      --cyan: #0f8fb3;
+      --green: #1f8a55;
+      --red: #c73333;
+      --bg: #f6f8fb;
+      --card: #ffffff;
     }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
+    * { box-sizing: border-box; }
     body {
       margin: 0;
-      color: var(--text);
+      font-family: "Yu Gothic", "Meiryo", system-ui, sans-serif;
       background: var(--bg);
-      font-family: var(--font);
-      line-height: 1.65;
+      color: var(--ink);
+      line-height: 1.7;
     }
-
-    a {
-      color: var(--blue-700);
-      text-decoration: none;
+    header {
+      padding: 36px 40px 24px;
+      background: linear-gradient(120deg, #082f66, #0b4f9f 55%, #0f8fb3);
+      color: white;
     }
-
-    a:hover {
-      text-decoration: underline;
-    }
-
-    .hero {
-      color: #fff;
-      background: #071426;
-      border-bottom: 1px solid #183758;
-    }
-
-    .hero-inner,
-    .section-inner {
-      width: min(1180px, calc(100% - 40px));
-      margin: 0 auto;
-    }
-
-    .hero-inner {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-      gap: 32px;
-      align-items: end;
-      padding: 44px 0 36px;
-    }
-
-    .eyebrow {
-      margin: 0 0 8px;
-      color: #8ec9ff;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    h1,
-    h2,
-    h3 {
-      margin: 0;
-      line-height: 1.25;
-    }
-
-    h1 {
-      font-size: clamp(32px, 5vw, 56px);
-      letter-spacing: 0;
-    }
-
-    .subtitle {
-      max-width: 760px;
-      margin: 18px 0 0;
-      color: #d8e6f7;
-      font-size: 17px;
-    }
-
-    .hero-metrics {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .metric {
-      min-height: 100px;
-      border: 1px solid rgba(216, 230, 247, 0.22);
-      border-radius: 8px;
-      padding: 16px;
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .metric strong {
-      display: block;
-      font-size: 26px;
-      line-height: 1;
-    }
-
-    .metric span {
-      display: block;
-      margin-top: 8px;
-      color: #b9cce5;
-      font-size: 12px;
-    }
-
-    .toc {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: #ffffff;
-      border-bottom: 1px solid var(--line);
-      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-    }
-
-    .toc-inner {
-      display: flex;
-      gap: 8px;
-      width: min(1180px, calc(100% - 40px));
-      margin: 0 auto;
-      overflow-x: auto;
-      padding: 10px 0;
-    }
-
-    .toc a {
-      flex: 0 0 auto;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 7px 12px;
-      color: var(--text);
-      background: var(--soft);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
+    header p { max-width: 920px; margin: 10px 0 0; color: #dceeff; }
+    h1 { margin: 0; font-size: 36px; letter-spacing: 0; }
+    h2 { margin: 0 0 14px; font-size: 22px; }
+    h3 { margin: 0 0 8px; font-size: 16px; }
+    main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 48px; }
     section {
-      border-bottom: 1px solid var(--line);
-    }
-
-    .section-inner {
-      padding: 34px 0;
-    }
-
-    .section-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      align-items: end;
-      margin-bottom: 18px;
-    }
-
-    .section-head p {
-      max-width: 560px;
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .grid-3 {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .card {
+      margin-bottom: 22px;
+      background: var(--card);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 18px;
-      background: var(--panel);
-      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+      padding: 22px;
     }
-
-    .card h3 {
-      margin-bottom: 8px;
-      font-size: 17px;
-    }
-
-    .card p,
-    .card li {
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .card ul {
-      margin: 10px 0 0;
-      padding-left: 20px;
-    }
-
-    .badge-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 28px;
-      border-radius: 999px;
-      padding: 4px 10px;
-      color: var(--navy-900);
-      background: #eaf2fb;
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .badge.red {
-      color: #8d1f19;
-      background: #fff0ef;
-    }
-
-    .badge.green {
-      color: #11563b;
-      background: #eaf8f1;
-    }
-
-    .architecture {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(150px, 1fr));
-      gap: 12px;
-      align-items: stretch;
-      overflow-x: auto;
-      padding-bottom: 4px;
-    }
-
-    .arch-node {
-      position: relative;
-      min-height: 132px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 16px;
-      background: #fff;
-    }
-
-    .arch-node::after {
-      content: "→";
-      position: absolute;
-      top: 50%;
-      right: -14px;
-      color: var(--blue-600);
-      font-weight: 900;
-      transform: translateY(-50%);
-    }
-
-    .arch-node:last-child::after {
-      content: "";
-    }
-
-    .arch-node strong {
-      display: block;
-      color: var(--navy-900);
-      font-size: 15px;
-    }
-
-    .arch-node span {
-      display: block;
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .agent-list {
-      display: grid;
-      gap: 10px;
-      counter-reset: agent;
-    }
-
-    .agent {
-      display: grid;
-      grid-template-columns: 46px minmax(0, 1fr) 180px;
-      gap: 14px;
-      align-items: center;
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .box {
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 14px;
-      background: #fff;
+      background: #fbfdff;
     }
-
-    .agent::before {
-      counter-increment: agent;
-      content: counter(agent);
-      display: grid;
-      place-items: center;
-      width: 36px;
-      height: 36px;
-      border-radius: 999px;
-      color: #fff;
-      background: var(--blue-600);
-      font-weight: 900;
-    }
-
-    .agent strong {
-      display: block;
-      font-size: 15px;
-    }
-
-    .agent span,
-    .agent em {
-      color: var(--muted);
-      font-size: 12px;
-      font-style: normal;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      overflow: hidden;
-      border: 1px solid var(--line);
+    .box strong { display: block; color: var(--blue); }
+    .box span { color: var(--muted); font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 10px; text-align: left; vertical-align: top; }
+    th { color: var(--blue); background: #f0f6ff; }
+    code, .code {
+      font-family: Consolas, "Courier New", monospace;
+      background: #0f1f33;
+      color: #dff7ff;
       border-radius: 8px;
-      background: #fff;
-      font-size: 13px;
-    }
-
-    th,
-    td {
-      border-bottom: 1px solid #edf1f6;
-      padding: 11px 12px;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      color: var(--muted);
-      background: #f7f9fc;
-      font-weight: 800;
-    }
-
-    tr:last-child td {
-      border-bottom: 0;
-    }
-
-    .timeline {
-      display: grid;
-      gap: 10px;
-    }
-
-    .step {
-      display: grid;
-      grid-template-columns: 92px minmax(0, 1fr);
-      gap: 14px;
-      border-left: 3px solid var(--blue-600);
-      padding: 10px 0 10px 14px;
-      background: #fff;
-    }
-
-    .step time {
-      color: var(--muted);
-      font-family: var(--mono);
-      font-size: 12px;
-    }
-
-    .step strong {
+      padding: 14px;
       display: block;
-      color: var(--navy-900);
-    }
-
-    .step p {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .note {
-      border-left: 4px solid var(--green);
-      padding: 14px 16px;
-      background: #f0faf5;
-      color: #174831;
-      font-weight: 700;
-    }
-
-    .code {
       overflow-x: auto;
-      border: 1px solid #243a63;
-      border-radius: 8px;
-      padding: 16px;
-      color: #dce8ff;
-      background: #08101f;
-      font-family: var(--mono);
+      white-space: pre-wrap;
+    }
+    .pill {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #e9f3ff;
+      color: var(--blue);
       font-size: 12px;
-      line-height: 1.6;
-      white-space: pre;
+      font-weight: 700;
+      margin-right: 6px;
     }
-
-    .refs {
-      display: grid;
-      gap: 6px;
-      margin: 0;
-      padding-left: 20px;
-    }
-
-    footer {
-      padding: 24px 0 40px;
-      color: var(--muted);
-      text-align: center;
-      font-size: 12px;
-    }
-
-    @media (max-width: 860px) {
-      .hero-inner,
-      .grid-2,
-      .grid-3 {
-        grid-template-columns: 1fr;
-      }
-
-      .hero-inner {
-        padding-top: 32px;
-      }
-
-      .section-head {
-        display: block;
-      }
-
-      .section-head p {
-        margin-top: 8px;
-      }
-
-      .agent {
-        grid-template-columns: 42px minmax(0, 1fr);
-      }
-
-      .agent em {
-        grid-column: 2;
-      }
-
-      table {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-      }
-    }
-
-    @media print {
-      .toc {
-        display: none;
-      }
-
-      body {
-        background: #fff;
-      }
-
-      .hero {
-        color: #111;
-        background: #fff;
-      }
-
-      .subtitle,
-      .hero .eyebrow {
-        color: #333;
-      }
-
-      section,
-      .card,
-      table,
-      .arch-node,
-      .agent {
-        break-inside: avoid;
-      }
+    .ok { color: var(--green); font-weight: 700; }
+    .warn { color: var(--red); font-weight: 700; }
+    @media (max-width: 820px) {
+      header { padding: 28px 20px 20px; }
+      h1 { font-size: 28px; }
+      main { padding: 18px 12px 32px; }
+      .grid, .grid.two { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <header class="hero">
-    <div class="hero-inner">
-      <div>
-        <p class="eyebrow">Azure Cloud Plan / Hackathon Demo</p>
-        <h1>Supply Sentinel<br>Cloud化 基本計画</h1>
-        <p class="subtitle">
-          外部ニュースやサプライヤ通知をAIエージェントが定期巡回し、BOM・在庫・代替材・受注と照合して、
-          供給リスクを「自社が今日動くべき初動」に翻訳する早期警戒型システム。
-        </p>
-      </div>
-      <div class="hero-metrics" aria-label="計画の要点">
-        <div class="metric"><strong>Azure Functions</strong><span>Timer Triggerで定期実行</span></div>
-        <div class="metric"><strong>GPT系モデル</strong><span>Azure AI Foundry / Azure OpenAI</span></div>
-        <div class="metric"><strong>Multi-Agent</strong><span>収集・抽出・影響評価・初動生成</span></div>
-        <div class="metric"><strong>1万円/月以内</strong><span>最小構成とキャッシュで低コスト化</span></div>
-      </div>
-    </div>
+  <header>
+    <h1>Supply Sentinel Azure Cloud Plan</h1>
+    <p>外部シグナルを AI が構造化し、自社在庫・BOM・調達ルートに照合して業務影響へ翻訳する、早期警戒型サプライチェーン支援システム。</p>
   </header>
 
-  <nav class="toc" aria-label="目次">
-    <div class="toc-inner">
-      <a href="#value">価値</a>
-      <a href="#requirements">要件</a>
-      <a href="#architecture">Azure構成</a>
-      <a href="#agents">Agent設計</a>
-      <a href="#data">データ設計</a>
-      <a href="#change">変更点</a>
-      <a href="#cost">コスト</a>
-      <a href="#cicd">CI/CD</a>
-      <a href="#roadmap">実装順</a>
-    </div>
-  </nav>
-
   <main>
-    <section id="value">
-      <div class="section-inner">
-        <div class="section-head">
-          <h2>1. 何を実現するか</h2>
-          <p>審査で伝える中心メッセージは、予測精度ではなく「初動時間の短縮」と「外部リスクの自社影響への翻訳」。</p>
-        </div>
-        <div class="grid-3">
-          <article class="card">
-            <h3>外部リスクを検知</h3>
-            <p>ニュース、サプライヤ通知、物流、災害、価格情報から供給不安の兆候を拾う。</p>
-            <div class="badge-row"><span class="badge">ニュース</span><span class="badge">PDF/メール</span><span class="badge">物流</span></div>
-          </article>
-          <article class="card">
-            <h3>自社影響に翻訳</h3>
-            <p>BOM、在庫、代替材、受注を照合し、どの製品・工場・顧客に何日後に影響するかを出す。</p>
-            <div class="badge-row"><span class="badge red">最短5日</span><span class="badge red">影響額7.8百万ドル/月</span></div>
-          </article>
-          <article class="card">
-            <h3>初動を準備</h3>
-            <p>AIは勝手に発注や顧客通知をしない。担当タスク、承認事項、管理職レポートを準備する。</p>
-            <div class="badge-row"><span class="badge green">Human-in-the-loop</span><span class="badge">管理職レポート</span></div>
-          </article>
-        </div>
-        <p class="note">一言でいうと、Supply Sentinel は「世の中の供給不安」を「自社の製品Aが5日後に止まるリスク」へ変換する。</p>
+    <section>
+      <h2>最終構成</h2>
+      <div class="grid">
+        <div class="box"><strong>Azure Container Apps</strong><span>公開 read-only API。max 1 replica。</span></div>
+        <div class="box"><strong>Container Apps Job</strong><span>cron 0 */6 * * * で6時間ごとに巡回。</span></div>
+        <div class="box"><strong>Cosmos DB Serverless</strong><span>latest / run / alert を保存。</span></div>
+        <div class="box"><strong>Storage Static Website</strong><span>3画面ダッシュボードを配信。</span></div>
+        <div class="box"><strong>ACR Basic</strong><span>GitHub runner で build した image を保存。</span></div>
+        <div class="box"><strong>GitHub Actions OIDC</strong><span>client secret なしで Azure deploy。</span></div>
       </div>
     </section>
 
-    <section id="requirements">
-      <div class="section-inner">
-        <div class="section-head">
-          <h2>2. Hackathon要件への対応</h2>
-          <p>Microsoft Azure実行基盤とMicrosoft AI技術を明示的に使い、実務導入の説得力を持たせる。</p>
-        </div>
-        <table>
-          <thead>
-            <tr><th>要件</th><th>対応</th><th>デモでの見せ方</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Azure実行基盤</td><td>Azure Functions Timer Trigger</td><td>定期巡回する監視エージェントとして説明</td></tr>
-            <tr><td>Microsoft AI</td><td>Azure AI Foundry / Azure OpenAI GPT系モデル</td><td>RiskEvent抽出と管理職レポート生成</td></tr>
-            <tr><td>Agentic AI</td><td>複数Agentで収集、抽出、照合、初動生成</td><td>イベントログでAgentの進行を可視化</td></tr>
-            <tr><td>実務インパクト</td><td>影響製品、顧客、工場、残日在庫、承認事項</td><td>管理職が一瞬で判断できるダッシュボード</td></tr>
-            <tr><td>完成度・実現性</td><td>発注や通知の自動実行はしない</td><td>AIは提案、人が重要判断を承認</td></tr>
-          </tbody>
-        </table>
-      </div>
+    <section>
+      <h2>データフロー</h2>
+      <div class="code">Container Apps Job
+  -> news / supplier notice / inventory / BOM / routes / orders
+  -> Azure OpenAI boundary (gpt-5.4 / gpt-5.4-mini)
+  -> RiskEvent
+  -> impact assessment
+  -> Cosmos DB
+  -> Container Apps API
+  -> Static Web dashboard</div>
     </section>
 
-    <section id="architecture">
-      <div class="section-inner">
-        <div class="section-head">
-          <h2>3. Azure最小構成</h2>
-          <p>常時起動コンポーネントを避け、従量課金中心で1万円/月以内を狙う。</p>
+    <section>
+      <h2>AI の見せ方</h2>
+      <div class="grid two">
+        <div class="box">
+          <strong>入力</strong>
+          <span>業界ニュースとサプライヤ通知の生テキスト。画面では「AIが読んだ外部テキスト」として表示。</span>
         </div>
-        <div class="architecture">
-          <div class="arch-node"><strong>GitHub Actions</strong><span>CI、テスト、OIDCでAzureへデプロイ</span></div>
-          <div class="arch-node"><strong>Azure Functions</strong><span>Timer Trigger / HTTP Trigger。Agentワークフローを実行</span></div>
-          <div class="arch-node"><strong>Azure AI Foundry</strong><span>GPT系モデルでRiskEvent抽出、初動案生成</span></div>
-          <div class="arch-node"><strong>Storage + Cosmos DB</strong><span>入力データ、実行履歴、未解決アラートを保存</span></div>
-          <div class="arch-node"><strong>Dashboard</strong><span>最新の影響評価とデモ再生を表示</span></div>
+        <div class="box">
+          <strong>構造化</strong>
+          <span>対象材料、リスク種別、深刻度、遅延日数、割当率、対象期間、根拠を JSON として表示。</span>
         </div>
-        <div class="code">Timer Trigger
-  -> Signal Collector Agent
-  -> Risk Extraction Agent  // GPT
-  -> Impact Assessment Agent // BOM・在庫・受注照合
-  -> Response Planner Agent  // GPT
-  -> Supervisor Agent        // 履歴・未解決管理
-  -> Dashboard JSON / Cosmos DB</div>
       </div>
+      <p><span class="pill">Azure OpenAI · gpt-5.4</span><span class="pill">Sub-agent · gpt-5.4-mini</span><span class="pill">RUN_MODE=demo</span></p>
+      <p>quota 通過前は deterministic mock で安定デモ。quota 通過後は `RUN_MODE=cloud` に切り替える。</p>
     </section>
 
-    <section id="agents">
-      <div class="section-inner">
-        <div class="section-head">
-          <h2>4. マルチエージェント設計</h2>
-          <p>巨大な1つのAIではなく、責務ごとの小さなAgentに分ける。低コスト化と説明可能性のため、ルールで足りる部分はAIを使わない。</p>
-        </div>
-        <div class="agent-list">
-          <div class="agent"><div><strong>Scheduler Agent</strong><span>定期実行、run_id発行、前回状態読み込み</span></div><em>GPTなし</em></div>
-          <div class="agent"><div><strong>Signal Collector Agent</strong><span>ニュース、通知、物流、災害、価格、社内データを正規化</span></div><em>原則GPTなし</em></div>
-          <div class="agent"><div><strong>Risk Extraction Agent</strong><span>外部シグナルからRiskEventを構造化抽出</span></div><em>GPT利用</em></div>
-          <div class="agent"><div><strong>Impact Assessment Agent</strong><span>BOM・在庫・受注・代替材を照合し、自社影響を算出</span></div><em>ルール中心</em></div>
-          <div class="agent"><div><strong>Response Planner Agent</strong><span>初動タスク、承認事項、管理職レポートを生成</span></div><em>GPT利用</em></div>
-          <div class="agent"><div><strong>Supervisor Agent</strong><span>未解決アラート、差分、エスカレーション、解決状態を管理</span></div><em>GPTなし</em></div>
-        </div>
-      </div>
+    <section>
+      <h2>Human-in-the-loop</h2>
+      <table>
+        <tr><th>AI が行うこと</th><th>人が承認すること</th></tr>
+        <tr><td>情報収集、AIリスク抽出、影響評価、初動案作成、レポート生成</td><td>発注変更、サプライヤ切替、顧客正式通知、価格改定、生産計画変更</td></tr>
+      </table>
     </section>
 
-    <section id="data">
-      <div class="section-inner">
-        <div class="section-head">
-          <h2>5. データ設計</h2>
-          <p>デモデータでも、実務でそのまま接続先を差し替えられるスキーマにする。ナフサ以外はmaterial_idを差し替える。</p>
-        </div>
-        <div class="grid-2">
-          <article class="card">
-            <h3>外部データ</h3>
-            <table>
-              <thead><tr><th>種別</th><th>接続元候補</th><th>用途</th></tr></thead>
-              <tbody>
-                <tr><td>ニュース</td><td>GDELT、業界紙RSS</td><td>供給不安の早期兆候</td></tr>
-                <tr><td>サプライヤ通知</td><td>メール、PDF、SharePoint</td><td>遅延・割当制限の確度確認</td></tr>
-                <tr><td>物流</td><td>港湾混雑、AIS、フォワーダ通知</td><td>輸送遅延の補助シグナル</td></tr>
-                <tr><td>災害・気象</td><td>気象庁防災情報XML</td><td>港湾・工場・地域影響</td></tr>
-                <tr><td>価格</td><td>商品市況、Pink Sheet</td><td>需給逼迫の補助情報</td></tr>
-              </tbody>
-            </table>
-          </article>
-          <article class="card">
-            <h3>社内データ</h3>
-            <table>
-              <thead><tr><th>種別</th><th>主キー</th><th>用途</th></tr></thead>
-              <tbody>
-                <tr><td>原材料マスタ</td><td>material_id</td><td>ナフサ以外への横展開</td></tr>
-                <tr><td>BOM</td><td>product_id + material_id</td><td>影響製品特定</td></tr>
-                <tr><td>在庫</td><td>material_id + plant_id</td><td>残日在庫算出</td></tr>
-                <tr><td>代替材</td><td>material_id</td><td>初動案と制約確認</td></tr>
-                <tr><td>受注</td><td>order_id</td><td>顧客影響と優先順位</td></tr>
-              </tbody>
-            </table>
-          </article>
-        </div>
-      </div>
+    <section>
+      <h2>コストとセキュリティ</h2>
+      <table>
+        <tr><th>項目</th><th>設計</th></tr>
+        <tr><td>月額目標</td><td>月数千円。Budget alert は 3,000 円。</td></tr>
+        <tr><td>実行コスト</td><td>Container Apps は 0.25 CPU / 0.5Gi、Job は6時間ごと。</td></tr>
+        <tr><td>認証</td><td>GitHub OIDC と Managed Identity。長期 secret は置かない。</td></tr>
+        <tr><td>DB</td><td>Cosmos DB local auth disabled。</td></tr>
+        <tr><td>ACR</td><td>admin user disabled。</td></tr>
+      </table>
     </section>
 
-    <section id="change">
-      <div class="section-inner">
-        <div class="section-head">
-          <h2>6. 現在実装からの変更点</h2>
-          <p>いまのデモ体験は維持し、裏側をAzure実行基盤へ差し替える。</p>
-        </div>
-        <table>
-          <thead><tr><th>領域</th><th>現在</th><th>Azure化後</th></tr></thead>
-          <tbody>
-            <tr><td>実行</td><td>Nodeローカル / GitHub Pages</td><td>Azure Functions Timer Trigger + HTTP Trigger</td></tr>
-            <tr><td>AI</td><td>deterministic mock</td><td>Azure AI Foundry / Azure OpenAI GPT系モデル</td></tr>
-            <tr><td>Agent</td><td>workflow.mjsで一括実行</td><td>論理Agentに分割、Supervisorで状態管理</td></tr>
-            <tr><td>データ</td><td>data/samples と web/demo_events.json</td><td>Blob Storage input dataset</td></tr>
-            <tr><td>状態</td><td>outputs/latest JSON</td><td>Cosmos DB runs / risk_events / alert_state</td></tr>
-            <tr><td>画面</td><td>静的JSON読込</td><td>/api/latest またはBlob JSONから最新結果取得</td></tr>
-            <tr><td>CI/CD</td><td>手動push</td><td>GitHub Actions CI + Azure OIDC Deploy</td></tr>
-          </tbody>
-        </table>
-      </div>
+    <section>
+      <h2>デモ成功条件</h2>
+      <table>
+        <tr><th>KPI</th><th>期待値</th></tr>
+        <tr><td>Risk score</td><td class="ok">82</td></tr>
+        <tr><td>影響調達比率</td><td class="ok">65%</td></tr>
+        <tr><td>月間調達額</td><td class="ok">$7.8M / $12M</td></tr>
+        <tr><td>影響ルート</td><td class="ok">3 of 4</td></tr>
+        <tr><td>最短在庫残日数</td><td class="ok">5日</td></tr>
+        <tr><td>素材</td><td class="ok">3種類</td></tr>
+      </table>
     </section>
 
-    <section id="cost">
-      <div class="section-inner">
-        <div class="section-head">
-          <h2>7. コスト方針</h2>
-          <p>Hackathonでは最小能力でよい。スケールできる設計だけ残し、初期は従量課金とキャッシュで抑える。</p>
-        </div>
-        <div class="grid-3">
-          <article class="card">
-            <h3>Functions</h3>
-            <p>Consumption/Flex Consumption。Always Readyは使わない。デモは手動または1時間ごと。</p>
-          </article>
-          <article class="card">
-            <h3>GPT</h3>
-            <p>GPT-4o mini相当を優先。候補イベントだけ抽出し、高リスク時だけレポート生成。</p>
-          </article>
-          <article class="card">
-            <h3>Cosmos / Storage</h3>
-            <p>Cosmos DB Free TierまたはServerless。Blobは小容量、古い成果物はTTLや削除で管理。</p>
-          </article>
-        </div>
-        <p class="note">Azure AI Search、AKS、VM、常時起動Container Appsは初期構成から外す。月1万円以内を狙うなら固定費を増やさない。</p>
-      </div>
-    </section>
-
-    <section id="cicd">
-      <div class="section-inner">
-        <div class="section-head">
-          <h2>8. GitHub CI/CD</h2>
-          <p>既にworkflow雛形を追加済み。Azure接続情報を入れればデプロイを手動実行できる。</p>
-        </div>
-        <div class="grid-2">
-          <article class="card">
-            <h3>CI</h3>
-            <ul>
-              <li>push / pull_requestで実行</li>
-              <li>Node 20 セットアップ</li>
-              <li>構文チェック</li>
-              <li>ユニットテスト</li>
-              <li>Web assets build</li>
-            </ul>
-          </article>
-          <article class="card">
-            <h3>Azure Deploy</h3>
-            <ul>
-              <li>workflow_dispatchで手動実行</li>
-              <li>GitHub OIDCでAzure login</li>
-              <li>Azure Functionsへデプロイ</li>
-              <li>RUN_MODEをdemo/cloudで切替</li>
-              <li>長期シークレットを置かない</li>
-            </ul>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section id="roadmap">
-      <div class="section-inner">
-        <div class="section-head">
-          <h2>9. 実装ロードマップ</h2>
-          <p>Hackathonまでの優先順位。まず「Azureで定期実行され、AIで構造化し、自社影響に変換する」ことを見せる。</p>
-        </div>
-        <div class="timeline">
-          <div class="step"><time>Step 1</time><div><strong>Azure Function Appを作成</strong><p>Timer TriggerとHTTP Triggerの最小実行を通す。</p></div></div>
-          <div class="step"><time>Step 2</time><div><strong>Blob Storage入力へ切替</strong><p>data/samplesをBlob inputに置き、同じスキーマで読み込む。</p></div></div>
-          <div class="step"><time>Step 3</time><div><strong>Azure OpenAI接続</strong><p>Risk Extraction AgentとResponse Planner AgentだけGPTを使う。</p></div></div>
-          <div class="step"><time>Step 4</time><div><strong>Cosmos DB状態管理</strong><p>runs、risk_events、impact_assessments、alert_stateを保存する。</p></div></div>
-          <div class="step"><time>Step 5</time><div><strong>DashboardをAPI接続</strong><p>/api/latestまたはBlob JSONから最新結果を取得する。</p></div></div>
-          <div class="step"><time>Step 6</time><div><strong>デモ台本の固定</strong><p>ナフサで見せ、最後に材料データ差し替えで横展開可能と説明する。</p></div></div>
-        </div>
-      </div>
-    </section>
-
-    <section id="refs">
-      <div class="section-inner">
-        <div class="section-head">
-          <h2>10. 参考情報</h2>
-          <p>設計根拠として参照した公式ドキュメントと参考OSS。</p>
-        </div>
-        <ul class="refs">
-          <li><a href="https://learn.microsoft.com/azure/azure-functions/functions-bindings-timer">Azure Functions Timer Trigger</a></li>
-          <li><a href="https://learn.microsoft.com/azure/azure-functions/functions-consumption-costs">Azure Functions consumption cost</a></li>
-          <li><a href="https://learn.microsoft.com/azure/ai-services/agents/overview">Azure AI Foundry Agent Service</a></li>
-          <li><a href="https://learn.microsoft.com/azure/cosmos-db/free-tier">Azure Cosmos DB Free Tier</a></li>
-          <li><a href="https://github.com/deveshkp/woodpecker-ai">deveshkp/woodpecker-ai</a></li>
-          <li><a href="https://github.com/hhtzuhh/Aorta">hhtzuhh/Aorta</a></li>
-          <li><a href="https://github.com/kavishsathia/sworn">kavishsathia/sworn</a></li>
-        </ul>
-      </div>
+    <section>
+      <h2>残課題</h2>
+      <p class="warn">Azure OpenAI の `gpt-5.4` / `gpt-5.4-mini` はモデル一覧には存在するが、現在の TPM quota が 0。quota 申請後に deployment を作成し、`RUN_MODE=cloud` に切り替える。</p>
     </section>
   </main>
-
-  <footer>
-    Supply Sentinel / Azure Cloud Plan Summary / Hackathon MVP
-  </footer>
 </body>
 </html>

@@ -18,7 +18,7 @@ The hackathon MVP focuses on one high-impact scenario:
 - Extract material, region, period, delay, and confidence using Azure OpenAI.
 - Compare the event with sample inventory, BOM, alternatives, and order data.
 - Calculate affected products, customers, plants, remaining inventory days, and risk score.
-- Generate a Teams-style alert and management report.
+- Generate first-response actions, approval items, and a management report.
 - Keep final decisions human-approved.
 
 ## Quick Start
@@ -147,12 +147,13 @@ outputs/latest/
 
 ## Recommended Microsoft Stack
 
-- Runtime: Azure Functions with Timer Trigger
-- AI: Microsoft Foundry / Azure OpenAI / Azure AI Agent Service
-- State: Azure Cosmos DB
-- Notification: Microsoft Teams via Power Automate or Logic Apps
-- Auth: Microsoft Entra ID
-- Development: GitHub / GitHub Copilot
+- Runtime: Azure Container Apps Consumption + Container Apps Job
+- AI: Azure OpenAI / Azure AI Foundry (`gpt-5.4`, sub-agent `gpt-5.4-mini`)
+- State: Azure Cosmos DB Serverless
+- Frontend: Azure Storage Static Website
+- Container registry: Azure Container Registry Basic
+- Auth: Microsoft Entra ID / Managed Identity
+- CI/CD: GitHub Actions + OIDC
 
 ## What We Deliberately Do Not Build
 

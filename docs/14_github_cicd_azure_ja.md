@@ -2,49 +2,36 @@
 
 ## 1. 目的
 
-Supply Sentinel を GitHub から Azure へ安全に継続デプロイできる状態にする。
+Supply Sentinel を GitHub から Azure へ安全に継続デプロイする。長期シークレットや API キーを GitHub に置かず、OIDC と Managed Identity を使う。
 
-Hackathonでは、以下を満たせば十分。
+## 2. Workflow
 
-- Pull Request / push 時にテストとWebビルドが走る
-- main ブランチの品質が保たれる
-- Azureデプロイは `workflow_dispatch` で手動実行できる
-- Azure認証は GitHub OIDC を使い、長期シークレットを置かない
-- Azureリソース名やサブスクリプションは GitHub Secrets / Variables で差し替える
+| Workflow | Trigger | 役割 |
+| --- | --- | --- |
+| `ci.yml` | push / pull_request | 構文チェック、テスト、Web build |
+| `deploy-azure.yml` | workflow_dispatch | Azure IaC、container build/push、Container Apps 更新、静的サイト upload |
 
-## 2. Workflow構成
+## 3. Deploy Workflow の流れ
 
-| Workflow | トリガー | 役割 |
-|---|---|---|
-| `ci.yml` | push / pull_request | Node構文チェック、ユニットテスト、`build:web`、成果物アップロード |
-| `deploy-azure-functions.yml` | workflow_dispatch | CI相当の検証後、Azure Functionsへデプロイ |
+1. Checkout
+2. Node.js setup
+3. `npm ci --ignore-scripts`
+4. `node --check`
+5. `npm test`
+6. `npm run build:web`
+7. Azure login with GitHub OIDC
+8. Bicep deployment
+9. Docker build on GitHub runner
+10. ACR push
+11. Container Apps API / Job update
+12. `web/config.js` を Cloud API 向けに生成
+13. Azure Storage Static Website に upload
 
-## 3. CI設計
+ACR Tasks は使わない。サブスクリプションによって ACR Tasks が禁止されることがあるため、GitHub runner 上で Docker build する。
 
-### 3.1 実行内容
+## 4. GitHub Secrets
 
-```text
-checkout
-setup-node 20
-npm install
-node --check web/js/app.js
-node --check web/js/panels.js
-node --check web/js/map.js
-node --check src/serve.mjs
-npm test
-npm run build:web
-upload web artifact
-```
-
-この時点では外部APIキーを使わない。CIは必ずデモデータだけで成功する。
-
-## 4. Azure Deploy設計
-
-### 4.1 方式
-
-GitHub Actions から Azure へは OIDC でログインする。
-
-必要な GitHub Secrets:
+値は OIDC 用の識別子のみ。client secret は使わない。
 
 ```text
 AZURE_CLIENT_ID
@@ -52,99 +39,78 @@ AZURE_TENANT_ID
 AZURE_SUBSCRIPTION_ID
 ```
 
-必要な GitHub Variables:
+## 5. GitHub Variables
 
 ```text
-AZURE_FUNCTIONAPP_NAME
-AZURE_RESOURCE_GROUP
-AZURE_FUNCTIONAPP_PACKAGE_PATH
+AZURE_RESOURCE_GROUP=rg-supply-sentinel-demo
+AZURE_LOCATION=japaneast
+AZURE_APP_NAME=supplysentinel
+AZURE_GITHUB_PRINCIPAL_ID=<service-principal-object-id>
+AZURE_OPENAI_ENDPOINT=https://supplysentinel-ai-xh5yr4.openai.azure.com/
+AZURE_OPENAI_ACCOUNT_NAME=supplysentinel-ai-xh5yr4
+AZURE_OPENAI_DEPLOYMENT=gpt-5.4
+AZURE_OPENAI_SUBAGENT_DEPLOYMENT=gpt-5.4-mini
 ```
 
-`AZURE_FUNCTIONAPP_PACKAGE_PATH` は初期値 `.` とする。Azure Functions 専用構成に分離したら `src/function_app` または `dist/function_app` に変更する。
+OpenAI endpoint と deployment 名は機密ではない。API キーは使わない。
 
-### 4.2 デプロイ対象
+## 6. Azure RBAC
 
-初期のAzure化では以下を同じリポジトリからデプロイする。
+| Principal | Scope | Role |
+| --- | --- | --- |
+| GitHub OIDC Service Principal | Resource Group | Contributor |
+| GitHub OIDC Service Principal | Resource Group | Role Based Access Control Administrator |
+| GitHub OIDC Service Principal | Resource Group | Storage Blob Data Contributor |
+| GitHub OIDC Service Principal | Resource Group | AcrPush |
+| Runtime Managed Identity | ACR | AcrPull |
+| Runtime Managed Identity | Cosmos DB | Cosmos DB Built-in Data Contributor |
+| Runtime Managed Identity | Azure OpenAI | Cognitive Services OpenAI User |
 
-```text
-src/
-  function_app/
-  supply_sentinel/
-data/
-  samples/
-web/
-  dashboard static assets
-```
+## 7. Azure App Settings / Env
 
-ただし本番寄りにする場合は、Functions用成果物とWeb用成果物を分離する。
-
-## 5. 環境変数
-
-Azure Functions App Settings:
+Container Apps API と Job の両方に同じ環境変数を渡す。
 
 ```text
 RUN_MODE=demo
-AZURE_OPENAI_ENDPOINT=
+SUPPLY_SENTINEL_STATE_STORE=cosmos
+COSMOS_DB_ENDPOINT=<cosmos endpoint>
+COSMOS_DB_DATABASE=supply-sentinel
+COSMOS_DB_CONTAINER=runs
+COSMOS_DB_USE_AAD=true
+AZURE_CLIENT_ID=<runtime managed identity client id>
+AZURE_OPENAI_ENDPOINT=<openai endpoint>
 AZURE_OPENAI_DEPLOYMENT=gpt-5.4
 AZURE_OPENAI_SUBAGENT_DEPLOYMENT=gpt-5.4-mini
-AZURE_OPENAI_API_VERSION=
-AZURE_STORAGE_ACCOUNT=
-SUPPLY_SENTINEL_INPUT_CONTAINER=input
-SUPPLY_SENTINEL_OUTPUT_CONTAINER=output
-COSMOS_DATABASE=supply-sentinel
-COSMOS_CONTAINER_RUNS=runs
-COSMOS_CONTAINER_ALERTS=alert_state
-COSMOS_CONTAINER_EVENTS=risk_events
-COSMOS_CONTAINER_ASSESSMENTS=impact_assessments
-AI_MAX_INPUT_CHARS=12000
-AI_MAX_EVENTS_PER_RUN=10
-AI_ENABLE_REPORT_GENERATION=true
+AZURE_OPENAI_USE_AAD=true
+HOST=0.0.0.0
+PORT=4173
 ```
 
-Key Vault / Managed Identity で扱うもの:
+## 8. モード切替
 
-```text
-AZURE_OPENAI_API_KEY
-EXTERNAL_NEWS_API_KEY
-SUPPLIER_PORTAL_API_KEY
+| mode | CI/CD での指定 | 用途 |
+| --- | --- | --- |
+| `demo` | `workflow_dispatch -f run_mode=demo` | 安定デモ。GPT quota がなくても動く。 |
+| `cloud` | `workflow_dispatch -f run_mode=cloud` | Azure OpenAI 実呼び出し。quota 通過後に使う。 |
+
+## 9. デプロイ確認
+
+```powershell
+Invoke-WebRequest https://supplysentinelwebxh5yr4j.z11.web.core.windows.net/
+Invoke-WebRequest https://supplysentinel-api.whitecoast-18504dfb.japaneast.azurecontainerapps.io/api/health
+Invoke-WebRequest https://supplysentinel-api.whitecoast-18504dfb.japaneast.azurecontainerapps.io/api/latest-dashboard
 ```
 
-Managed Identityで接続できる場合はAPIキーを減らす。
+期待値:
 
-## 6. デプロイ後確認
+- static site が 200
+- health が `{ ok: true }`
+- latest-dashboard が `state_store=cosmos`
+- dashboard に `risk_score` が含まれる
 
-Deploy workflow 後に最低限確認する内容:
+## 10. 失敗時の切り戻し
 
-- Functions App の `/api/health` が 200 を返す
-- `/api/latest` が最新の dashboard model を返す
-- 手動実行API `/api/run-demo` が成功する
-- Cosmos DB に `runs` が1件追加される
-- Application Insights にエラーが出ていない
-
-## 7. 今後必要な実装変更
-
-現在のコードはローカル/静的デモ中心。Azure Functionsで本格稼働するには以下が必要。
-
-| 項目 | 現在 | 変更後 |
-|---|---|---|
-| Function entry | `src/function_app/timerTrigger.mjs` の簡易関数 | Azure Functions Node.js v4 programming model か function.json 構成に合わせる |
-| State | `outputs/latest` | Cosmos DB + Blob output |
-| Input | `data/samples` | Blob input container |
-| AI | deterministic extractor | Azure OpenAI client |
-| Dashboard data | `web/dashboard_data.json` | `/api/latest` から取得、または Blob static JSON |
-| Demo playback | `web/demo_events.json` | demo modeでは維持。本番modeでは実行履歴から生成 |
-
-## 8. ブランチ運用
-
-Hackathonではシンプルにする。
-
-- `main`: 常にデモ可能な状態
-- PR: 任意。時間がなければ直接pushでもCIを必ず通す
-- Azure deploy: 手動実行
-
-## 9. 失敗時の切り戻し
-
-- Azureデプロイに失敗しても GitHub Pages デモは維持する
-- `RUN_MODE=demo` で deterministic mock に戻せる
-- AI接続失敗時は前回の `dashboard_data` を表示する
-- デモ直前は `?demo=play` の静的デモURLをバックアップにする
+- `RUN_MODE=demo` で再デプロイする。
+- Cloud API が不調でも、フロントは `web/dashboard_data.json` に fallback できる。
+- Container image は ACR の `supply-sentinel:latest` と SHA tag を持つ。
+- 重要なリソースは Bicep で再作成できる。

@@ -45,6 +45,15 @@ const REGION_LABELS = {
   Japan: "日本",
 };
 
+const RISK_TYPE_LABELS = {
+  allocation: "割当制限",
+  supply_delay: "供給遅延",
+  shutdown: "停止",
+  logistics_delay: "物流遅延",
+  price_spike: "価格急騰",
+  unknown: "不明",
+};
+
 const ACTION_TRANSLATIONS = new Map([
   [
     "Confirm latest allocation volume and shipment schedule with the supplier.",
@@ -107,6 +116,26 @@ function materialLabel(material) {
 
 function regionLabel(region) {
   return REGION_LABELS[region] || region || "地域不明";
+}
+
+function riskTypeLabel(riskType) {
+  return RISK_TYPE_LABELS[riskType] || riskType || "不明";
+}
+
+function affectedPeriodLabel(period) {
+  if (!period) return "不明";
+  const map = {
+    "next two to three weeks": "今後2〜3週間",
+    "next 2-3 weeks": "今後2〜3週間",
+    "next 2 to 3 weeks": "今後2〜3週間",
+    "next 1-2 weeks": "今後1〜2週間",
+  };
+  if (map[period]) return map[period];
+  const range = String(period).match(/next\s+(\d+)\s*(?:-|to)\s*(\d+)\s*weeks?/i);
+  if (range) return `今後${range[1]}〜${range[2]}週間`;
+  const single = String(period).match(/next\s+(\d+)\s*weeks?/i);
+  if (single) return `今後${single[1]}週間`;
+  return period;
 }
 
 function compactUsdJa(value) {
@@ -335,6 +364,117 @@ function renderList(id, items, emptyText) {
     ? translated.map((item) => `<li>${esc(item)}</li>`).join("")
     : `<li>${esc(emptyText)}</li>`;
   setHtml(id, html);
+}
+
+function truncateText(value, max = 130) {
+  const text = String(value ?? "").trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).trimEnd()}…`;
+}
+
+// 初動対応の最初のパネル。AIが読んだ外部テキスト(meta.ai.inputs)と、
+// そこから抽出した構造化結果(risk_event)を左右で対比し、下段に検知根拠を置く。
+// meta.ai が無い段やナフサ以外の通常監視段では従来どおりの表示に縮退する。
+function renderAiExtraction(data) {
+  const container = $("ai-extraction");
+  if (!container) return;
+
+  const assessment = data.assessment || {};
+  const risk = data.risk_event || {};
+  const ai = (data.meta || {}).ai || {};
+  const inputs = asArray(ai.inputs);
+  const evidence = asArray(assessment.evidence);
+
+  // 通常監視中(ナフサ以外 / 要対応シグナルなし)は対比表示を出さない。
+  const isNormalWatch =
+    assessment.material !== "naphtha" ||
+    evidence.length === 0 ||
+    Number(assessment.risk_score) < 50;
+
+  if (isNormalWatch) {
+    container.innerHTML = `
+      <div class="ai-extract-empty">
+        <strong>通常監視中 — 要対応シグナルなし</strong>
+        <p>外部シグナルと社内データを照合中です。リスク抽出に至る入力が揃うと、ここに「入力 → 構造化」を表示します。</p>
+      </div>
+      <ul id="evidence-list" hidden></ul>`;
+    return;
+  }
+
+  // meta.ai が未提供の段は、従来どおり検知根拠の箇条書きのみ(後方互換)。
+  if (!inputs.length) {
+    container.innerHTML = `
+      <p class="ai-extract-note">外部情報から抽出した検知根拠です。</p>
+      <ul id="evidence-list"></ul>`;
+    return;
+  }
+
+  const runMode = ai.run_mode === "cloud" ? "cloud" : "demo";
+  const runLabel = runMode === "cloud" ? "Azure OpenAI ライブ" : "デモ抽出(決定論)";
+  const confidence = risk.confidence ? `確度 ${esc(risk.confidence)}` : "";
+
+  const badges = `
+    <div class="ai-extract-badges">
+      <span class="ai-extract-model">${esc(ai.model_label || "Azure OpenAI · gpt-5.4")}</span>
+      <span class="ai-extract-mode ai-extract-mode-${runMode}">${esc(runLabel)}</span>
+      ${confidence ? `<span class="ai-extract-confidence">${confidence}</span>` : ""}
+    </div>`;
+
+  const inputCards = inputs
+    .map((input) => {
+      if (input.kind === "supplier") {
+        return `
+          <div class="ai-extract-card">
+            <span class="ai-extract-kind ai-extract-kind-supplier">サプライヤ通知</span>
+            <strong>${esc(input.supplier || "サプライヤ")}</strong>
+            <p class="ai-extract-card-title">${esc(input.subject || "件名なし")}</p>
+            <p class="ai-extract-card-body">${esc(truncateText(input.body, 150))}</p>
+          </div>`;
+      }
+      return `
+        <div class="ai-extract-card">
+          <span class="ai-extract-kind ai-extract-kind-news">業界ニュース</span>
+          <strong>${esc(input.source || "ニュースソース")}</strong>
+          <p class="ai-extract-card-title">${esc(input.headline || "見出しなし")}</p>
+          <p class="ai-extract-card-body">${esc(truncateText(input.summary, 150))}</p>
+        </div>`;
+    })
+    .join("");
+
+  const severity = SEVERITY_LABELS[risk.severity] || risk.severity || "不明";
+  const delay =
+    risk.delay_days_min != null || risk.delay_days_max != null
+      ? `${esc(risk.delay_days_min ?? "-")}-${esc(risk.delay_days_max ?? "-")}日`
+      : "不明";
+  const allocation = risk.allocation_rate_percent != null ? `${esc(risk.allocation_rate_percent)}%` : "-";
+
+  const fields = `
+    <dl class="ai-extract-fields">
+      <div><dt>対象材料</dt><dd>${esc(materialLabel(risk.material))}</dd></div>
+      <div><dt>リスク種別</dt><dd>${esc(riskTypeLabel(risk.risk_type))}</dd></div>
+      <div><dt>深刻度</dt><dd class="ai-extract-sev">${esc(severity)}</dd></div>
+      <div><dt>想定遅延</dt><dd>${delay}</dd></div>
+      <div><dt>割当</dt><dd>${allocation}</dd></div>
+      <div><dt>対象期間</dt><dd>${esc(affectedPeriodLabel(risk.affected_period))}</dd></div>
+    </dl>`;
+
+  container.innerHTML = `
+    ${badges}
+    <div class="ai-extract-flow">
+      <section class="ai-extract-col ai-extract-col-input">
+        <h4>AIが読んだ外部テキスト</h4>
+        <div class="ai-extract-cards">${inputCards}</div>
+      </section>
+      <div class="ai-extract-arrow" aria-hidden="true">→</div>
+      <section class="ai-extract-col ai-extract-col-output">
+        <h4>構造化された抽出結果</h4>
+        ${fields}
+      </section>
+    </div>
+    <div class="ai-extract-evidence">
+      <span class="ai-extract-evidence-head">検知根拠</span>
+      <ul id="evidence-list"></ul>
+    </div>`;
 }
 
 function renderEventLog(data) {
@@ -580,6 +720,7 @@ export function renderPanels(data) {
   renderTaskBoard(model);
   renderApprovals(model);
   renderManagementReport(model);
+  renderAiExtraction(model);
   renderList("evidence-list", assessment.evidence, "検知根拠はありません。");
   renderList("actions-list", assessment.recommended_actions, "推奨初動はありません。");
   renderMapLegend();

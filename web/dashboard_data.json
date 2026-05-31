@@ -2,7 +2,7 @@
   "meta": {
     "app": "Supply Sentinel",
     "scenario": "naphtha supply risk",
-    "generated_at": "2026-05-31T04:32:13.421Z",
+    "generated_at": "2026-05-31T08:42:30.545Z",
     "materials": [
       {
         "material_id": "naphtha",
@@ -57,7 +57,36 @@
           "認定"
         ]
       }
-    ]
+    ],
+    "ai": {
+      "run_mode": "demo",
+      "model": "gpt-5.4",
+      "subagent_model": "gpt-5.4-mini",
+      "provider": "Azure OpenAI",
+      "model_label": "Azure OpenAI · gpt-5.4",
+      "sub_model_label": "gpt-5.4-mini",
+      "note": "デモは信頼性重視の決定論抽出。本番は同一スキーマ・同一プロンプトでAzure OpenAIが抽出します。",
+      "inputs": [
+        {
+          "type": "news",
+          "kind": "news",
+          "id": "news-2026-001",
+          "source": "Industry News Demo",
+          "published_at": "2026-05-16T08:00:00+09:00",
+          "headline": "Naphtha supply tightens after refinery disruption in Asia",
+          "summary": "Several downstream chemical producers may face tighter naphtha allocation over the next two to three weeks due to refinery maintenance and logistics congestion."
+        },
+        {
+          "type": "supplier_notice",
+          "kind": "supplier",
+          "id": "notice-2026-001",
+          "supplier": "Demo Petrochemical Supplier",
+          "received_at": "2026-05-16T09:15:00+09:00",
+          "subject": "Temporary allocation control for naphtha-derived feedstock",
+          "body": "Due to upstream refinery disruption and vessel delay, we expect temporary allocation control for naphtha-derived feedstock shipments. Current confirmed shipments may be delayed by 5 to 7 days. Allocation volume for the next two weeks may be limited to approximately 70% of normal contracted volume. We will provide an update once logistics conditions stabilize."
+        }
+      ]
+    }
   },
   "risk_event": {
     "material": "naphtha",
@@ -206,7 +235,7 @@
       "Formal customer notification",
       "Major production plan changes"
     ],
-    "generated_at": "2026-05-31T04:32:13.421Z"
+    "generated_at": "2026-05-31T08:42:30.545Z"
   },
   "route_intel": {
     "focal_material": "naphtha",
