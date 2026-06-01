@@ -7,9 +7,10 @@ import { createAgentConsole } from "./agentConsole.js";
 import { renderDecisionQueue } from "./decisions.js";
 
 const VIEW_TITLES = {
-  dashboard: "監視ダッシュボード",
+  dashboard: "概況マップ",
   analysis: "影響分析",
-  response: "初動対応",
+  response: "初動・AI相談",
+  scenario: "シナリオ設定",
 };
 
 const MATERIAL_PROFILES = {
@@ -559,7 +560,7 @@ function updateDecisionSummary(summary) {
 function renderAgentRuntime(model) {
   const console = ensureAgentConsole();
   console?.render(model);
-  renderDecisionQueue(document.getElementById("approval-list"), model?.agent_run, {
+  renderDecisionQueue(document.getElementById("action-decision-board"), model?.agent_run, {
     onChange: updateDecisionSummary,
   });
   const live = document.getElementById("agent-live-badge");
@@ -567,6 +568,18 @@ function renderAgentRuntime(model) {
     const run = model?.agent_run || {};
     live.innerHTML = `<span class="agent-live-dot" aria-hidden="true"></span>${esc(run.run_mode === "cloud" ? "AI Agent cloud 実行済み" : "AI Agent デモ実行")}`;
   }
+}
+
+function bindScenarioRunControls() {
+  document.getElementById("scenario-run-now")?.addEventListener("click", () => {
+    stopDemo();
+    demoStep = Math.max(0, (demoConfig.stages || []).length - 1);
+    renderCurrentDashboard();
+    setActiveView("response");
+    const console = ensureAgentConsole();
+    console?.render(currentDashboardData);
+    console?.play({ stepMs: 620 });
+  });
 }
 
 function agentHighlightSelectors(agentKey) {
@@ -1064,11 +1077,26 @@ function enrichOrders(network, orders) {
 function sourceKindLabel(kind) {
   const labels = {
     news: "ニュース",
+    supplier: "サプライヤ通知",
     supplier_notice: "サプライヤ通知",
     logistics: "物流情報",
     price_feed: "価格情報",
   };
   return labels[kind] || kind || "情報源";
+}
+
+function hasPublicUrl(source) {
+  return /^https?:\/\//i.test(String(source?.url || ""));
+}
+
+function isLiveEvidence(source) {
+  return source?.origin === "live_web" && hasPublicUrl(source);
+}
+
+function liveEvidenceSources(model) {
+  return asArray(model?.provenance)
+    .filter((source) => isLiveEvidence(source) && !isInjectedSource(source))
+    .sort((a, b) => Date.parse(a.published_at || a.fetched_at || 0) - Date.parse(b.published_at || b.fetched_at || 0));
 }
 
 function riskTypeFromScenario(scenario) {
@@ -1081,12 +1109,14 @@ function riskTypeFromScenario(scenario) {
 
 function buildAiInputsFromProvenance(sources) {
   return asArray(sources).map((source) => {
-    if (source.kind === "supplier_notice") {
+    if (source.kind === "supplier_notice" || source.kind === "supplier") {
       return {
         kind: "supplier",
         supplier: source.source,
         subject: source.label || "サプライヤ通知",
         body: source.claim,
+        url: source.url || "",
+        published_at: source.published_at || source.received_at || "",
       };
     }
     return {
@@ -1094,6 +1124,10 @@ function buildAiInputsFromProvenance(sources) {
       source: source.source || sourceKindLabel(source.kind),
       headline: source.label || sourceKindLabel(source.kind),
       summary: source.claim,
+      url: source.url || "",
+      published_at: source.published_at || "",
+      fetched_at: source.fetched_at || "",
+      live: source.origin === "live_web",
     };
   });
 }
@@ -1135,13 +1169,15 @@ function buildScenarioOverlayModel(baseModel) {
     risk_inputs: month.risk_inputs || scenario.risk_inputs || {},
   });
   const metrics = propagation.metrics || {};
-  const sources = activeSourcesForMonth(scenario, month);
+  const cloudSources = liveEvidenceSources(baseModel);
+  const scenarioSources = activeSourcesForMonth(scenario, month);
+  const sources = cloudSources.length ? cloudSources : scenarioSources.filter((source) => hasPublicUrl(source));
   // Evidence Verifier: external text is observation, not instruction. Any source
   // whose claim/excerpt reads like an injected command is dropped from the
   // *verified* evidence used for scoring/display (it still rides on
   // overlay.provenance so the Agent Run Console can show it was caught).
-  const trustedSources = sources.filter((source) => !isInjectedSource(source));
-  const evidence = trustedSources.map((source) => `${sourceKindLabel(source.kind)}: ${source.claim}`);
+  const trustedSources = sources.filter((source) => hasPublicUrl(source) && !isInjectedSource(source));
+  const evidence = trustedSources.map((source) => `${sourceKindLabel(source.kind)}: ${source.claim} (${source.url})`);
   const routes = buildRoutesFromNetwork(scenario.network, propagation, scenario);
   const affectedRoutes = routes.filter((route) => route.affected);
   const affectedShare = metrics.affected_supply_ratio ?? affectedRoutes.reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
@@ -1164,7 +1200,7 @@ function buildScenarioOverlayModel(baseModel) {
     model: overlay.meta.ai?.model || "gpt-5.4-mini",
     model_label: overlay.meta.ai?.model_label || "Azure OpenAI · gpt-5.4-mini",
     run_mode: overlay.meta.ai?.run_mode || "cloud",
-    inputs: buildAiInputsFromProvenance(sources),
+    inputs: buildAiInputsFromProvenance(trustedSources),
   };
   overlay.risk_event = {
     ...(overlay.risk_event || {}),
@@ -1246,7 +1282,7 @@ function buildScenarioOverlayModel(baseModel) {
     edge_status: propagation.edge_status,
   };
   overlay.propagation = propagation;
-  overlay.provenance = sources;
+  overlay.provenance = trustedSources;
   overlay.month = month;
   // Deterministic multi-agent run trace (orchestrator + 6 workers / tool_calls /
   // decisions / injection-blocked evidence). Derived from the assembled overlay
@@ -1264,12 +1300,13 @@ function buildScenarioOverlayModel(baseModel) {
       alternatives: scenario.alternatives || [],
       risk_inputs: item.risk_inputs || scenario.risk_inputs || {},
     }).metrics.risk_score })),
-    data_sources: asArray(scenario.provenance).map((source) => ({
+    data_sources: trustedSources.map((source) => ({
       name: source.label,
       candidate: source.source,
       status: sourceKindLabel(source.kind),
-      freshness: source.published_at || source.received_at ? formatDateTime(source.published_at || source.received_at) : "デモ",
+      freshness: source.published_at || source.fetched_at ? formatDateTime(source.published_at || source.fetched_at) : "取得時刻不明",
       confidence: source.confidence || "-",
+      url: source.url || "",
     })),
   };
   return overlay;
@@ -1425,51 +1462,57 @@ function renderNetworkStory(model) {
 function renderScenarioTimeline(model) {
   const el = document.getElementById("scenario-timeline");
   if (!el) return;
-  const months = asArray(model.timeline);
-  if (!months.length) {
-    el.innerHTML = `<p class="empty">時系列データがありません。</p>`;
+  const sources = liveEvidenceSources(model).length
+    ? liveEvidenceSources(model)
+    : asArray(model.provenance).filter((source) => hasPublicUrl(source) && !isInjectedSource(source));
+  const metrics = model.propagation?.metrics || {};
+  const riskScore = metrics.risk_score ?? model.assessment?.risk_score ?? "-";
+  const affectedShare = metrics.affected_supply_ratio ?? model.route_intel?.kpis?.affected_share_percent ?? 0;
+  const inventoryDays = metrics.inventory_days_min ?? model.assessment?.inventory_days_min ?? "-";
+  const material = materialLabel(model.assessment?.material || model.risk_event?.material || activeMaterial);
+
+  if (!sources.length) {
+    el.innerHTML = `
+      <div class="timeline-empty">
+        <strong>公開URL付きの根拠がまだありません</strong>
+        <p>Cloud巡回で取得したニュース・記事だけを時系列根拠として表示します。架空ソースやURLなし通知はここには出しません。</p>
+      </div>`;
     return;
   }
+
   el.innerHTML = `
-    <div class="timeline-bars">
-      ${months
-        .map((month, index) => {
-          const metrics = month.metrics && Object.keys(month.metrics).length ? month.metrics : computeMetrics(activeScenario.network, month.disruption || {}, {
-            inventory: month.inventory || activeScenario.inventory || [],
-            alternatives: activeScenario.alternatives || [],
-            risk_inputs: month.risk_inputs || activeScenario.risk_inputs || {},
-          }).metrics;
-          const score = Number(metrics.risk_score) || 0;
-          const price = Number(month.price_index) || 100;
-          const active = index === activeMonthIndex ? " is-active" : "";
+    <div class="evidence-timeline-summary">
+      <div><span>現在判断</span><strong>${esc(riskScore)}</strong><em>リスクスコア</em></div>
+      <div><span>調達影響</span><strong>${esc(affectedShare)}%</strong><em>${esc(material)}</em></div>
+      <div><span>在庫</span><strong>${esc(inventoryDays)}日</strong><em>最短残日数</em></div>
+    </div>
+    <ol class="evidence-timeline">
+      ${sources
+        .map((source, index) => {
+          const when = source.published_at || source.fetched_at || "";
+          const impact = index === sources.length - 1
+            ? `この根拠を含めて、現在は調達影響${affectedShare}%・最短在庫${inventoryDays}日として再判定。`
+            : "この時点の公開情報を根拠候補として保存し、次回巡回で再評価対象に追加。";
           return `
-            <button type="button" class="timeline-month${active}" data-month-index="${index}" aria-label="${esc(month.label)}を表示">
-              <span>${esc(month.label || month.month)}</span>
-              <i style="height:${Math.max(8, Math.min(100, score))}%"></i>
-              <b>${esc(score)}</b>
-              <em>価格 ${esc(price)}</em>
-            </button>`;
+            <li class="evidence-timeline-item">
+              <time>${esc(formatDateTime(when))}</time>
+              <div>
+                <span>${esc(sourceKindLabel(source.kind))} / ${esc(source.source || "公開Web")}</span>
+                <strong>${esc(source.label || source.claim || "公開記事")}</strong>
+                <p>${esc(source.claim || "")}</p>
+                <em>${esc(impact)}</em>
+                <a href="${escAttr(source.url)}" target="_blank" rel="noreferrer">根拠記事を開く</a>
+              </div>
+            </li>`;
         })
         .join("")}
-    </div>
-    <div class="timeline-events">
-      ${asArray(model.month?.events)
-        .map((event) => `<div><span>${esc(sourceKindLabel(event.kind))}</span><p>${esc(event.text)}</p></div>`)
-        .join("") || `<div><span>監視</span><p>この月は大きなシグナルなし。基準値として利用します。</p></div>`}
-    </div>`;
-  el.querySelectorAll("[data-month-index]").forEach((button) => {
-    button.addEventListener("click", () => {
-      activeMonthIndex = Number(button.getAttribute("data-month-index")) || 0;
-      stopDemo();
-      renderCurrentDashboard();
-    });
-  });
+    </ol>`;
 }
 
 function renderProvenance(model) {
   const el = document.getElementById("provenance-list");
   if (!el) return;
-  const sources = asArray(model.provenance);
+  const sources = asArray(model.provenance).filter((source) => hasPublicUrl(source) && !isInjectedSource(source));
   el.innerHTML = sources.length
     ? sources
         .map((source) => `
@@ -1480,12 +1523,12 @@ function renderProvenance(model) {
             </div>
             <p>${esc(source.claim)}</p>
             <footer>
-              <em>${source.url ? `<a href="${escAttr(source.url)}" target="_blank" rel="noreferrer">${esc(source.source || "記事を開く")}</a>` : esc(source.source || "デモ情報源")}</em>
+              <em><a href="${escAttr(source.url)}" target="_blank" rel="noreferrer">${esc(source.source || "記事を開く")}</a></em>
               <b>確度 ${esc(source.confidence || "-")}</b>
             </footer>
           </article>`)
         .join("")
-    : `<p class="empty">根拠データはありません。</p>`;
+    : `<p class="empty">公開URL付きの根拠はありません。</p>`;
 }
 
 function renderNetworkPanel(model) {
@@ -1661,6 +1704,7 @@ async function init() {
   bindScenarioSwitch();
   bindAgentChat();
   bindAgentRuntimeControls();
+  bindScenarioRunControls();
   setLoaderText("AI判断ログと初動対応ボードを描画しています");
   renderCurrentDashboard();
 

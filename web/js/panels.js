@@ -197,6 +197,27 @@ function translateText(text) {
   return text;
 }
 
+function hasPublicUrl(source) {
+  return /^https?:\/\//i.test(String(source?.url || ""));
+}
+
+function publicEvidenceSources(data) {
+  return asArray(data?.provenance)
+    .filter((source) => hasPublicUrl(source) && source.origin === "live_web")
+    .sort((a, b) => Date.parse(b.published_at || b.fetched_at || 0) - Date.parse(a.published_at || a.fetched_at || 0));
+}
+
+function sourceKindLabel(kind) {
+  const labels = {
+    news: "ニュース",
+    supplier: "サプライヤ通知",
+    supplier_notice: "サプライヤ通知",
+    logistics: "物流情報",
+    price_feed: "価格情報",
+  };
+  return labels[kind] || kind || "情報源";
+}
+
 function scoreFactorLabel(key) {
   const labels = {
     external_event_severity: "外部イベント深刻度",
@@ -672,6 +693,177 @@ function renderAlternatives(data) {
   setHtml("alternatives-table", rows || `<p class="empty">代替材候補はありません。</p>`);
 }
 
+function renderLiveEvidenceList(data) {
+  const sources = publicEvidenceSources(data).slice(0, 5);
+  const html = sources.length
+    ? sources
+        .map((source) => `
+          <article class="live-evidence-card">
+            <div>
+              <span>${esc(sourceKindLabel(source.kind))}</span>
+              <time>${esc(formatDateTime(source.published_at || source.fetched_at))}</time>
+            </div>
+            <strong>${esc(source.source || "公開Web")}</strong>
+            <p>${esc(truncateText(source.claim, 92))}</p>
+            <a href="${esc(source.url)}" target="_blank" rel="noreferrer">根拠URL</a>
+          </article>`)
+        .join("")
+    : `
+      <div class="live-evidence-empty">
+        <strong>公開URL付き根拠を取得中</strong>
+        <p>デモでは架空ソースを根拠にしません。Cloud巡回で取得した公開記事だけを表示します。</p>
+      </div>`;
+  setHtml("live-evidence-list", html);
+}
+
+function renderAgentActivityLog(data) {
+  const run = data.agent_run || {};
+  const calls = asArray(run.tool_calls).slice(0, 8);
+  const html = `
+    <div class="agent-log-head">
+      <strong>${esc(run.run_id || "run pending")}</strong>
+      <span>${esc(run.model || "gpt-5.4-mini")} / ${esc(run.run_mode || "cloud")}</span>
+    </div>
+    <ol class="agent-log-list">
+      ${
+        calls.length
+          ? calls
+              .map((call) => `
+                <li class="${call.ok === false ? "is-error" : ""}">
+                  <time>${esc(call.ts || "--:--")}</time>
+                  <div>
+                    <strong>${esc(call.agent || "agent")} · ${esc(call.tool || "tool")}</strong>
+                    <p>${esc(call.result || "")}</p>
+                  </div>
+                </li>`)
+              .join("")
+          : `<li><time>--:--</time><div><strong>待機中</strong><p>巡回が始まると、検索・検証・照合・起案のログを表示します。</p></div></li>`
+      }
+    </ol>`;
+  setHtml("agent-activity-log", html);
+}
+
+function productImpactRows(data) {
+  const assessment = data.assessment || {};
+  const kpis = data.route_intel?.kpis || {};
+  const orders = asArray(assessment.impacted_orders);
+  const products = asArray(assessment.impacted_products);
+  const inventoryMin = assessment.inventory_days_min ?? "-";
+  const evidence = publicEvidenceSources(data)[0] || asArray(data.provenance).find(hasPublicUrl) || null;
+  return products.map((product, index) => {
+    const relatedOrders = orders.filter((order) => order.product === product);
+    const topOrder = relatedOrders[0] || {};
+    const priority = relatedOrders.some((order) => String(order.priority).toLowerCase() === "high")
+      ? "high"
+      : relatedOrders.length
+        ? "medium"
+        : "low";
+    const score = Math.max(1, Math.round((Number(assessment.risk_score) || 0) - index * 8));
+    return {
+      rank: index + 1,
+      product,
+      score,
+      priority,
+      customer: topOrder.customer || asArray(assessment.impacted_customers)[index] || "対象顧客確認中",
+      plant: topOrder.plant || asArray(assessment.impacted_plants)[0] || "対象工場確認中",
+      orders: relatedOrders.length,
+      inventory: inventoryMin,
+      impact: index === 0 ? "最優先保護" : priority === "high" ? "配分候補" : "監視継続",
+      reason: `調達影響${kpis.affected_share_percent ?? 0}%・最短在庫${inventoryMin}日。公開根拠とBOM/受注を照合。`,
+      evidence,
+    };
+  });
+}
+
+function renderProductImpactRanking(data) {
+  const rows = productImpactRows(data);
+  const html = rows.length
+    ? `
+      <div class="product-ranking-list">
+        ${rows
+          .map((row) => `
+            <article class="product-rank-card priority-${esc(row.priority)}">
+              <div class="product-rank-main">
+                <span class="product-rank-no">#${esc(row.rank)}</span>
+                <div>
+                  <strong>${esc(row.product)}</strong>
+                  <p>${esc(row.reason)}</p>
+                </div>
+                <b>${esc(row.score)}</b>
+              </div>
+              <dl>
+                <div><dt>判断</dt><dd>${esc(row.impact)}</dd></div>
+                <div><dt>顧客</dt><dd>${esc(row.customer)}</dd></div>
+                <div><dt>工場</dt><dd>${esc(row.plant)}</dd></div>
+                <div><dt>在庫</dt><dd>${esc(row.inventory)}日</dd></div>
+              </dl>
+              ${
+                row.evidence?.url
+                  ? `<a href="${esc(row.evidence.url)}" target="_blank" rel="noreferrer">根拠: ${esc(row.evidence.source || "公開記事")}</a>`
+                  : `<span class="product-rank-no-evidence">公開URL付き根拠なし</span>`
+              }
+            </article>`)
+          .join("")}
+      </div>`
+    : `<p class="empty">影響製品はありません。</p>`;
+  setHtml("product-impact-ranking", html);
+}
+
+function renderScenarioSettings(data) {
+  const assessment = data.assessment || {};
+  const meta = data.meta || {};
+  const collection = meta.evidence_collection || {};
+  const materials = asArray(meta.materials);
+  const material = assessment.material || "naphtha";
+  const materialOptions = materials.length
+    ? materials.map((item) => ({
+        id: item.material_id || item.id || item.material || item.name,
+        label: item.display_name || item.label || materialLabel(item.material_id || item.id || item.material || item.name),
+      })).filter((item) => item.id)
+    : ["naphtha", "packaging-film", "semiconductor-adhesive"];
+  const queries = asArray(collection.live_queries).slice(0, 4);
+  setHtml(
+    "scenario-settings",
+    `
+      <div class="scenario-form-grid">
+        <label><span>監視対象</span><select>${materialOptions
+          .map((item) => {
+            const option = typeof item === "string" ? { id: item, label: materialLabel(item) } : item;
+            return `<option ${option.id === material ? "selected" : ""}>${esc(option.label)}</option>`;
+          })
+          .join("")}</select></label>
+        <label><span>調査スパン</span><select><option selected>6時間ごと</option><option>12時間ごと</option><option>手動のみ</option></select></label>
+        <label><span>検索範囲</span><select><option selected>過去30日</option><option>過去7日</option><option>過去90日</option></select></label>
+        <label><span>起案しきい値</span><input type="number" min="0" max="100" value="70"></label>
+      </div>
+      <div class="scenario-query-box">
+        <span>現在の調査クエリ</span>
+        <div>${queries.length ? queries.map((query) => `<code>${esc(query)}</code>`).join("") : `<em>Cloud巡回時に生成</em>`}</div>
+      </div>
+      <p class="scenario-setting-note">この画面はデモ用の運用設定です。Cloud本番では Container Apps Job のスケジュールと環境変数に反映する想定です。</p>
+    `,
+  );
+  setHtml(
+    "evidence-rules",
+    `
+      <div class="evidence-rule-list">
+        <article class="evidence-rule is-accepted">
+          <strong>採用</strong>
+          <p>公開URL・媒体名・公開/取得時刻があり、AIが根拠URLを返した記事。</p>
+        </article>
+        <article class="evidence-rule is-rejected">
+          <strong>不採用</strong>
+          <p>URLがない情報、架空/サンプルソース、AIが生成しただけの根拠、命令文を含む外部テキスト。</p>
+        </article>
+        <article class="evidence-rule">
+          <strong>保存</strong>
+          <p>採用根拠、AI抽出結果、BOM/在庫照合、run_id、承認状態を Cosmos DB に保存。</p>
+        </article>
+      </div>
+    `,
+  );
+}
+
 function renderTaskBoard(data) {
   const assessment = data.assessment || {};
   const kpis = (data.route_intel && data.route_intel.kpis) || {};
@@ -823,6 +1015,10 @@ export function renderPanels(data) {
   renderEventLog(model);
   renderInventoryRanking(model);
   renderAlternatives(model);
+  renderLiveEvidenceList(model);
+  renderAgentActivityLog(model);
+  renderProductImpactRanking(model);
+  renderScenarioSettings(model);
   renderTaskBoard(model);
   renderApprovals(model);
   renderManagementReport(model);

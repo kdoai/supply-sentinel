@@ -36,9 +36,10 @@
       </div>
 
       <nav class="side-nav">
-        <button class="nav-item is-active" type="button" data-view="dashboard"><span>監視ダッシュボード</span></button>
+        <button class="nav-item is-active" type="button" data-view="dashboard"><span>概況マップ</span></button>
         <button class="nav-item" type="button" data-view="analysis"><span>影響分析</span></button>
-        <button class="nav-item" type="button" data-view="response"><span>初動対応</span></button>
+        <button class="nav-item" type="button" data-view="response"><span>初動・AI相談</span></button>
+        <button class="nav-item" type="button" data-view="scenario"><span>シナリオ設定</span></button>
       </nav>
 
       <div class="sidebar-footer">
@@ -105,20 +106,20 @@
           </section>
 
           <aside class="dashboard-side">
-            <section class="panel risk-panel">
+            <section class="panel evidence-panel">
               <div class="panel-head compact-head">
-                <h3>リスク判定</h3>
-                <span class="panel-note">AI抽出 + 業務ルール</span>
+                <h3>情報源と根拠</h3>
+                <span class="panel-note">公開URL付きの根拠のみ表示</span>
               </div>
-              <div id="risk-gauge"></div>
+              <div id="live-evidence-list"></div>
             </section>
 
-            <section class="panel kpi-panel">
+            <section class="panel agent-activity-panel">
               <div class="panel-head compact-head">
-                <h3>業務影響</h3>
-                <span class="panel-note">在庫・BOM・受注照合</span>
+                <h3>AIエージェント行動ログ</h3>
+                <span class="panel-note">検索・検証・照合・起案</span>
               </div>
-              <div id="kpi-grid"></div>
+              <div id="agent-activity-log"></div>
             </section>
           </aside>
 
@@ -157,12 +158,20 @@
             </div>
           </section>
 
-          <section class="panel timeline-panel">
+          <section class="panel timeline-panel evidence-timeline-panel">
             <div class="panel-head">
               <h3>変動タイムライン</h3>
-              <span class="panel-note">エージェントが後追い整理した月次推移</span>
+              <span class="panel-note">どの時点の記事で影響判断が変わったか</span>
             </div>
             <div id="scenario-timeline"></div>
+          </section>
+
+          <section class="panel orders-panel product-ranking-panel">
+            <div class="panel-head">
+              <h3>製品別影響ランキング</h3>
+              <span class="panel-note">BOM・在庫・受注・根拠記事から優先順位化</span>
+            </div>
+            <div id="product-impact-ranking"></div>
           </section>
 
           <section class="panel provenance-panel">
@@ -171,14 +180,6 @@
               <span class="panel-note">どの情報がどのノードを裏付けたか</span>
             </div>
             <div id="provenance-list"></div>
-          </section>
-
-          <section class="panel orders-panel">
-            <div class="panel-head">
-              <h3>影響受注一覧</h3>
-              <span class="panel-note">優先度順に確認</span>
-            </div>
-            <div id="orders-table"></div>
           </section>
 
           <section class="panel inventory-panel">
@@ -201,6 +202,14 @@
 
       <section class="view" id="view-response" data-view-panel="response">
         <div class="response-grid">
+          <section class="panel response-brief-panel">
+            <div class="panel-head">
+              <h3>初動対応ボード</h3>
+              <span class="panel-note">AIが起案し、人が承認・保留・差戻し</span>
+            </div>
+            <div id="action-decision-board"></div>
+          </section>
+
           <section class="panel agent-run-panel">
             <div class="panel-head">
               <div>
@@ -237,30 +246,28 @@
             </div>
             <div id="ai-extraction"></div>
           </section>
+        </div>
+      </section>
 
-          <section class="panel response-brief-panel">
+      <section class="view" id="view-scenario" data-view-panel="scenario">
+        <div class="scenario-settings-grid">
+          <section class="panel scenario-settings-panel">
             <div class="panel-head">
-              <h3>初動対応ボード</h3>
-              <span class="panel-note">AIが起案し、人が実行判断</span>
+              <div>
+                <h3>AI巡回シナリオ設定</h3>
+                <span class="panel-note">監視対象・検索範囲・自動起動スパンを調整</span>
+              </div>
+              <button class="primary-action" type="button" id="scenario-run-now">この条件で巡回</button>
             </div>
-            <div class="response-brief-grid">
-              <section class="response-brief-cell">
-                <h4>推奨初動</h4>
-                <ul id="actions-list"></ul>
-              </section>
-              <section class="response-brief-cell">
-                <h4>担当タスク</h4>
-                <div id="task-board"></div>
-              </section>
-              <section class="response-brief-cell">
-                <h4>承認ゲート <span id="decision-summary"></span></h4>
-                <div id="approval-list"></div>
-              </section>
-              <section class="response-brief-cell">
-                <h4>管理職レポート</h4>
-                <div id="management-report"></div>
-              </section>
+            <div id="scenario-settings"></div>
+          </section>
+
+          <section class="panel evidence-rule-panel">
+            <div class="panel-head">
+              <h3>根拠採用ルール</h3>
+              <span class="panel-note">架空データやURLなし根拠は採用しない</span>
             </div>
+            <div id="evidence-rules"></div>
           </section>
         </div>
       </section>
