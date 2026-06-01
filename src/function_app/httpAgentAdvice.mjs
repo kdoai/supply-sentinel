@@ -309,10 +309,12 @@ function buildFallbackAdvice(question, context) {
     : "波及範囲を算定しました(具体的な影響データはcontext未提供)。";
 
   // --- Response Planner: derive concrete actions. ------------------------
-  const recommended_actions = deriveRecommendedActions(ctx, { material, invDays, customers });
+  // Intent-aware so the fallback is NOT a fixed value: different questions get
+  // different answers/actions even when the cloud model is unavailable (e.g.
+  // quota/429). The cloud path still overrides this when it succeeds.
+  const intent = classifyQuestionIntent(question);
+  const recommended_actions = deriveRecommendedActions(ctx, { material, invDays, customers, intent });
   const human_decision_required = deriveHumanDecisions(ctx);
-
-  const responsePlannerResult = `初動 ${recommended_actions.length}件を起案、うち ${human_decision_required.length}件は人間承認が必要です。`;
 
   // --- Evidence: surface the concrete numeric context as proof. ----------
   const evidence = buildEvidence({
@@ -326,25 +328,26 @@ function buildFallbackAdvice(question, context) {
     sources: ctx.evidence_sources,
   });
 
-  // --- Answer: one concise paragraph tying it together. ------------------
-  const answerParts = [
-    `${material} の供給リスクについて、`,
-    riskScore !== null ? `リスクスコアは ${riskScore} ` : "",
-    supplyRatio !== null ? `(調達影響 ${supplyRatio}%) ` : "",
-    "と評価しました。",
-    invDays !== null ? `最短在庫は ${invDays}日 で、` : "",
-    spend !== null ? `金額影響は ${formatUsd(spend)} の見込みです。` : "",
-    `初動として ${recommended_actions.length}件の対応を起案し、`,
-    `${human_decision_required.length}件は人間の承認を必須としています。`,
-  ];
-  const answer = answerParts.join("").replace(/\s+/g, " ").trim();
+  // --- Answer: tailored to the question intent. --------------------------
+  const { answer, plannerResult } = buildIntentAnswer(intent, {
+    material,
+    riskScore,
+    supplyRatio,
+    spend,
+    invDays,
+    products,
+    customers,
+    evidence,
+    recommended_actions,
+    human_decision_required,
+  });
 
   return {
     answer,
     reasoning_steps: [
       { agent: "Risk Scout", result: riskScoutResult },
       { agent: "Impact Mapper", result: impactMapperResult },
-      { agent: "Response Planner", result: responsePlannerResult },
+      { agent: "Response Planner", result: plannerResult },
     ],
     evidence,
     recommended_actions,
@@ -358,24 +361,128 @@ function buildFallbackAdvice(question, context) {
 }
 
 /**
- * Derive recommended actions from context, with sensible defaults when the
- * context is sparse.
+ * Classify the question into a coarse intent so the deterministic fallback can
+ * answer the actual question instead of returning one fixed paragraph. Keyword
+ * matching mirrors the front-end suggestion chips (根拠 / 代替 / 顧客 / 在庫 / 初動).
+ * @param {string} question
+ * @returns {"evidence"|"alternatives"|"customer"|"inventory"|"actions"|"overview"}
  */
-function deriveRecommendedActions(ctx, { material, invDays, customers }) {
+function classifyQuestionIntent(question) {
+  const q = String(question || "").toLowerCase();
+  if (/根拠|エビデンス|なぜ|理由|裏付|証拠/.test(q)) return "evidence";
+  if (/代替|切替|切り替|代わり|別の調達|別調達|代案/.test(q)) return "alternatives";
+  if (/顧客|取引先|通知|連絡|案内|説明文|アナウンス/.test(q)) return "customer";
+  if (/在庫|枯渇|尽き|不足|底をつく|払底/.test(q)) return "inventory";
+  if (/初動|まず|最初|対応|どうす|何をす|アクション|着手/.test(q)) return "actions";
+  return "overview";
+}
+
+/**
+ * Build a question-aware answer paragraph + Response Planner trace line. Numbers
+ * still come from the context; only the framing changes per intent. Deterministic
+ * (no wall-clock / randomness) so it stays reproducible.
+ */
+function buildIntentAnswer(intent, f) {
+  const {
+    material,
+    riskScore,
+    supplyRatio,
+    spend,
+    invDays,
+    customers,
+    evidence,
+    recommended_actions,
+    human_decision_required,
+  } = f;
+
+  const headBits = [];
+  if (riskScore !== null) headBits.push(`リスクスコア${riskScore}`);
+  if (supplyRatio !== null) headBits.push(`調達影響${supplyRatio}%`);
+  if (invDays !== null) headBits.push(`最短在庫${invDays}日`);
+  const head = headBits.length ? headBits.join(" / ") : "リスク評価中";
+  const spendText = spend !== null ? `金額影響 ${formatUsd(spend)}` : "";
+  const firstAction = recommended_actions[0] || "影響範囲の確認";
+  const evidenceLead = evidence[0] || "外部シグナルと社内データの照合";
+  const approvals = human_decision_required.length;
+
+  switch (intent) {
+    case "evidence":
+      return {
+        answer: `判断根拠は「${evidenceLead}」です。社内照合では ${head}${spendText ? ` / ${spendText}` : ""} を確認しました。AIは確定判断ではなく、根拠と影響範囲を揃えて人の判断を早める役割です。`,
+        plannerResult: `根拠 ${evidence.length}件を提示。最終判断は人間が実施します。`,
+      };
+    case "alternatives":
+      return {
+        answer: `${material} は ${head} の状況です。代替策として、承認済みの代替材・短納期の代替調達先への切替と在庫引当の見直しを優先してください。サプライヤ切替は人間承認が前提です。`,
+        plannerResult: `代替・切替の初動を起案。サプライヤ切替は人間承認が必要です。`,
+      };
+    case "customer":
+      return {
+        answer: `影響顧客は ${customers.length ? customers.join("、") : "確認中"} です。通知文面は「影響範囲・暫定納期・代替案・次回連絡時期」を明記し、送信は承認後に限定してください。`,
+        plannerResult: `顧客通知ドラフトを起案。正式通知は人間承認後に送信します。`,
+      };
+    case "inventory":
+      return {
+        answer:
+          invDays !== null && invDays <= 7
+            ? `最短在庫は ${invDays}日 と逼迫しています。消費抑制と高優先度受注への優先配分を即時発動し、緊急の調達調整を並行してください。日次で残量を監視します。`
+            : `最短在庫は ${invDays !== null ? `${invDays}日` : "確認中"} です。当面の供給を確保しつつ、消費見通しと追加調達のリードタイムを確認してください。`,
+        plannerResult: `在庫逼迫に対する初動を起案。発注変更は人間承認が必要です。`,
+      };
+    case "actions":
+      return {
+        answer: `${material} は ${head} と評価しました。初動として「${firstAction}」を起案し、計 ${recommended_actions.length}件のうち ${approvals}件は人間の承認を必須としています。`,
+        plannerResult: `初動 ${recommended_actions.length}件を起案、うち ${approvals}件は人間承認が必要です。`,
+      };
+    case "overview":
+    default:
+      return {
+        answer: `${material} の供給リスクは ${head}${spendText ? ` / ${spendText}` : ""} と評価しました。初動 ${recommended_actions.length}件を起案し、${approvals}件は人間の承認を必須としています。`,
+        plannerResult: `初動 ${recommended_actions.length}件を起案、うち ${approvals}件は人間承認が必要です。`,
+      };
+  }
+}
+
+/**
+ * Derive recommended actions from context, with sensible defaults when the
+ * context is sparse. The intent re-orders the list so the most relevant action
+ * leads, without changing the underlying set.
+ */
+function deriveRecommendedActions(ctx, { material, invDays, customers, intent }) {
+  let actions;
   if (Array.isArray(ctx.recommended_actions) && ctx.recommended_actions.length) {
-    return stringArray(ctx.recommended_actions);
+    actions = stringArray(ctx.recommended_actions);
+  } else {
+    actions = [
+      `${material} の代替調達先・在庫引当を確認する`,
+      "影響を受ける高優先度受注の引当ドラフトを作成する",
+    ];
+    if (invDays !== null && invDays <= 7) {
+      actions.push("在庫が逼迫しているため緊急の調達調整を検討する");
+    }
+    if (customers.length) {
+      actions.push("影響顧客向けの説明文案を準備する(送信は承認後)");
+    }
   }
-  const actions = [
-    `${material} の代替調達先・在庫引当を確認する`,
-    "影響を受ける高優先度受注の引当ドラフトを作成する",
-  ];
-  if (invDays !== null && invDays <= 7) {
-    actions.push("在庫が逼迫しているため緊急の調達調整を検討する");
-  }
-  if (customers.length) {
-    actions.push("影響顧客向けの説明文案を準備する(送信は承認後)");
-  }
-  return actions;
+  return reorderActionsByIntent(actions, intent);
+}
+
+// Move the action whose text best matches the intent to the front. Pure string
+// reorder — never adds or drops items, so callers' counts stay stable.
+function reorderActionsByIntent(actions, intent) {
+  const patterns = {
+    alternatives: /代替|切替|切り替/,
+    customer: /顧客|通知|説明|連絡/,
+    inventory: /在庫|調達調整|引当/,
+  };
+  const pattern = patterns[intent];
+  if (!pattern) return actions;
+  const index = actions.findIndex((action) => pattern.test(action));
+  if (index <= 0) return actions;
+  const next = actions.slice();
+  const [match] = next.splice(index, 1);
+  next.unshift(match);
+  return next;
 }
 
 /**

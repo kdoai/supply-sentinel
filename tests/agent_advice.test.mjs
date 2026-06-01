@@ -105,6 +105,28 @@ test("works with no context at all (question only)", async () => {
   assert.ok(result.human_decision_required.length > 0);
 });
 
+test("the deterministic fallback varies by question intent (not a fixed value)", async () => {
+  const ask = (question) => agentAdvice({ question, context: SAMPLE_CONTEXT });
+  const [evidence, alternatives, customer, inventory] = await Promise.all([
+    ask("なぜこの判断? 根拠を見せて"),
+    ask("代替調達への切替は?"),
+    ask("顧客への通知文面の要点は?"),
+    ask("在庫が尽きるまでに何をすべき?"),
+  ]);
+
+  // All are fallback (no Azure creds in CI), but the answers must differ.
+  for (const r of [evidence, alternatives, customer, inventory]) {
+    assert.equal(r.meta.fallback, true);
+  }
+  const answers = new Set([evidence.answer, alternatives.answer, customer.answer, inventory.answer]);
+  assert.equal(answers.size, 4, "each intent should yield a distinct answer");
+
+  // The framing matches the asked intent.
+  assert.match(evidence.answer, /根拠/);
+  assert.match(customer.answer, /通知|顧客/);
+  assert.match(inventory.answer, /在庫/);
+});
+
 test("HTTP handler rate-limits repeated anonymous advice calls", async () => {
   const previous = process.env.AGENT_ADVICE_RATE_LIMIT_PER_MINUTE;
   process.env.AGENT_ADVICE_RATE_LIMIT_PER_MINUTE = "1";
