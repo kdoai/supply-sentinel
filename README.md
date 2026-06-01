@@ -1,168 +1,168 @@
 # Supply Sentinel
 
-Supply Sentinel is an early-warning AI agent for supply risk.
-
-It monitors external signals such as news and supplier notices, matches them with internal inventory, BOM, alternatives, and order data, then generates business impact assessments and first-response recommendations.
+Supply Sentinel は、川下企業のSCMチーム向けに、ナフサ・石化素材の供給減少シナリオを入力し、自社基準に基づいて、どの製品・部材・サプライヤー・顧客に影響が出るか、何日耐えられるか、どの製品を守り、どの打ち手を準備すべきかを可視化するAI意思決定支援ツールです。
 
 ## Core Message
 
-Supply Sentinel translates external supply risks into internal business impact.
+価値は「ナフサ不足を当てること」ではありません。
 
-Instead of trying to predict the future perfectly, it shortens the time from "something happened outside the company" to "we know which products, customers, plants, and actions are affected."
+Supply Sentinel は、供給減少シナリオを自社のBOM・在庫・受注・代替材・サプライヤ依存に翻訳し、以下の判断を早く、説明可能にします。
+
+- どの製品を守るべきか
+- どの製品を縮小候補にするか
+- どの供給配分判断を人間承認に回すか
+- どの代替材承認を先に進めるか
+- どの在庫を積み増し、どの調達先を分散すべきか
+
+数値計算はルールベースで再現性を担保し、AIは計算済み結果をもとに、判断理由、打ち手候補、追加確認ポイント、管理職向け説明を生成します。
+
+## 30秒ピッチ
+
+ナフサ不足で本当に困るのは、「ナフサが足りない」というニュースそのものではありません。
+
+自社のどの製品が止まりうるのか、どのサプライヤーがボトルネックなのか、どの顧客を優先すべきなのか、そして何日前から代替材承認や在庫積み増しを始めるべきなのかが分からないことです。
+
+Supply Sentinel は、供給減少シナリオと企業ごとの判断基準を入力すると、BOM・在庫・受注・代替材情報に基づいて、製品別の影響、耐久期間、優先順位、打ち手を可視化します。
+
+数値計算はルールベースで再現性を担保し、AIはその結果をもとに、判断理由、打ち手候補、追加確認ポイント、管理職向け説明を生成します。
 
 ## MVP Scope
 
-The hackathon MVP focuses on one high-impact scenario:
+このハッカソンMVPは、リアルデータ連携型の巡回ツールではなく、デモデータとスライダー操作で意思決定支援の価値を見せます。
 
-- Detect naphtha supply risk from external news and supplier notice text.
-- Extract material, region, period, delay, and confidence using Azure OpenAI.
-- Compare the event with sample inventory, BOM, alternatives, and order data.
-- Calculate affected products, customers, plants, remaining inventory days, and risk score.
-- Generate first-response actions, approval items, and a management report.
-- Keep final decisions human-approved.
+- 対象素材、供給減少率、影響期間、影響ノード、代替ルート、需要方針を入力する
+- `company_policy.demo.json` の企業判断基準で注意/危険/停止・供給配分判断を計算する
+- 「早めに準備」は残供給率が30%未満になった状態として扱う
+- 企業基準の重みに基づいて製品優先順位を計算する
+- 守る製品、縮小候補、供給配分候補、代替材確認、在庫積み増し、調達先分散を出す
+- AI Scenario Brief が計算済みmetricsだけを参照して説明する
+- 発注変更、サプライヤ切替、顧客正式通知、生産計画変更、供給配分・縮小判断は人間承認に回す
+
+## Demo Data Policy
+
+画面上のニュース、サプライヤ通知、物流、価格情報は、実取得していない場合は「シナリオ根拠」「デモ用想定情報」として表示します。
+
+リアルタイムニュース取得は将来拡張です。実装する場合は、取得元URL、取得日時、更新頻度、取得失敗時の表示、デモデータとの区別を必須にします。
 
 ## Quick Start
 
-This MVP runs with Node.js (>=20) and **no external packages, no API keys** — all
-external AI/data is mocked locally so the demo is fully reproducible offline.
-
-### Interactive map dashboard (main demo)
+Node.js 20 以上で動作します。
 
 ```powershell
-node src\serve.mjs
+npm.cmd start
 ```
 
-Then open http://localhost:4173 in a browser. The server regenerates the impact
-data on startup and serves a dark "mission-control" dashboard:
+Then open `http://localhost:4173`.
 
-- **World map with glowing import routes** ("光のルート") — where each material is
-  sourced from (upstream refineries → midstream suppliers/ports → our downstream
-  plants). Disrupted routes pulse red, resilient routes glow green.
-- **Sourcing mix & spend** — share (%) and monthly procurement spend (課金額) per
-  route, with the portion now at risk highlighted.
-- **Risk score, KPIs, and impact** — affected products, customers, plants, and
-  minimum inventory days.
-- **Process-mining flow** — Origin → Supplier/Port → Plant → Product → Customer.
-- Impacted orders, evidence, recommended first actions, and human-approval items.
-
-### Headless pipeline / artifacts
+テスト:
 
 ```powershell
-node src\run-demo.mjs
+npm.cmd test
 ```
 
-On Windows PowerShell, `npm.ps1` may be blocked by execution policy. Use `npm.cmd`:
+## Main Screens
 
-```powershell
-npm.cmd test          # run unit tests
-npm.cmd run demo      # run the headless pipeline
-npm.cmd run build:web # prepare static GitHub Pages assets
-npm.cmd start         # launch the dashboard server (alias: npm.cmd run dev)
-```
+1. **シナリオ設定**
+   - 対象素材
+   - 供給減少率
+   - 影響期間
+   - 影響ノード
+   - 代替ルート利用可否
+   - 需要方針
+   - 企業判断基準
 
-Generated demo outputs are written to:
+2. **製品影響・優先順位**
+   - 影響製品ランキング
+   - 在庫残日数
+   - 売上影響
+   - 顧客優先度
+   - 代替材承認状況
+   - サプライヤ依存
+   - 推奨判断
+
+3. **打ち手・AI説明**
+   - AI Scenario Brief
+   - 守る製品、縮小候補、供給配分候補
+   - 代替材確認、在庫積み増し、調達先分散
+   - Human-in-the-loop 承認待ち
+   - Agent Run Console 補助トレース
+
+## Rule / AI Boundary
+
+ルールベースが担当:
+
+- 供給減少率の反映
+- 在庫残日数の計算
+- 製品・顧客・工場への影響計算
+- 影響供給比率
+- 金額影響
+- 企業閾値に基づく注意/危険/停止・供給配分判断
+- 残供給率30%未満での早期準備トリガー判定
+- 製品優先順位のベース計算
+- Human-in-the-loop対象の判定
+
+AIが担当:
+
+- シナリオで何が起きているかの自然文要約
+- なぜこの製品を守るべきかの説明
+- なぜこの製品が縮小候補なのかの説明
+- 打ち手候補の整理
+- 追加確認ポイント
+- 管理職向け説明文
+- 顧客向け説明ドラフト
+
+AIにやらせないこと:
+
+- 在庫日数、供給影響率、スコアを新規に作る
+- 企業閾値に反して安全/危険を決める
+- 発注変更、サプライヤ切替、顧客通知、生産計画変更を実行する
+
+## Repository Highlights
 
 ```text
-outputs/latest/
-+-- risk_event.json
-+-- impact_assessment.json
-+-- dashboard_data.json   <- consolidated model consumed by the dashboard
-+-- teams_alert.md
-+-- management_report.md
-+-- dashboard.html        <- legacy static one-page summary
-+-- alert_history.json
+web/
+  index.html
+  js/
+    app.js
+    scenarioControls.js
+    companyPolicy.js
+    aiScenarioBrief.js
+    propagation.js
+  assets/
+    company_policy.demo.json
+    scenarios/
+      naphtha-asia-allocation.json
+
+src/supply_sentinel/
+  propagationEngine.mjs
+  scoring.mjs
+
+tests/
+  company_policy.test.mjs
+  scenario_controls.test.mjs
+  ai_brief.test.mjs
 ```
 
-## Repository Structure
+## Non-goals
 
-```text
-.
-+-- README.md
-+-- docs/
-|   +-- 00_executive_summary.md
-|   +-- 01_product_concept.md
-|   +-- 02_requirements.md
-|   +-- 03_architecture.md
-|   +-- 04_business_workflow.md
-|   +-- 05_implementation_plan.md
-|   +-- 06_demo_script.md
-|   +-- 07_judging_strategy.md
-|   +-- 08_hackathon_master_plan_ja.md
-|   +-- 09_mvp_spec_ja.md
-|   +-- 10_demo_storyboard_ja.md
-|   +-- 11_implementation_notes_ja.md
-|   +-- 12_azure_cloud_requirements_ja.md
-|   +-- 13_azure_basic_design_ja.md
-|   +-- 14_github_cicd_azure_ja.md
-|   +-- 15_azure_cloud_plan_summary_ja.html
-+-- data/
-|   +-- README.md
-|   +-- samples/
-|   |   +-- news_events.json
-|   |   +-- supplier_notices.json
-|   |   +-- inventory.csv
-|   |   +-- bom.csv
-|   |   +-- orders.csv
-|   |   +-- alternatives.csv
-|   |   +-- supply_routes.csv      <- geo sourcing routes (origin/supplier/port/plant, share %, spend)
-|   +-- geo/
-|       +-- world_countries.geojson
-+-- prompts/
-|   +-- risk_extraction.md
-|   +-- impact_summary.md
-|   +-- management_report.md
-+-- src/
-|   +-- run-demo.mjs               <- headless pipeline
-|   +-- serve.mjs                  <- local dashboard server (no deps)
-|   +-- supply_sentinel/
-|   |   +-- ingestion.mjs
-|   |   +-- riskExtraction.mjs     <- AI boundary (mocked, deterministic)
-|   |   +-- impactEngine.mjs       <- products/customers/plants/inventory + score
-|   |   +-- routeEngine.mjs        <- geo routes, sourcing mix, spend, process flow
-|   |   +-- scoring.mjs
-|   |   +-- alertWriter.mjs
-|   |   +-- reportWriter.mjs
-|   |   +-- dashboardWriter.mjs
-|   |   +-- stateStore.mjs
-|   |   +-- workflow.mjs           <- orchestration + dashboard model
-|   +-- function_app/
-|       +-- timerTrigger.mjs
-+-- web/                            <- interactive map dashboard (offline, no CDN)
-|   +-- index.html
-|   +-- styles.css
-|   +-- js/
-|   |   +-- app.js                 <- fetch data + wire modules
-|   |   +-- map.js                 <- canvas world map + glowing routes
-|   |   +-- flow.js                <- process-mining flow graph (SVG)
-|   |   +-- panels.js              <- KPIs / sourcing mix / tables
-|   +-- assets/
-|       +-- world.geojson
-+-- tests/
-|   +-- scoring.test.mjs
-|   +-- impact_engine.test.mjs
-|   +-- route_engine.test.mjs
-+-- infra/
-    +-- README.md
-```
+- 本格的なERP/PLM/WMS連携
+- 実ニュースAPIの完全実装
+- 実サプライヤ通知メールの取り込み
+- 自動発注
+- 自動サプライヤ切替
+- 自動顧客通知
+- AIによる完全自律判断
+- 全素材への本格横展開
 
-## Recommended Microsoft Stack
+## Demo Flow
 
-- Runtime: Azure Container Apps Consumption + Container Apps Job
-- AI: Azure OpenAI / Azure AI Foundry (`gpt-5.4-mini` on East US 2 DataZoneStandard for the live demo)
-- State: Azure Cosmos DB Serverless
-- Frontend: Azure Storage Static Website
-- Container registry: Azure Container Registry Basic
-- Auth: Microsoft Entra ID / Managed Identity
-- CI/CD: GitHub Actions + OIDC
-
-## What We Deliberately Do Not Build
-
-- Stock trading prediction
-- Full demand forecasting
-- Automatic purchase order execution
-- Automatic supplier switching
-- Full-scale ERP integration
-- Broad multi-material monitoring
-- Large dashboard platform
-
-The MVP wins by doing one thing clearly: external risk detection plus internal impact assessment.
+1. 川下企業SCMチームが、供給減少シナリオを選ぶ
+2. 供給減少率、影響期間、対象素材、影響ノードを設定する
+3. 企業判断基準を確認・調整する
+4. シナリオを実行する
+5. 製品・顧客・工場への影響が表示される
+6. 何日耐えられるかが表示される
+7. 守る製品、縮小候補、供給配分候補が表示される
+8. 代替材承認、在庫積み増し、調達先分散の候補が表示される
+9. AIが判断理由、追加確認ポイント、管理職向け説明を生成する
+10. 発注変更、サプライヤ切替、顧客通知、生産計画変更は人間承認に回る

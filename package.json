@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "main": "src/function_app/app.mjs",
-  "description": "Hackathon MVP for early-warning supply risk impact assessment.",
+  "description": "Hackathon MVP for supply-constraint scenario analysis and product-priority decision support.",
   "scripts": {
     "start": "node src/serve.mjs",
     "dev": "node src/serve.mjs",

@@ -1,208 +1,458 @@
-import { createMap } from "./map.js";
-import { renderPanels } from "./panels.js";
-import { createNetwork, networkLegendHtml } from "./network.js";
-import { computeMetrics } from "./propagation.js";
-import { buildAgentRun, detectInjection } from "./agentTrace.js";
-import { createAgentConsole } from "./agentConsole.js";
-import { renderDecisionQueue } from "./decisions.js";
+import {
+  ALTERNATIVE_ROUTE_OPTIONS,
+  DEFAULT_SCENARIO_INPUT,
+  DEMAND_POLICY_OPTIONS,
+  DURATION_OPTIONS,
+  IMPACT_NODE_OPTIONS,
+  MATERIAL_OPTIONS,
+  calculateScenarioDecisionModel,
+  normalizeScenarioInput,
+  scenarioInputFromForm,
+} from "./scenarioControls.js";
+import {
+  DEFAULT_COMPANY_POLICY,
+  editablePolicyFromForm,
+  normalizePolicy,
+} from "./companyPolicy.js";
+import { buildAiScenarioBrief } from "./aiScenarioBrief.js";
 
 const VIEW_TITLES = {
-  dashboard: "監視ダッシュボード",
-  analysis: "影響分析",
-  response: "初動対応",
+  scenario: "シナリオ設定",
+  impact: "製品影響・優先順位",
+  actions: "打ち手・AI説明",
 };
 
-const MATERIAL_PROFILES = {
-  naphtha: {
-    label: "ナフサ",
-    region: "Asia",
-    headline: "ナフサ供給リスク",
-    normalScore: 34,
-    inventoryDays: 12,
-  },
-  "packaging-film": {
-    label: "包装フィルム",
-    region: "East Asia",
-    headline: "包装フィルム供給リスク",
-    normalScore: 24,
-    inventoryDays: 18,
-    inventory: [
-      { material: "packaging-film", plant: "千葉工場", stock_qty: 1260, daily_usage: 70, unit: "roll", days_of_supply: 18 },
-    ],
-    alternatives: [
-      { material: "packaging-film", alternative_material: "PKG-ALT-02", approved: true, lead_time_days: 9, constraints: "標準包装材のみ承認済み。高防湿グレードは品質確認が必要。" },
-    ],
-  },
-  "semiconductor-adhesive": {
-    label: "半導体接着材",
-    region: "Europe",
-    headline: "半導体接着材供給リスク",
-    normalScore: 31,
-    inventoryDays: 14,
-    inventory: [
-      { material: "semiconductor-adhesive", plant: "名古屋工場", stock_qty: 420, daily_usage: 30, unit: "kg", days_of_supply: 14 },
-    ],
-    alternatives: [
-      { material: "semiconductor-adhesive", alternative_material: "ADH-ALT-01", approved: false, lead_time_days: 28, constraints: "顧客認定待ち。量産品への適用は未承認。" },
-    ],
-  },
+const state = {
+  scenario: null,
+  scenarioInput: { ...DEFAULT_SCENARIO_INPUT },
+  companyPolicy: normalizePolicy(DEFAULT_COMPANY_POLICY),
+  model: null,
+  brief: null,
 };
 
-let dashboardData = null;
-let currentDashboardData = null;
-let demoConfig = { stages: [], data_sources: [], interval_ms: 1800 };
-let demoStep = 0;
-let demoTimer = null;
-let demoPlaying = false;
-let worldGeojson = null;
-let mapInstance = null;
-let networkInstance = null;
-let mapControlsBound = false;
-let activeMaterial = "naphtha";
-let scenarioIndex = { scenarios: [] };
-let activeScenarioId = "";
-let activeScenario = null;
-let activeTimeseries = null;
-let activeMonthIndex = -1;
-let agentMessages = [];
-let agentContextKey = "";
-let agentChatBound = false;
-let agentConsoleInstance = null;
-let agentConsoleBound = false;
+init();
 
-function setLoaderText(message) {
-  const el = document.getElementById("boot-loader-text");
-  if (el) el.textContent = message;
-}
-
-function hideLoader() {
-  document.getElementById("boot-loader")?.classList.add("is-hidden");
-}
-
-function showFatalError(message) {
-  setLoaderText(`読み込みに失敗しました: ${message}`);
-  const banner = document.createElement("div");
-  banner.setAttribute("role", "alert");
-  banner.style.cssText =
-    "position:fixed;left:0;right:0;top:0;z-index:9999;" +
-    "background:#7f1d1d;color:#fff;padding:12px 16px;font:13px/1.5 system-ui,sans-serif;";
-  banner.textContent = `ダッシュボードの読み込みに失敗しました: ${message}`;
-  document.body.appendChild(banner);
-}
-
-async function fetchJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`GET ${url} -> HTTP ${res.status}`);
+async function init() {
+  setBootText("シナリオデータを読み込んでいます");
+  try {
+    const [scenario, policy] = await Promise.all([
+      loadJson("./assets/scenarios/naphtha-asia-allocation.json"),
+      loadJson("./assets/company_policy.demo.json"),
+    ]);
+    state.scenario = scenario;
+    state.companyPolicy = normalizePolicy(policy);
+    setBootText("画面を構成しています");
+    bindChrome();
+    renderForms();
+    renderModel();
+  } catch (error) {
+    console.error(error);
+    renderLoadError(error);
+  } finally {
+    hideBootLoader();
   }
-  return res.json();
 }
 
-function apiBaseUrl() {
-  const config = window.SUPPLY_SENTINEL_CONFIG || {};
-  return String(config.apiBase || "").replace(/\/$/, "");
+async function loadJson(url) {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) throw new Error(`${url} を読み込めませんでした (${response.status})`);
+  return response.json();
 }
 
-function agentAdviceUrl() {
-  const base = apiBaseUrl();
-  return base ? `${base}/api/agent-advice` : "/api/agent-advice";
-}
+function bindChrome() {
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => switchView(button.getAttribute("data-view")));
+  });
 
-async function fetchDashboardData() {
-  const base = apiBaseUrl();
-  const apiUrl = base ? `${base}/api/latest-dashboard` : "";
-  if (apiUrl) {
-    try {
-      const payload = await fetchJson(apiUrl);
-      if (payload && payload.dashboard) {
-        payload.dashboard.meta = payload.dashboard.meta || {};
-        payload.dashboard.meta.cloud = {
-          served_at: payload.served_at || null,
-          state_store: payload.state_store || "api",
-          api_base: base,
-          persisted: payload.state_store === "cosmos",
-        };
-        return payload.dashboard;
-      }
-    } catch (error) {
-      console.warn("Cloud dashboard API unavailable; falling back to static demo data.", error);
-    }
-  }
-  const fallback = await fetchJson("./dashboard_data.json");
-  fallback.meta = fallback.meta || {};
-  fallback.meta.cloud = {
-    served_at: null,
-    state_store: "static-json",
-    api_base: "",
-    persisted: false,
-  };
-  return fallback;
-}
+  const toggle = document.getElementById("sidebar-toggle");
+  const shell = document.getElementById("app-shell");
+  toggle?.addEventListener("click", () => {
+    const collapsed = shell.classList.toggle("sidebar-collapsed");
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+    toggle.textContent = collapsed ? "›" : "‹";
+  });
 
-function ensureMap() {
-  const canvasEl = document.getElementById("world-map");
-  if (!canvasEl || !currentDashboardData || !worldGeojson) return;
-
-  if (!mapInstance) {
-    mapInstance = createMap(canvasEl, worldGeojson);
-    bindMapControls(canvasEl);
-    window.addEventListener("resize", () => {
-      try {
-        mapInstance.resize();
-      } catch {
-        // Ignore resize races.
-      }
-    });
-  }
-
-  requestAnimationFrame(() => {
-    try {
-      mapInstance.resize();
-      mapInstance.render(currentDashboardData);
-    } catch {
-      // Ignore resize races.
-    }
+  document.getElementById("run-scenario")?.addEventListener("click", () => {
+    renderModel();
+    switchView("impact");
+  });
+  document.getElementById("reset-policy")?.addEventListener("click", () => {
+    state.companyPolicy = normalizePolicy(DEFAULT_COMPANY_POLICY);
+    renderForms();
+    renderModel();
   });
 }
 
-function compactUsdJa(value) {
+function switchView(view) {
+  const next = VIEW_TITLES[view] ? view : "scenario";
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.classList.toggle("is-active", button.getAttribute("data-view") === next);
+  });
+  document.querySelectorAll("[data-view-panel]").forEach((panel) => {
+    panel.classList.toggle("is-active", panel.getAttribute("data-view-panel") === next);
+  });
+  setText("view-title", VIEW_TITLES[next]);
+}
+
+function renderForms() {
+  const scenarioForm = document.getElementById("scenario-form");
+  if (scenarioForm) {
+    scenarioForm.innerHTML = scenarioFormHtml(state.scenarioInput);
+    scenarioForm.addEventListener("input", () => {
+      state.scenarioInput = scenarioInputFromForm(new FormData(scenarioForm));
+      setText("supply-reduction-value", `${state.scenarioInput.supplyReductionPercent}%減`);
+      renderModel();
+    });
+    scenarioForm.addEventListener("change", () => {
+      state.scenarioInput = scenarioInputFromForm(new FormData(scenarioForm));
+      renderModel();
+    });
+  }
+
+  const policyForm = document.getElementById("policy-form");
+  if (policyForm) {
+    policyForm.innerHTML = policyFormHtml(state.companyPolicy);
+    policyForm.addEventListener("input", () => {
+      state.companyPolicy = editablePolicyFromForm(new FormData(policyForm), state.companyPolicy);
+      renderModel();
+    });
+    policyForm.addEventListener("change", () => {
+      state.companyPolicy = editablePolicyFromForm(new FormData(policyForm), state.companyPolicy);
+      renderModel();
+    });
+  }
+}
+
+function renderModel() {
+  if (!state.scenario) return;
+  state.scenarioInput = normalizeScenarioInput(state.scenarioInput);
+  state.companyPolicy = normalizePolicy(state.companyPolicy);
+  state.model = calculateScenarioDecisionModel({
+    scenario: state.scenario,
+    scenarioInput: state.scenarioInput,
+    companyPolicy: state.companyPolicy,
+  });
+  state.brief = buildAiScenarioBrief({ model: state.model });
+
+  renderChips();
+  renderPolicyNote();
+  renderDecisionKpis();
+  renderScenarioBasis();
+  renderProductTable();
+  renderDecisionOutputs();
+  renderMitigations();
+  renderAiBrief();
+  renderApprovalQueue();
+  renderAgentTrace();
+}
+
+function scenarioFormHtml(input) {
+  return `
+    <div class="form-grid">
+      <label class="field">
+        <span>対象素材</span>
+        <select name="material">${optionHtml(MATERIAL_OPTIONS, input.material)}</select>
+      </label>
+      <label class="field range-field">
+        <span>供給減少率 <strong id="supply-reduction-value">${esc(input.supplyReductionPercent)}%減</strong></span>
+        <input type="range" name="supply_reduction" min="0" max="100" step="5" value="${esc(input.supplyReductionPercent)}">
+      </label>
+      <label class="field">
+        <span>影響期間</span>
+        <select name="duration_days">${optionHtml(DURATION_OPTIONS, String(input.durationDays))}</select>
+      </label>
+      <label class="field">
+        <span>影響ノード</span>
+        <select name="impact_node">${optionHtml(IMPACT_NODE_OPTIONS, input.impactNode)}</select>
+      </label>
+      <label class="field">
+        <span>代替ルート利用可否</span>
+        <select name="alternative_route">${optionHtml(ALTERNATIVE_ROUTE_OPTIONS, input.alternativeRoute)}</select>
+      </label>
+      <label class="field">
+        <span>需要方針</span>
+        <select name="demand_policy">${optionHtml(DEMAND_POLICY_OPTIONS, input.demandPolicy)}</select>
+      </label>
+    </div>
+  `;
+}
+
+function policyFormHtml(policy) {
+  return `
+    <div class="policy-form-grid">
+      <fieldset>
+        <legend>閾値</legend>
+        ${numberField("注意: 最低在庫日数", "attention_inventory", policy.thresholds.attention.min_inventory_days, "日")}
+        ${numberField("注意: 影響供給比率", "attention_supply", policy.thresholds.attention.affected_supply_ratio_percent, "%")}
+        ${numberField("危険: 最低在庫日数", "danger_inventory", policy.thresholds.danger.min_inventory_days, "日")}
+        ${numberField("危険: 影響供給比率", "danger_supply", policy.thresholds.danger.affected_supply_ratio_percent, "%")}
+        ${numberField("停止/配分: 最低在庫日数", "stop_inventory", policy.thresholds.stop_or_allocation_decision.min_inventory_days, "日")}
+        ${numberField("停止/配分: 影響供給比率", "stop_supply", policy.thresholds.stop_or_allocation_decision.affected_supply_ratio_percent, "%")}
+        ${numberField("早期準備: 残供給率", "early_remaining_supply", policy.early_preparation_trigger.remaining_supply_ratio_percent_below, "%未満")}
+      </fieldset>
+      <fieldset>
+        <legend>優先順位の重み</legend>
+        ${numberField("顧客優先度", "weight_customer_priority", policy.priority_weights.customer_priority, "", "0.01")}
+        ${numberField("売上影響", "weight_revenue_impact", policy.priority_weights.revenue_impact, "", "0.01")}
+        ${numberField("在庫日数", "weight_inventory_days", policy.priority_weights.inventory_days, "", "0.01")}
+        ${numberField("代替材有無", "weight_alternative_availability", policy.priority_weights.alternative_availability, "", "0.01")}
+        ${numberField("単一サプライヤー依存", "weight_single_supplier_dependency", policy.priority_weights.single_supplier_dependency, "", "0.01")}
+      </fieldset>
+    </div>
+  `;
+}
+
+function numberField(label, name, value, suffix = "", step = "1") {
+  return `
+    <label class="number-field">
+      <span>${esc(label)}</span>
+      <span class="number-input-wrap">
+        <input type="number" name="${esc(name)}" value="${esc(value)}" step="${esc(step)}">
+        ${suffix ? `<em>${esc(suffix)}</em>` : ""}
+      </span>
+    </label>
+  `;
+}
+
+function renderChips() {
+  const input = state.model.scenario_input;
+  const material = state.model.calculated_metrics.material;
+  const duration = `${input.durationDays}日`;
+  setText("scenario-summary-chip", `${material} / 供給${input.supplyReductionPercent}%減 / ${duration}`);
+  setText("policy-source-chip", `判定基準: ${state.model.policy.company_policy_name}`);
+  setText("ai-mode-chip", `AI判断補助: ${state.brief.generation_mode}`);
+}
+
+function renderPolicyNote() {
+  const metrics = state.model.calculated_metrics;
+  setText(
+    "policy-note",
+    `${metrics.policy_name} に基づく警戒レベル: ${metrics.alert_level.label} (${metrics.alert_level.reason})`,
+  );
+}
+
+function renderDecisionKpis() {
+  const m = state.model.calculated_metrics;
+  setHtml(
+    "decision-kpis",
+    [
+      kpiCard("影響製品", `${m.impacted_product_count}件`, "対象素材に直接影響する製品"),
+      kpiCard("影響顧客", `${m.impacted_customer_count}社`, "受注・出荷影響のある顧客"),
+      kpiCard("影響工場", `${m.impacted_plant_count}拠点`, "在庫・生産計画を確認すべき工場"),
+      kpiCard("最短在庫", m.inventory_days_min == null ? "該当なし" : `${m.inventory_days_min}日`, "製品別の補正後在庫日数"),
+      kpiCard("影響供給比率", `${m.affected_supply_ratio_percent}%`, "企業ポリシー判定に使う供給影響"),
+      kpiCard("残供給率", `${m.remaining_supply_ratio_percent}%`, m.early_preparation_rule, m.early_preparation_triggered ? "danger" : "stable"),
+      kpiCard("早期準備", m.early_preparation_triggered ? "発動" : "未達", "残供給率30%未満で発動", m.early_preparation_triggered ? "critical" : "stable"),
+      kpiCard("金額影響", compactUsd(m.spend_at_risk_usd), `全体 ${compactUsd(m.total_spend_usd)}`),
+      kpiCard("警戒レベル", m.alert_level.label, m.alert_level.reason, m.alert_level.tone),
+      kpiCard("Policy Score", `${m.policy_impact_score}/100`, "Demo Manufacturing SCM Policy に基づく計算値"),
+    ].join(""),
+  );
+}
+
+function kpiCard(label, value, note, tone = "") {
+  return `
+    <article class="decision-kpi ${tone ? `is-${esc(tone)}` : ""}">
+      <span>${esc(label)}</span>
+      <strong>${esc(value)}</strong>
+      <p>${esc(note)}</p>
+    </article>
+  `;
+}
+
+function renderScenarioBasis() {
+  setHtml(
+    "scenario-basis",
+    `
+      <div class="demo-disclaimer">この情報はデモ用のシナリオ根拠です。リアルタイムニュース取得ではありません。</div>
+      <div class="basis-list">
+        ${state.model.scenario_basis.map((item) => `
+          <article class="basis-card">
+            <strong>${esc(item.label)}</strong>
+            <span>${esc(item.source)} / 確度 ${esc(item.confidence)}</span>
+            <p>${esc(item.claim)}</p>
+            <em>${esc(item.disclaimer)}</em>
+          </article>
+        `).join("")}
+      </div>
+    `,
+  );
+}
+
+function renderProductTable() {
+  const rows = state.model.product_impact_table;
+  setHtml(
+    "product-impact-body",
+    rows.map((row) => `
+      <tr class="${row.is_affected ? "is-affected" : "is-calm"}">
+        <td><strong>${esc(row.product_name)}</strong></td>
+        <td>${esc(row.impact_material)}</td>
+        <td>${esc(row.affected_supplier)}<br><span>${esc(row.supplier_tier)}</span></td>
+        <td>${esc(row.inventory_days)}日</td>
+        <td>${compactUsd(row.revenue_impact_usd)}</td>
+        <td>${esc(row.customer_priority)}</td>
+        <td>${esc(row.alternative_status)}</td>
+        <td>${row.single_supplier_dependency ? "あり" : "分散あり"}</td>
+        <td><span class="decision-pill">${esc(row.recommended_decision)}</span></td>
+        <td>${esc(row.decision_reason)}</td>
+      </tr>
+    `).join(""),
+  );
+}
+
+function renderDecisionOutputs() {
+  renderProductCards("protected-products", state.model.protected_products, "守る製品はありません");
+  renderProductCards("reduction-candidates", state.model.reduction_candidates, "縮小候補はありません");
+  renderProductCards("allocation-candidates", state.model.allocation_candidates, "供給配分候補はありません");
+}
+
+function renderProductCards(id, rows, emptyText) {
+  setHtml(
+    id,
+    rows.length
+      ? rows.map((row) => `
+          <article class="product-decision-card">
+            <strong>${esc(row.product_name)}</strong>
+            <span>${esc(row.recommended_decision)} / 優先度 ${esc(row.priority_score)}</span>
+            <p>${esc(row.decision_reason)}</p>
+          </article>
+        `).join("")
+      : emptyState(emptyText),
+  );
+}
+
+function renderMitigations() {
+  setHtml("alternative-items", listItems(state.model.alternative_approval_items, (item) => `${item.material_id}: ${item.product_name} (${item.status})`));
+  setHtml("inventory-items", listItems(state.model.inventory_build_items, (item) => `${item.product_name}: ${item.plant} / 在庫${item.inventory_days}日`));
+  setHtml("supplier-items", listItems(state.model.supplier_diversification_items, (item) => `${item.product_name}: ${item.supplier} / ${item.tier}`));
+}
+
+function renderAiBrief() {
+  const b = state.brief;
+  setHtml(
+    "ai-scenario-brief",
+    `
+      <div class="brief-guardrail">${esc(b.guardrail)}</div>
+      <section class="brief-section">
+        <h4>経営向け要約</h4>
+        <p>${esc(b.executive_summary)}</p>
+      </section>
+      <section class="brief-section">
+        <h4>製品優先順位の理由</h4>
+        <p>${esc(b.product_priority_reason)}</p>
+      </section>
+      <div class="brief-columns">
+        ${briefList("守るべき製品", b.protected_products)}
+        ${briefList("縮小候補製品", b.reduction_candidates)}
+        ${briefList("代替材確認", b.alternative_material_checks)}
+        ${briefList("在庫積み増し", b.inventory_build_candidates)}
+        ${briefList("調達先分散", b.supplier_diversification_candidates)}
+        ${briefList("人間承認が必要な判断", b.human_approval_required)}
+      </div>
+      <section class="brief-section">
+        <h4>追加確認ポイント</h4>
+        <ol>${b.additional_confirmation_points.map((item) => `<li>${esc(item)}</li>`).join("")}</ol>
+      </section>
+      <section class="brief-section">
+        <h4>顧客説明ドラフト</h4>
+        <p>${esc(b.customer_explanation_draft)}</p>
+      </section>
+      <section class="brief-section referenced-values">
+        <h4>参照した計算値</h4>
+        <code>${esc(JSON.stringify(b.referenced_calculation_values, null, 2))}</code>
+      </section>
+    `,
+  );
+}
+
+function briefList(title, rows) {
+  return `
+    <section class="brief-mini-list">
+      <h4>${esc(title)}</h4>
+      <ul>${rows.length ? rows.map((item) => `<li>${esc(item)}</li>`).join("") : "<li>該当なし</li>"}</ul>
+    </section>
+  `;
+}
+
+function renderApprovalQueue() {
+  const items = state.model.human_approval_items;
+  setHtml(
+    "approval-queue",
+    items.length
+      ? items.map((item) => `
+          <article class="approval-card">
+            <div>
+              <strong>${esc(item.label)}</strong>
+              <span>${esc(item.owner)} / ${esc(item.status)}</span>
+            </div>
+            <p>${esc(item.reason)}</p>
+            <em>${esc(item.execution_policy)}</em>
+          </article>
+        `).join("")
+      : emptyState("承認待ち判断はありません"),
+  );
+}
+
+function renderAgentTrace() {
+  const m = state.model.calculated_metrics;
+  setHtml(
+    "agent-trace",
+    `
+      <ol class="trace-list">
+        <li><strong>Scenario Input</strong><span>${esc(m.material)} / 供給${esc(m.supply_reduction_percent)}%減 / ${esc(m.duration_days)}日</span></li>
+        <li><strong>Rule-based Calculation</strong><span>影響供給比率 ${esc(m.affected_supply_ratio_percent)}%、最短在庫 ${m.inventory_days_min ?? "該当なし"}日、金額影響 ${compactUsd(m.spend_at_risk_usd)}</span></li>
+        <li><strong>Company Policy Gate</strong><span>${esc(m.policy_name)} に基づき ${esc(m.alert_level.label)} と判定</span></li>
+        <li><strong>AI Scenario Brief</strong><span>計算済みmetricsを説明文、打ち手、確認ポイントに変換。実行判断は人間承認へ。</span></li>
+      </ol>
+    `,
+  );
+}
+
+function renderLoadError(error) {
+  setHtml(
+    "view-scenario",
+    `<section class="panel load-error"><h3>読み込みに失敗しました</h3><p>${esc(error.message || error)}</p></section>`,
+  );
+}
+
+function optionHtml(options, selected) {
+  return options
+    .map((option) => `<option value="${esc(option.value)}" ${String(option.value) === String(selected) ? "selected" : ""}>${esc(option.label)}</option>`)
+    .join("");
+}
+
+function listItems(rows, labeler) {
+  return rows.length ? rows.map((row) => `<li>${esc(labeler(row))}</li>`).join("") : "<li>該当なし</li>";
+}
+
+function emptyState(text) {
+  return `<div class="empty-state">${esc(text)}</div>`;
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function setHtml(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+function setBootText(text) {
+  setText("boot-loader-text", text);
+}
+
+function hideBootLoader() {
+  document.getElementById("boot-loader")?.classList.add("is-hidden");
+}
+
+function compactUsd(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "0ドル";
   if (Math.abs(n) >= 1_000_000) return `${trim1(n / 1_000_000)}百万ドル`;
   if (Math.abs(n) >= 1_000) return `${trim1(n / 1_000)}千ドル`;
   return `${Math.round(n).toLocaleString("ja-JP")}ドル`;
-}
-
-function trim1(num) {
-  const s = num.toFixed(1);
-  return s.endsWith(".0") ? s.slice(0, -2) : s;
-}
-
-function formatDateTime(value) {
-  if (!value) return "不明";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return String(value);
-  return parsed.toLocaleString("ja-JP", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function routeStatusLabel(status) {
-  if (status === "disrupted") return "要対応";
-  if (status === "resilient") return "代替可";
-  if (status === "exposed") return "監視";
-  return "通常";
-}
-
-function materialLabel(material) {
-  return MATERIAL_PROFILES[material]?.label || material || "不明";
-}
-
-function scenarioAssetUrl(file) {
-  return `./assets/scenarios/${String(file || "").replace(/^\.\//, "")}`;
 }
 
 function esc(value) {
@@ -214,1473 +464,7 @@ function esc(value) {
     .replaceAll("'", "&#039;");
 }
 
-const escAttr = esc;
-
-function asArray(value) {
-  return Array.isArray(value) ? value : [];
-}
-
-function firstText(items, fallback = "未特定") {
-  const value = asArray(items)[0];
-  if (!value) return fallback;
-  if (typeof value === "string") return value;
-  return value.product || value.customer || value.plant || value.name || value.order_id || value.title || fallback;
-}
-
-function joinTop(items, picker, fallback = "なし", limit = 3) {
-  const values = asArray(items)
-    .map((item) => (typeof picker === "function" ? picker(item) : item))
-    .filter(Boolean)
-    .slice(0, limit);
-  return values.length ? values.join("、") : fallback;
-}
-
-function agentContextSignature(model) {
-  return [
-    activeScenarioId,
-    activeMonthIndex,
-    model?.assessment?.material,
-    model?.assessment?.risk_score,
-    model?.meta?.ai?.run_id || model?.meta?.cloud?.served_at || model?.meta?.generated_at,
-  ].join("|");
-}
-
-function buildAgentContext(model) {
-  const assessment = model?.assessment || {};
-  const metrics = model?.propagation?.metrics || {};
-  const ai = model?.meta?.ai || {};
-  const cloud = model?.meta?.cloud || {};
-  const routes = asArray(model?.route_intel?.routes);
-  const affectedRoutes = routes.filter((route) => route.affected);
-  const material = materialLabel(assessment.material || activeMaterial);
-  const inventoryDays = metrics.inventory_days_min ?? assessment.inventory_days_min ?? "-";
-  const affectedShare = metrics.affected_supply_ratio ?? model?.route_intel?.kpis?.affected_share_percent ?? 0;
-  const spendAtRisk = metrics.spend_at_risk_usd ?? model?.route_intel?.kpis?.monthly_spend_at_risk ?? 0;
-  return {
-    material,
-    score: assessment.risk_score ?? "-",
-    severity: assessment.severity || model?.risk_event?.severity || "unknown",
-    inventoryDays,
-    affectedShare,
-    spendAtRisk,
-    products: asArray(assessment.impacted_products),
-    customers: asArray(assessment.impacted_customers),
-    orders: asArray(assessment.impacted_orders),
-    plants: asArray(assessment.impacted_plants),
-    actions: asArray(assessment.recommended_actions),
-    approvals: asArray(assessment.approval_required),
-    evidence: asArray(assessment.evidence).length ? asArray(assessment.evidence) : asArray(model?.risk_event?.evidence),
-    alternatives: asArray(assessment.alternatives),
-    affectedRoutes,
-    ai,
-    cloud,
-  };
-}
-
-function agentStatusLabel(model) {
-  const ai = model?.meta?.ai || {};
-  const cloud = model?.meta?.cloud || {};
-  const mode = ai.run_mode || (cloud.persisted ? "cloud" : "demo");
-  const modelName = ai.model || "gpt-5.4-mini";
-  const store = cloud.persisted ? "Cosmos保存済み" : "未保存";
-  return `${modelName} / ${mode} / ${store}`;
-}
-
-function initialAgentMessage(model) {
-  const ctx = buildAgentContext(model);
-  const route = ctx.affectedRoutes[0];
-  const product = firstText(ctx.products, "影響製品なし");
-  const customer = firstText(ctx.customers, "影響顧客なし");
-  const action = firstText(ctx.actions, "監視継続");
-  return `
-    <div class="agent-answer-title">初動判断を開始できます</div>
-    <div class="agent-trace">
-      <span>Risk Watcher</span>
-      <span>Impact Mapper</span>
-      <span>Response Planner</span>
-    </div>
-    <p>${esc(ctx.material)}のリスクスコアは <b>${esc(ctx.score)}</b>。影響調達比率は <b>${esc(ctx.affectedShare)}%</b>、最短在庫は <b>${esc(ctx.inventoryDays)}日</b>です。</p>
-    <ul>
-      <li>要注意ルート: ${esc(route ? `${route.origin?.name || route.supplier} → ${route.plant?.name || "自社工場"}` : "なし")}</li>
-      <li>影響候補: ${esc(product)} / ${esc(customer)}</li>
-      <li>まずの起案: ${esc(action)}</li>
-    </ul>`;
-}
-
-// Mirror of the backend classifier: greeting/thanks/meta with no supply-risk
-// signal => conversational. A real question always wins.
-function isConversationalQuestion(normalized) {
-  const q = String(normalized || "").trim();
-  if (!q) return false;
-  if (/(供給|在庫|代替|切替|切り替|リスク|顧客|取引先|調達|根拠|エビデンス|証拠|初動|対応|対策|納期|遅延|影響|サプライ|発注|価格|割当|配分|生産|出荷|物流|どうす|何をす|なにをす|naphtha|ナフサ|材料|原料)/.test(q)) {
-    return false;
-  }
-  if (/^(hi|hello|hey|yo|hiya|test|ping)\b/.test(q)) return true;
-  if (/(こんにち|こんばん|おはよ|はじめま|よろしく|やあ|どうも|ハロー|テスト)/.test(q)) return true;
-  if (/(ありがと|thanks|thank you|thx|助かった)/.test(q)) return true;
-  if (/((君|あなた|きみ|お前|だれ|誰)は|何ができ|なにができ|使い方|どう使|ヘルプ|help|自己紹介|何者)/.test(q)) return true;
-  return false;
-}
-
-function makeAgentAnswer(question, model) {
-  const ctx = buildAgentContext(model);
-  const normalized = String(question || "").toLowerCase();
-
-  // Offline mirror of the backend: greetings / small talk get a light reply,
-  // unless the message also carries a supply-risk signal (then analyze).
-  if (isConversationalQuestion(normalized)) {
-    const material = ctx.material || "供給リスク";
-    const reply = /ありがと|thanks|thank you|thx/.test(normalized)
-      ? "どういたしまして。供給リスクの初動で気になる点があれば、いつでも相談してください。"
-      : `こんにちは。Supply Sentinel の供給リスク相談AIです。現在は ${esc(material)} の供給リスクを監視しています。「まず何をする?」「代替策は?」など、対策の相談をどうぞ。`;
-    return `<p>${reply}</p>`;
-  }
-  const routeText = joinTop(ctx.affectedRoutes, (route) => `${route.supplier || route.origin?.name}→${route.plant?.name || "工場"}`);
-  const productText = joinTop(ctx.products, (item) => item.product || item.name || item);
-  const customerText = joinTop(ctx.customers, (item) => item.customer || item.name || item);
-  const evidenceText = joinTop(ctx.evidence, (item) => item.text || item.claim || item.summary || item, "根拠データなし", 4);
-  const approvalText = joinTop(ctx.approvals, (item) => item.action || item.title || item, "承認事項なし");
-  const alternativeText = joinTop(ctx.alternatives, (item) => {
-    const name = item.alternative_material || item.material || item.name;
-    const state = item.approved ? "承認済み" : "要確認";
-    return name ? `${name}(${state})` : "";
-  });
-
-  let title = "初動プラン";
-  let bullets = [
-    `${ctx.material}はリスク${ctx.score}、影響調達比率${ctx.affectedShare}%、最短在庫${ctx.inventoryDays}日として扱います。`,
-    `最初に確認すべき供給ルートは ${routeText} です。`,
-    `調達・生産・営業は、${productText} / ${customerText} への波及を同じ前提で確認します。`,
-  ];
-
-  if (normalized.includes("根拠") || normalized.includes("エビデンス") || normalized.includes("なぜ")) {
-    title = "判断根拠";
-    bullets = [
-      `外部原文から抽出した主な根拠は「${evidenceText}」です。`,
-      `社内照合では、影響調達比率${ctx.affectedShare}%、最短在庫${ctx.inventoryDays}日、リスク金額${compactUsdJa(ctx.spendAtRisk)}を確認しています。`,
-      "AIは確定判断ではなく、根拠と影響範囲をそろえて人の判断を早める役割です。",
-    ];
-  } else if (normalized.includes("代替") || normalized.includes("切替")) {
-    title = "代替策";
-    bullets = [
-      `代替候補は ${alternativeText} です。`,
-      `承認済み候補から先に引当可否を確認し、未承認候補は品質・顧客認定の確認タスクに分けます。`,
-      `サプライヤ切替や正式発注変更は ${approvalText} として人の承認に残します。`,
-    ];
-  } else if (normalized.includes("顧客") || normalized.includes("営業")) {
-    title = "顧客影響";
-    bullets = [
-      `優先して見る顧客は ${customerText} です。`,
-      `影響製品は ${productText}。受注一覧では納期が近いものから確認します。`,
-      "顧客への正式通知はAIが文案まで準備し、営業責任者が送信判断します。",
-    ];
-  } else if (normalized.includes("誰") || normalized.includes("まず") || normalized.includes("何")) {
-    title = "最初の30分";
-    bullets = [
-      `調達: ${routeText} の納期・割当率・代替ロット有無をサプライヤに確認します。`,
-      `生産管理: ${productText} の在庫${ctx.inventoryDays}日を前提に、止まりやすいラインを確認します。`,
-      `営業: ${customerText} への影響可能性を先に把握し、正式連絡は承認後にします。`,
-    ];
-  }
-
-  return `
-    <div class="agent-answer-title">${esc(title)}</div>
-    <div class="agent-trace">
-      <span>1. 外部シグナル</span>
-      <span>2. 在庫/BOM照合</span>
-      <span>3. 初動起案</span>
-    </div>
-    <ul>${bullets.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>
-    <p class="agent-footnote">実行判断が必要なもの: ${esc(approvalText)}</p>`;
-}
-
-function buildAdviceContext(model) {
-  const assessment = model?.assessment || {};
-  const metrics = model?.propagation?.metrics || {};
-  const kpis = model?.route_intel?.kpis || {};
-  const provenance = asArray(model?.provenance).slice(0, 8).map((source) => ({
-    kind: source.kind || "source",
-    source: source.source || source.label || "",
-    claim: source.claim || "",
-    url: source.url || "",
-    published_at: source.published_at || "",
-    origin: source.origin || "",
-  }));
-  return {
-    material: assessment.material || activeMaterial,
-    risk_score: metrics.risk_score ?? assessment.risk_score,
-    affected_supply_ratio: metrics.affected_supply_ratio ?? kpis.affected_share_percent,
-    spend_at_risk_usd: metrics.spend_at_risk_usd ?? kpis.monthly_spend_at_risk,
-    inventory_days_min: metrics.inventory_days_min ?? assessment.inventory_days_min,
-    impacted_products: asArray(metrics.impacted_products ?? assessment.impacted_products).slice(0, 6),
-    impacted_customers: asArray(metrics.impacted_customers ?? assessment.impacted_customers).slice(0, 6),
-    recommended_actions: asArray(assessment.recommended_actions).slice(0, 6),
-    approval_required: asArray(assessment.approval_required).slice(0, 6),
-    evidence: asArray(assessment.evidence).slice(0, 5),
-    evidence_sources: provenance,
-    run_id: model?.agent_run?.run_id || null,
-  };
-}
-
-function renderAdviceAnswer(advice) {
-  // Conversational replies (greetings / small talk) render as a light bubble —
-  // no title, no 3-agent analysis, no cloud/fallback badge (the sender label
-  // already reads "Supply Sentinel AI").
-  if (advice?.mode === "conversational") {
-    return `<p>${esc(advice?.answer || "ご用件をどうぞ。")}</p>`;
-  }
-
-  const steps = asArray(advice?.reasoning_steps);
-  const evidence = asArray(advice?.evidence).slice(0, 4);
-  const actions = asArray(advice?.recommended_actions).slice(0, 4);
-  const decisions = asArray(advice?.human_decision_required).slice(0, 4);
-  const meta = advice?.meta || {};
-  const badge = meta.fallback
-    ? `${meta.model || "gpt-5.4-mini"} / fallback`
-    : `${meta.model || "gpt-5.4-mini"} / cloud`;
-  return `
-    <div class="agent-answer-title">AI相談結果 <span class="agent-answer-badge">${esc(badge)}</span></div>
-    <p>${esc(advice?.answer || "現在のコンテキストから初動案を整理しました。")}</p>
-    ${
-      steps.length
-        ? `<div class="agent-trace">${steps.map((step) => `<span>${esc(step.agent)}: ${esc(step.result)}</span>`).join("")}</div>`
-        : ""
-    }
-    ${evidence.length ? `<h5>根拠</h5><ul>${evidence.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
-    ${actions.length ? `<h5>推奨初動</h5><ul>${actions.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
-    ${decisions.length ? `<p class="agent-footnote">人の承認が必要: ${esc(decisions.join("、"))}</p>` : ""}`;
-}
-
-function addAgentMessage(role, html) {
-  agentMessages.push({ role, html });
-  renderAgentPanel(currentDashboardData);
-}
-
-function renderAgentPanel(model) {
-  const status = document.getElementById("agent-status");
-  const thread = document.getElementById("agent-thread");
-  const suggestions = document.getElementById("agent-suggestions");
-  if (!thread || !suggestions) return;
-
-  if (status) status.textContent = agentStatusLabel(model);
-  const key = agentContextSignature(model);
-  if (key !== agentContextKey) {
-    agentContextKey = key;
-    agentMessages = [{ role: "assistant", html: initialAgentMessage(model) }];
-  }
-
-  thread.innerHTML = agentMessages
-    .map(
-      (message) => `
-        <article class="agent-message agent-message-${message.role}">
-          <span>${message.role === "user" ? "あなた" : "Supply Sentinel AI"}</span>
-          <div>${message.html}</div>
-        </article>`,
-    )
-    .join("");
-  suggestions.innerHTML = ["まず何をする？", "根拠を見せて", "代替策は？", "顧客影響を要約"]
-    .map((text) => `<button type="button" data-agent-question="${esc(text)}">${esc(text)}</button>`)
-    .join("");
-  thread.scrollTop = thread.scrollHeight;
-}
-
-async function fetchAgentAdvice(question, model) {
-  const response = await fetch(agentAdviceUrl(), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      question,
-      context: buildAdviceContext(model),
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`agent-advice HTTP ${response.status}`);
-  }
-  return response.json();
-}
-
-async function askAgent(question) {
-  const trimmed = String(question || "").trim();
-  if (!trimmed || !currentDashboardData) return;
-  addAgentMessage("user", `<p>${esc(trimmed)}</p>`);
-  addAgentMessage("assistant", `<p class="agent-thinking">Azure OpenAI 相談APIへ問い合わせています...</p>`);
-  try {
-    const advice = await fetchAgentAdvice(trimmed, currentDashboardData);
-    agentMessages.pop();
-    agentMessages.push({ role: "assistant", html: renderAdviceAnswer(advice) });
-    renderAgentPanel(currentDashboardData);
-  } catch (error) {
-    console.warn("agent-advice unavailable; using local fallback.", error);
-    agentMessages.pop();
-    agentMessages.push({ role: "assistant", html: makeAgentAnswer(trimmed, currentDashboardData) });
-    renderAgentPanel(currentDashboardData);
-  }
-}
-
-function bindAgentChat() {
-  if (agentChatBound) return;
-  agentChatBound = true;
-  document.getElementById("agent-form")?.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const input = document.getElementById("agent-input");
-    const question = input?.value || "";
-    if (input) input.value = "";
-    askAgent(question);
-  });
-  document.getElementById("agent-suggestions")?.addEventListener("click", (event) => {
-    const button = event.target.closest?.("[data-agent-question]");
-    if (!button) return;
-    askAgent(button.getAttribute("data-agent-question"));
-  });
-}
-
-function ensureAgentConsole() {
-  const el = document.getElementById("agent-run-console");
-  if (!el) return null;
-  if (!agentConsoleInstance) {
-    agentConsoleInstance = createAgentConsole(el);
-  }
-  if (!agentConsoleBound) {
-    agentConsoleBound = true;
-    el.addEventListener("agent-console-step", (event) => highlightAgentStep(event.detail?.agentKey));
-    el.addEventListener("agent-console-done", () => clearAgentStepHighlight());
-  }
-  return agentConsoleInstance;
-}
-
-function updateDecisionSummary(summary) {
-  const el = document.getElementById("decision-summary");
-  if (!el || !summary) return;
-  el.textContent = summary.human
-    ? `承認済 ${summary.approved}/${summary.human}・保留 ${summary.hold}・差戻し ${summary.rejected}`
-    : "承認不要";
-}
-
-function renderAgentRuntime(model) {
-  const console = ensureAgentConsole();
-  console?.render(model);
-  renderDecisionQueue(document.getElementById("approval-list"), model?.agent_run, {
-    onChange: updateDecisionSummary,
-  });
-  const live = document.getElementById("agent-live-badge");
-  if (live) {
-    const run = model?.agent_run || {};
-    live.innerHTML = `<span class="agent-live-dot" aria-hidden="true"></span>${esc(run.run_mode === "cloud" ? "AI Agent cloud 実行済み" : "AI Agent デモ実行")}`;
-  }
-}
-
-function agentHighlightSelectors(agentKey) {
-  const map = {
-    orchestrator: [".agent-run-panel", ".summary-panel"],
-    risk_scout: [".ai-panel", ".summary-panel"],
-    evidence_verifier: [".ai-panel", ".provenance-panel"],
-    impact_mapper: [".network-panel", ".inventory-panel", ".orders-panel", ".kpi-panel"],
-    response_planner: [".agent-panel", ".response-brief-panel"],
-    decision_gate: [".response-brief-panel"],
-    reporter: [".response-brief-panel"],
-  };
-  return map[agentKey] || [];
-}
-
-function clearAgentStepHighlight() {
-  document.querySelectorAll(".is-agent-active").forEach((el) => el.classList.remove("is-agent-active"));
-}
-
-function highlightAgentStep(agentKey) {
-  clearAgentStepHighlight();
-  for (const selector of agentHighlightSelectors(agentKey)) {
-    document.querySelector(selector)?.classList.add("is-agent-active");
-  }
-}
-
-function bindAgentRuntimeControls() {
-  document.getElementById("agent-run-play")?.addEventListener("click", () => {
-    setActiveView("response");
-    const console = ensureAgentConsole();
-    console?.render(currentDashboardData);
-    console?.play({ stepMs: 760 });
-  });
-}
-
-function renderMapInsight(detail) {
-  const el = document.getElementById("map-insight");
-  if (!el) return;
-
-  if (!detail) {
-    const routes = (((currentDashboardData || {}).route_intel || {}).routes || [])
-      .filter((route) => route.material === activeMaterial);
-    const affectedShare = routes
-      .filter((route) => route.affected)
-      .reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
-    el.innerHTML = `
-      <span class="map-insight-kicker">マップ分析</span>
-      <strong>${esc(materialLabel(activeMaterial))}供給網の要注意地点</strong>
-      <p>赤いルートは割当制限・遅延の可能性がある調達経路です。監視対象を切り替えると、同じ仕組みで他の重要物資も確認できます。</p>
-      <dl>
-        <div><dt>影響調達比率</dt><dd class="route-risk">${esc(affectedShare)}%</dd></div>
-        <div><dt>要対応ルート</dt><dd>${esc(routes.filter((route) => route.affected).length)}件</dd></div>
-      </dl>`;
-    return;
-  }
-
-  if (detail.type === "route" && detail.route) {
-    const route = detail.route;
-    const status = routeStatusLabel(route.status);
-    const riskClass = route.status === "disrupted" ? "route-risk" : "";
-    el.innerHTML = `
-      <span class="map-insight-kicker">選択中のルート</span>
-      <strong>${esc(route.origin?.name)} → ${esc(route.plant?.name)}</strong>
-      <p>${esc(route.supplier)} / ${esc(materialLabel(route.material))}。調達比率とリードタイムを見ながら、どの工場に波及するか確認できます。</p>
-      <dl>
-        <div><dt>状態</dt><dd class="${riskClass}">${esc(status)}</dd></div>
-        <div><dt>調達比率</dt><dd>${esc(route.share_percent)}%</dd></div>
-        <div><dt>月間調達額</dt><dd>${esc(compactUsdJa(route.monthly_spend_usd))}</dd></div>
-        <div><dt>リードタイム</dt><dd>${esc(route.lead_time_days)}日</dd></div>
-      </dl>`;
-    return;
-  }
-
-  if (detail.type === "node" && detail.node) {
-    const node = detail.node;
-    const related = (((currentDashboardData || {}).route_intel || {}).routes || []).filter((route) => {
-      return route.origin?.name === node.label || route.port?.name === node.label || route.plant?.name === node.label;
-    });
-    const affected = related.filter((route) => route.affected);
-    el.innerHTML = `
-      <span class="map-insight-kicker">選択中の拠点</span>
-      <strong>${esc(node.label)}</strong>
-      <p>${esc(node.sublabel || "供給網ノード")}。関連ルートの状態から、自社影響の有無を確認します。</p>
-      <dl>
-        <div><dt>関連ルート</dt><dd>${esc(related.length)}件</dd></div>
-        <div><dt>要対応</dt><dd class="${affected.length ? "route-risk" : ""}">${esc(affected.length)}件</dd></div>
-      </dl>`;
-  }
-}
-
-function clearLinkHighlight() {
-  document
-    .querySelectorAll(".sourcing-row.is-linked, .kpi-card.is-linked")
-    .forEach((el) => el.classList.remove("is-linked"));
-}
-
-// Connect a map selection to the business panels: highlight the matching
-// 調達構成 row(s) and, for an affected route, the KPI cards it feeds into.
-function applyLinkHighlight(detail) {
-  clearLinkHighlight();
-  if (!detail) return;
-  const routes = ((currentDashboardData || {}).route_intel || {}).routes || [];
-
-  let ids = [];
-  let affected = false;
-  if (detail.type === "route" && detail.route) {
-    ids = [detail.route.route_id];
-    affected = Boolean(detail.route.affected);
-  } else if (detail.type === "node" && detail.node) {
-    const label = detail.node.label;
-    const related = routes.filter(
-      (route) => route.origin?.name === label || route.port?.name === label || route.plant?.name === label,
-    );
-    ids = related.map((route) => route.route_id);
-    affected = related.some((route) => route.affected);
-  }
-
-  for (const id of ids) {
-    if (!id) continue;
-    document.querySelector(`.sourcing-row[data-route-id="${id}"]`)?.classList.add("is-linked");
-  }
-  if (affected) {
-    document
-      .querySelectorAll('.kpi-card[data-kpi="affected-share"], .kpi-card[data-kpi="spend"], .kpi-card[data-kpi="routes"]')
-      .forEach((el) => el.classList.add("is-linked"));
-  }
-}
-
-function bindSourcingInteraction() {
-  const el = document.getElementById("sourcing-mix");
-  if (!el || el.dataset.bound === "1") return;
-  el.dataset.bound = "1";
-
-  function selectFromRow(row) {
-    const routeId = row.getAttribute("data-route-id");
-    if (!routeId) return;
-    const route = (((currentDashboardData || {}).route_intel || {}).routes || []).find(
-      (item) => item.route_id === routeId,
-    );
-    if (!route) return;
-    mapInstance?.highlightRoute(routeId);
-    const detail = { type: "route", route };
-    renderMapInsight(detail);
-    applyLinkHighlight(detail);
-  }
-
-  el.addEventListener("click", (event) => {
-    const row = event.target.closest?.(".sourcing-row[data-route-id]");
-    if (row) selectFromRow(row);
-  });
-  el.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    const row = event.target.closest?.(".sourcing-row[data-route-id]");
-    if (!row) return;
-    event.preventDefault();
-    selectFromRow(row);
-  });
-}
-
-function bindMapControls(canvasEl) {
-  if (mapControlsBound) return;
-  mapControlsBound = true;
-
-  document.getElementById("map-zoom-in")?.addEventListener("click", () => mapInstance?.zoomIn());
-  document.getElementById("map-zoom-out")?.addEventListener("click", () => mapInstance?.zoomOut());
-  document.getElementById("map-reset")?.addEventListener("click", () => {
-    mapInstance?.resetView();
-    renderMapInsight(null);
-    clearLinkHighlight();
-  });
-  document.querySelectorAll("[data-map-focus]").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (button.dataset.mapFocus === "japan") mapInstance?.focusJapan();
-      else mapInstance?.focusAsia();
-    });
-  });
-  canvasEl.addEventListener("supply-map-select", (event) => {
-    renderMapInsight(event.detail);
-    applyLinkHighlight(event.detail);
-  });
-}
-
-function bindMaterialSwitch() {
-  const el = document.getElementById("material-switch");
-  if (!el) return;
-  const materials = Object.keys(MATERIAL_PROFILES);
-  el.innerHTML = materials
-    .map((material) => `<button type="button" class="material-chip${material === activeMaterial ? " is-active" : ""}" data-material="${esc(material)}">${esc(materialLabel(material))}</button>`)
-    .join("");
-  el.querySelectorAll("[data-material]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const next = button.getAttribute("data-material");
-      if (!MATERIAL_PROFILES[next] || next === activeMaterial) return;
-      activeMaterial = next;
-      const scenario = (scenarioIndex.scenarios || []).find((item) => item.material === next);
-      if (scenario) {
-        await loadScenario(scenario.id);
-      }
-      stopDemo();
-      demoStep = activeMaterial === "naphtha" ? Math.max(0, (demoConfig.stages || []).length - 1) : 0;
-      mapInstance?.resetView();
-      bindMaterialSwitch();
-      bindScenarioSwitch();
-      renderCurrentDashboard();
-    });
-  });
-}
-
-function bindScenarioSwitch() {
-  const el = document.getElementById("scenario-switch");
-  if (!el) return;
-  const items = scenarioIndex.scenarios || [];
-  el.innerHTML = items
-    .map((item) => {
-      const active = item.id === activeScenarioId ? " is-active" : "";
-      return `<button type="button" class="scenario-chip${active}" data-scenario-id="${esc(item.id)}">${esc(item.short || item.label)}</button>`;
-    })
-    .join("");
-  el.querySelectorAll("[data-scenario-id]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const next = button.getAttribute("data-scenario-id");
-      if (!next || next === activeScenarioId) return;
-      await loadScenario(next);
-      activeMaterial = activeScenario?.material || activeMaterial;
-      stopDemo();
-      demoStep = Math.max(0, (demoConfig.stages || []).length - 1);
-      mapInstance?.resetView();
-      networkInstance?.clear();
-      bindMaterialSwitch();
-      bindScenarioSwitch();
-      renderCurrentDashboard();
-    });
-  });
-}
-
-async function loadScenario(id) {
-  if (!id) return;
-  const scenario = await fetchJson(scenarioAssetUrl(`${id}.json`));
-  const timeseriesFile = scenario.timeseries_ref
-    ? scenario.timeseries_ref.replace(/^\.\//, "")
-    : `${id}.timeseries.json`;
-  const timeseries = await fetchJson(scenarioAssetUrl(timeseriesFile)).catch(() => ({ scenario_id: id, months: [] }));
-  activeScenarioId = id;
-  activeScenario = scenario;
-  activeTimeseries = timeseries;
-  activeMonthIndex = Math.max(0, (timeseries.months || []).length - 1);
-}
-
-function scenarioByMaterial(material) {
-  return (scenarioIndex.scenarios || []).find((item) => item.material === material) || null;
-}
-
-function cloneJson(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function scoreSeverity(score, fallback = "medium") {
-  if (score >= 70) return "high";
-  if (score >= 50) return "medium";
-  if (score >= 1) return "low";
-  return fallback;
-}
-
-function visibleSlice(items, count) {
-  return Array.isArray(items) ? items.slice(0, Math.max(0, Number(count) || 0)) : [];
-}
-
-function sourceTimeToIso(stageIndex) {
-  const base = new Date("2026-05-31T06:30:00+09:00");
-  base.setMinutes(base.getMinutes() + stageIndex);
-  return base.toISOString();
-}
-
-function updateRouteState(route, stage, material = activeMaterial) {
-  if (!route || route.material !== material) {
-    route.affected = false;
-    route.status = route.baseline_status || "normal";
-    return route;
-  }
-  const affected = stage.affected_route_ids.includes(route.route_id);
-  const resilient = stage.resilient_route_ids.includes(route.route_id);
-  route.affected = affected;
-  route.status = affected ? "disrupted" : resilient ? "resilient" : "normal";
-  return route;
-}
-
-function recalcSourcing(model, material = activeMaterial) {
-  const routes = ((model.route_intel || {}).routes || []).filter((route) => route.material === material);
-  const affectedRoutes = routes.filter((route) => route.affected);
-  const affectedShare = affectedRoutes.reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
-  const affectedSpend = affectedRoutes.reduce((sum, route) => sum + (Number(route.monthly_spend_usd) || 0), 0);
-  const totalSpend = routes.reduce((sum, route) => sum + (Number(route.monthly_spend_usd) || 0), 0);
-
-  const focalRoutes = routes.map((route) => ({
-    route_id: route.route_id,
-    origin: route.origin && route.origin.name,
-    region: route.region,
-    supplier: route.supplier,
-    share_percent: route.share_percent,
-    monthly_spend_usd: route.monthly_spend_usd,
-    lead_time_days: route.lead_time_days,
-    status: route.status,
-    affected: route.affected,
-  }));
-
-  const focal = {
-    material,
-    total_share: 100,
-    total_spend: totalSpend,
-    affected_share: affectedShare,
-    affected_spend: affectedSpend,
-    route_count: routes.length,
-    affected_count: affectedRoutes.length,
-    routes: focalRoutes,
-  };
-
-  model.route_intel.sourcing = model.route_intel.sourcing || {};
-  model.route_intel.sourcing.focal = focal;
-  model.route_intel.sourcing.by_material = model.route_intel.sourcing.by_material || {};
-  model.route_intel.sourcing.by_material[material] = focal;
-  model.route_intel.kpis = {
-    ...(model.route_intel.kpis || {}),
-    total_routes: routes.length,
-    affected_routes: affectedRoutes.length,
-    affected_share_percent: affectedShare,
-    total_monthly_spend: totalSpend,
-    monthly_spend_at_risk: affectedSpend,
-  };
-}
-
-function updateMapNodes(model) {
-  const routeLabels = new Set();
-  for (const route of (model.route_intel || {}).routes || []) {
-    if (route.origin && route.origin.name) routeLabels.add(route.origin.name);
-    if (route.port && route.port.name) routeLabels.add(route.port.name);
-    if (route.plant && route.plant.name) routeLabels.add(route.plant.name);
-  }
-  model.route_intel.map_nodes = ((model.route_intel || {}).map_nodes || []).filter((node) => routeLabels.has(node.label));
-
-  const affectedLabels = new Set();
-  for (const route of (model.route_intel || {}).routes || []) {
-    if (!route.affected) continue;
-    if (route.origin && route.origin.name) affectedLabels.add(route.origin.name);
-    if (route.port && route.port.name) affectedLabels.add(route.port.name);
-    if (route.plant && route.plant.name) affectedLabels.add(route.plant.name);
-  }
-  for (const node of (model.route_intel || {}).map_nodes || []) {
-    node.affected = affectedLabels.has(node.label);
-  }
-}
-
-function buildRouteFlow(routes) {
-  const nodes = [];
-  const edges = [];
-  const seen = new Set();
-
-  function addNode(id, stage, label, sublabel, type, value, status = "normal") {
-    if (seen.has(id)) return;
-    seen.add(id);
-    nodes.push({ id, stage, label, sublabel, type, value, status });
-  }
-
-  for (const route of routes || []) {
-    const status = route.affected ? "disrupted" : route.status || "normal";
-    const originId = `o:${route.origin?.name}`;
-    const supplierId = `m:${route.supplier}`;
-    const plantId = `p:${route.plant?.name}`;
-    addNode(originId, 0, route.origin?.name, route.region, "origin", route.share_percent, status);
-    addNode(supplierId, 1, route.supplier, route.port?.name || route.transport_mode, "supplier", route.share_percent, status);
-    addNode(plantId, 2, route.plant?.name, "plant", "plant", route.share_percent, status);
-    edges.push({ source: originId, target: supplierId, value: route.share_percent, status });
-    edges.push({ source: supplierId, target: plantId, value: route.share_percent, status });
-  }
-
-  return { nodes, edges };
-}
-
-function networkColumnOf(node) {
-  if (node.kind === "customer") return 4;
-  if (node.kind === "product") return 3;
-  if (node.kind === "plant" || node.kind === "self") return 2;
-  if (node.tier === 1 || node.kind === "port") return 1;
-  return 0;
-}
-
-function buildFlowFromNetwork(network, propagation) {
-  const statusByNode = propagation?.node_status || {};
-  const statusByEdge = propagation?.edge_status || {};
-  const nodes = (network?.nodes || []).map((node) => ({
-    id: node.id,
-    stage: networkColumnOf(node),
-    label: node.name,
-    sublabel: node.makes || node.role_note || node.country || "",
-    type: node.kind,
-    value: node.priority || node.region || "",
-    status: statusByNode[node.id]?.status || "normal",
-  }));
-  const edges = (network?.edges || []).map((edge) => ({
-    source: edge.source,
-    target: edge.target,
-    value: edge.share_percent || edge.monthly_volume || 20,
-    status: statusByEdge[edge.id] || "normal",
-  }));
-  return { nodes, edges };
-}
-
-function networkNodeById(network) {
-  return new Map((network?.nodes || []).map((node) => [node.id, node]));
-}
-
-function inboundSelfEdges(network) {
-  const byId = networkNodeById(network);
-  return (network?.edges || []).filter((edge) => {
-    const target = byId.get(edge.target);
-    return target && (target.kind === "plant" || target.kind === "self") && edge.material === network.focal_material;
-  });
-}
-
-function buildRoutesFromNetwork(network, propagation, scenario) {
-  const byId = networkNodeById(network);
-  const edgeStatus = propagation?.edge_status || {};
-  return inboundSelfEdges(network).map((edge) => {
-    const source = byId.get(edge.source) || {};
-    const target = byId.get(edge.target) || {};
-    const status = edgeStatus[edge.id] || "normal";
-    return {
-      route_id: edge.id,
-      material: network.focal_material || scenario.material,
-      origin: { name: source.name, lat: source.lat, lng: source.lng },
-      port: null,
-      plant: { name: target.name, lat: target.lat, lng: target.lng },
-      region: source.region || target.region || scenario.region,
-      supplier: source.name,
-      share_percent: edge.share_percent,
-      monthly_spend_usd: edge.monthly_spend_usd,
-      lead_time_days: edge.lead_time_days,
-      transport_mode: edge.transport_mode,
-      status,
-      baseline_status: "normal",
-      affected: status === "disrupted" || status === "exposed",
-    };
-  });
-}
-
-function buildMapNodesFromNetwork(network, propagation) {
-  const nodeStatus = propagation?.node_status || {};
-  return (network?.nodes || [])
-    .filter((node) => Number.isFinite(Number(node.lat)) && Number.isFinite(Number(node.lng)))
-    .map((node) => ({
-      id: node.id,
-      label: node.name,
-      sublabel: node.makes || node.role_note || node.country || "",
-      lat: Number(node.lat),
-      lng: Number(node.lng),
-      type: node.kind === "plant" ? "plant" : "supplier",
-      affected: nodeStatus[node.id]?.status === "disrupted",
-    }));
-}
-
-function impactedPlants(network, propagation) {
-  const byId = networkNodeById(network);
-  const availability = propagation?.availability || {};
-  const plantIds = new Set();
-  for (const edge of network?.edges || []) {
-    const source = byId.get(edge.source);
-    const target = byId.get(edge.target);
-    if (source?.kind === "plant" && target?.kind === "product" && Number(availability[target.id] ?? 1) < 0.999) {
-      plantIds.add(source.name);
-    }
-  }
-  return [...plantIds];
-}
-
-function enrichOrders(network, orders) {
-  const byId = networkNodeById(network);
-  const productToPlant = new Map();
-  for (const edge of network?.edges || []) {
-    const source = byId.get(edge.source);
-    const target = byId.get(edge.target);
-    if (source?.kind === "plant" && target?.kind === "product") {
-      productToPlant.set(target.name, source.name);
-    }
-  }
-  return asArray(orders).map((order, index) => ({
-    order_id: order.order_id || `SO-DEMO-${index + 1}`,
-    customer: order.customer,
-    product: order.product,
-    plant: productToPlant.get(order.product) || "",
-    due_date: index === 0 ? "5営業日以内" : "月内",
-    quantity: order.quantity,
-    priority: order.priority,
-  }));
-}
-
-function sourceKindLabel(kind) {
-  const labels = {
-    news: "ニュース",
-    supplier_notice: "サプライヤ通知",
-    logistics: "物流情報",
-    price_feed: "価格情報",
-  };
-  return labels[kind] || kind || "情報源";
-}
-
-function riskTypeFromScenario(scenario) {
-  const type = scenario?.disruption?.type;
-  if (type === "logistics") return "logistics_delay";
-  if (type === "price") return "price_spike";
-  if (type === "allocation") return "allocation";
-  return type || "supply_delay";
-}
-
-function buildAiInputsFromProvenance(sources) {
-  return asArray(sources).map((source) => {
-    if (source.kind === "supplier_notice") {
-      return {
-        kind: "supplier",
-        supplier: source.source,
-        subject: source.label || "サプライヤ通知",
-        body: source.claim,
-      };
-    }
-    return {
-      kind: "news",
-      source: source.source || sourceKindLabel(source.kind),
-      headline: source.label || sourceKindLabel(source.kind),
-      summary: source.claim,
-    };
-  });
-}
-
-function activeSourcesForMonth(scenario, month) {
-  const selected = new Set(asArray(month?.sources));
-  const all = asArray(scenario?.provenance);
-  const filtered = selected.size ? all.filter((source) => selected.has(source.id)) : all;
-  return filtered.length ? filtered : all;
-}
-
-// True when a provenance source carries an injected command in its claim/excerpt.
-function isInjectedSource(source) {
-  return Boolean(detectInjection(source?.claim) || detectInjection(source?.raw_excerpt));
-}
-
-function buildRecommendedActions(scenario, metrics) {
-  const material = materialLabel(scenario.material);
-  if (!metrics || Number(metrics.risk_score || 0) < 45) return [];
-  const actions = [
-    `${material}の主要サプライヤへ、次回割当数量・出荷予定・代替ルート余力を確認する。`,
-    `在庫${metrics.inventory_days_min ?? "-"}日以内に影響する受注を優先順に並べ替える。`,
-    `影響顧客${asArray(metrics.impacted_customers).length}社向けに、説明文案と代替提案を準備する。`,
-  ];
-  if (Number(metrics.spend_at_risk_usd || 0) > 0) {
-    actions.splice(1, 0, `月間${compactUsdJa(metrics.spend_at_risk_usd)}相当の調達影響について、購買・生産管理で初動会議を設定する。`);
-  }
-  return actions;
-}
-
-function buildScenarioOverlayModel(baseModel) {
-  if (!activeScenario || !activeScenario.network) return baseModel;
-  const scenario = activeScenario;
-  const months = asArray(activeTimeseries?.months);
-  const month = months[Math.max(0, Math.min(activeMonthIndex, months.length - 1))] || {};
-  const propagation = computeMetrics(scenario.network, month.disruption || scenario.disruption || {}, {
-    inventory: month.inventory || scenario.inventory || [],
-    alternatives: scenario.alternatives || [],
-    risk_inputs: month.risk_inputs || scenario.risk_inputs || {},
-  });
-  const metrics = propagation.metrics || {};
-  const sources = activeSourcesForMonth(scenario, month);
-  // Evidence Verifier: external text is observation, not instruction. Any source
-  // whose claim/excerpt reads like an injected command is dropped from the
-  // *verified* evidence used for scoring/display (it still rides on
-  // overlay.provenance so the Agent Run Console can show it was caught).
-  const trustedSources = sources.filter((source) => !isInjectedSource(source));
-  const evidence = trustedSources.map((source) => `${sourceKindLabel(source.kind)}: ${source.claim}`);
-  const routes = buildRoutesFromNetwork(scenario.network, propagation, scenario);
-  const affectedRoutes = routes.filter((route) => route.affected);
-  const affectedShare = metrics.affected_supply_ratio ?? affectedRoutes.reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
-  const spendAtRisk = metrics.spend_at_risk_usd ?? affectedRoutes.reduce((sum, route) => sum + (Number(route.monthly_spend_usd) || 0), 0);
-  const totalSpend = metrics.total_spend_usd ?? routes.reduce((sum, route) => sum + (Number(route.monthly_spend_usd) || 0), 0);
-  const inventory = asArray(month.inventory || scenario.inventory).map((row) => ({
-    ...row,
-    days_of_supply: Number.isFinite(Number(row.stock_qty) / Number(row.daily_usage))
-      ? trim1(Number(row.stock_qty) / Number(row.daily_usage))
-      : row.days_of_supply,
-  }));
-
-  const overlay = cloneJson(baseModel);
-  overlay.meta = overlay.meta || {};
-  overlay.meta.scenario = scenario.id;
-  overlay.meta.generated_at = month.month ? `${month.month}-28T09:00:00+09:00` : overlay.meta.generated_at;
-  overlay.meta.ai = {
-    ...(overlay.meta.ai || {}),
-    provider: "Azure OpenAI",
-    model: overlay.meta.ai?.model || "gpt-5.4-mini",
-    model_label: overlay.meta.ai?.model_label || "Azure OpenAI · gpt-5.4-mini",
-    run_mode: overlay.meta.ai?.run_mode || "cloud",
-    inputs: buildAiInputsFromProvenance(sources),
-  };
-  overlay.risk_event = {
-    ...(overlay.risk_event || {}),
-    material: scenario.material,
-    region: scenario.network.nodes?.find((node) => (month.disruption?.hit_nodes || scenario.disruption?.hit_nodes || []).includes(node.id))?.region || "Asia",
-    risk_type: riskTypeFromScenario(scenario),
-    severity: metrics.event_severity || metrics.severity || "medium",
-    confidence: month.risk_inputs?.confidence || scenario.risk_inputs?.confidence || "medium",
-    summary: scenario.headline,
-    affected_period: "今後2〜3週間",
-    delay_days_min: scenario.disruption?.type === "price" ? null : 5,
-    delay_days_max: scenario.disruption?.type === "price" ? null : 14,
-    allocation_rate_percent: scenario.disruption?.capacity_drop != null
-      ? Math.round((1 - Number(scenario.disruption.capacity_drop)) * 100)
-      : null,
-    evidence,
-  };
-  overlay.assessment = {
-    ...(overlay.assessment || {}),
-    material: scenario.material,
-    alert_id: scenario.id,
-    risk_score: metrics.risk_score,
-    severity: metrics.severity,
-    inventory_days_min: metrics.inventory_days_min,
-    evidence,
-    scoring_factors: metrics.scoring_factors || {},
-    impacted_products: metrics.impacted_products || [],
-    impacted_customers: metrics.impacted_customers || [],
-    impacted_orders: enrichOrders(scenario.network, metrics.impacted_orders || []),
-    impacted_plants: impactedPlants(scenario.network, propagation),
-    inventory,
-    alternatives: cloneJson(scenario.alternatives || []),
-    recommended_actions: buildRecommendedActions(scenario, metrics),
-    approval_required: Number(metrics.risk_score || 0) >= 70
-      ? ["Purchase order changes", "Supplier switching", "Formal customer notification", "Major production plan changes"]
-      : [],
-    generated_at: overlay.meta.generated_at,
-  };
-  const focal = {
-    material: scenario.material,
-    total_share: 100,
-    total_spend: totalSpend,
-    affected_share: affectedShare,
-    affected_spend: spendAtRisk,
-    route_count: routes.length,
-    affected_count: affectedRoutes.length,
-    routes: routes.map((route) => ({
-      route_id: route.route_id,
-      origin: route.origin?.name,
-      region: route.region,
-      supplier: route.supplier,
-      share_percent: route.share_percent,
-      monthly_spend_usd: route.monthly_spend_usd,
-      lead_time_days: route.lead_time_days,
-      status: route.status,
-      affected: route.affected,
-    })),
-  };
-  overlay.route_intel = {
-    ...(overlay.route_intel || {}),
-    routes,
-    map_nodes: buildMapNodesFromNetwork(scenario.network, propagation),
-    sourcing: { focal, by_material: { [scenario.material]: focal } },
-    kpis: {
-      focal_material: scenario.material,
-      total_routes: routes.length,
-      affected_routes: affectedRoutes.length,
-      affected_share_percent: affectedShare,
-      total_monthly_spend: totalSpend,
-      monthly_spend_at_risk: spendAtRisk,
-    },
-    flow: buildFlowFromNetwork(scenario.network, propagation),
-  };
-  overlay.supply_network = {
-    focal_material: scenario.material,
-    nodes: scenario.network.nodes,
-    edges: scenario.network.edges,
-    node_status: propagation.node_status,
-    edge_status: propagation.edge_status,
-  };
-  overlay.propagation = propagation;
-  overlay.provenance = sources;
-  overlay.month = month;
-  // Deterministic multi-agent run trace (orchestrator + 6 workers / tool_calls /
-  // decisions / injection-blocked evidence). Derived from the assembled overlay
-  // so every headline number matches the engine output (82 / 65% / $7.8M / 5d).
-  overlay.agent_run = buildAgentRun(overlay);
-  overlay.timeline = months;
-  overlay.story = scenario.layperson_story;
-  overlay.demo = {
-    ...(overlay.demo || {}),
-    title: scenario.headline,
-    detail: scenario.layperson_story,
-    time_label: month.label || overlay.demo?.time_label,
-    score_trend: months.map((item) => ({ time_label: item.label, score: item.metrics?.risk_score ?? computeMetrics(scenario.network, item.disruption || {}, {
-      inventory: item.inventory || scenario.inventory || [],
-      alternatives: scenario.alternatives || [],
-      risk_inputs: item.risk_inputs || scenario.risk_inputs || {},
-    }).metrics.risk_score })),
-    data_sources: asArray(scenario.provenance).map((source) => ({
-      name: source.label,
-      candidate: source.source,
-      status: sourceKindLabel(source.kind),
-      freshness: source.published_at || source.received_at ? formatDateTime(source.published_at || source.received_at) : "デモ",
-      confidence: source.confidence || "-",
-    })),
-  };
-  return overlay;
-}
-
-function updateFlow(model) {
-  if (activeMaterial !== "naphtha") {
-    model.route_intel.flow = buildRouteFlow((model.route_intel || {}).routes || []);
-  }
-  const affectedIds = new Set();
-  for (const route of (model.route_intel || {}).routes || []) {
-    if (!route.affected) continue;
-    if (route.origin && route.origin.name) affectedIds.add(`o:${route.origin.name}`);
-    if (route.supplier) affectedIds.add(`m:${route.supplier}`);
-    if (route.plant && route.plant.name) affectedIds.add(`p:${route.plant.name}`);
-  }
-  const flow = (model.route_intel || {}).flow || {};
-  for (const node of flow.nodes || []) {
-    node.status = affectedIds.has(node.id) ? "disrupted" : "normal";
-  }
-  for (const edge of flow.edges || []) {
-    edge.status = affectedIds.has(edge.source) || affectedIds.has(edge.target) ? "disrupted" : "normal";
-  }
-}
-
-function applyDemoStage(base, step) {
-  const stages = demoConfig.stages || [];
-  const stageIndex = Math.max(0, Math.min(stages.length - 1, step));
-  const stage = stages[stageIndex] || {};
-  const model = cloneJson(base);
-  const profile = MATERIAL_PROFILES[activeMaterial] || MATERIAL_PROFILES.naphtha;
-  const isNaphtha = activeMaterial === "naphtha";
-  stage.affected_route_ids = Array.isArray(stage.affected_route_ids) ? stage.affected_route_ids : [];
-  stage.resilient_route_ids = Array.isArray(stage.resilient_route_ids) ? stage.resilient_route_ids : [];
-  const effectiveStage = isNaphtha
-    ? stage
-    : {
-        ...stage,
-        title: `${profile.label}を通常監視`,
-        source: "Supply Sentinel エージェント",
-        source_type: "agent",
-        detail: "外部シグナルと社内データを照合しましたが、現時点で初動対応が必要な供給リスクはありません。",
-        score: profile.normalScore,
-        severity: "low",
-        inventory_days_min: profile.inventoryDays,
-        affected_route_ids: [],
-        resilient_route_ids: [],
-        evidence_count: 0,
-        recommended_count: 0,
-        approval_count: 0,
-        impacted_product_count: 0,
-        impacted_customer_count: 0,
-        impacted_order_count: 0,
-      };
-
-  model.meta = model.meta || {};
-  model.meta.generated_at = sourceTimeToIso(stageIndex);
-
-  model.risk_event = model.risk_event || {};
-  model.risk_event.material = activeMaterial;
-  model.risk_event.region = profile.region;
-  model.risk_event.summary = isNaphtha ? model.risk_event.summary : `${profile.label}は通常監視中。要対応シグナルなし。`;
-  model.risk_event.severity = effectiveStage.severity || scoreSeverity(effectiveStage.score);
-  model.risk_event.evidence = isNaphtha ? visibleSlice(base.risk_event && base.risk_event.evidence, effectiveStage.evidence_count) : [];
-
-  model.assessment = model.assessment || {};
-  model.assessment.material = activeMaterial;
-  model.assessment.risk_score = effectiveStage.score ?? model.assessment.risk_score;
-  model.assessment.severity = effectiveStage.severity || scoreSeverity(model.assessment.risk_score);
-  model.assessment.inventory_days_min = effectiveStage.inventory_days_min ?? model.assessment.inventory_days_min;
-  model.assessment.evidence = isNaphtha ? visibleSlice(base.assessment && base.assessment.evidence, effectiveStage.evidence_count) : [];
-  model.assessment.recommended_actions = isNaphtha ? visibleSlice(base.assessment && base.assessment.recommended_actions, effectiveStage.recommended_count) : [];
-  model.assessment.approval_required = isNaphtha ? visibleSlice(base.assessment && base.assessment.approval_required, effectiveStage.approval_count) : [];
-  model.assessment.impacted_products = isNaphtha ? visibleSlice(base.assessment && base.assessment.impacted_products, effectiveStage.impacted_product_count) : [];
-  model.assessment.impacted_customers = isNaphtha ? visibleSlice(base.assessment && base.assessment.impacted_customers, effectiveStage.impacted_customer_count) : [];
-  model.assessment.impacted_orders = isNaphtha ? visibleSlice(base.assessment && base.assessment.impacted_orders, effectiveStage.impacted_order_count) : [];
-  model.assessment.impacted_plants = isNaphtha && effectiveStage.impacted_product_count > 0
-    ? visibleSlice(base.assessment && base.assessment.impacted_plants, effectiveStage.impacted_product_count > 2 ? 2 : 1)
-    : [];
-  model.assessment.inventory = isNaphtha ? model.assessment.inventory : cloneJson(profile.inventory || []);
-  model.assessment.alternatives = isNaphtha ? model.assessment.alternatives : cloneJson(profile.alternatives || []);
-  model.assessment.generated_at = model.meta.generated_at;
-  for (const item of model.assessment.inventory || []) {
-    if (isNaphtha && item.plant === "千葉工場") item.days_of_supply = effectiveStage.inventory_days_min ?? item.days_of_supply;
-    if (isNaphtha && item.plant === "大阪工場") item.days_of_supply = Math.max(10, (effectiveStage.inventory_days_min ?? 5) + 5);
-  }
-
-  for (const route of (model.route_intel || {}).routes || []) {
-    updateRouteState(route, effectiveStage, activeMaterial);
-  }
-  recalcSourcing(model, activeMaterial);
-  model.route_intel.routes = (model.route_intel.routes || []).filter((route) => route.material === activeMaterial);
-  updateMapNodes(model);
-  updateFlow(model);
-
-  model.demo = {
-    ...effectiveStage,
-    step_index: stageIndex,
-    total_steps: stages.length,
-    is_playing: demoPlaying,
-    active_events: isNaphtha ? stages.slice(0, stageIndex + 1) : [effectiveStage],
-    score_trend: (isNaphtha ? stages.slice(0, stageIndex + 1) : [effectiveStage]).map((event) => ({
-      time_label: event.time_label,
-      score: event.score,
-    })),
-    data_sources: demoConfig.data_sources || [],
-  };
-  return model;
-}
-
-function renderNetworkSelection(detail) {
-  const el = document.getElementById("network-selection");
-  if (!el) return;
-  if (!detail || !detail.node) {
-    el.innerHTML = `
-      <span class="network-selection-kicker">選択すると波及を追跡</span>
-      <strong>上流ノードをクリックしてください</strong>
-      <p>2次サプライヤや原産地を選ぶと、その影響が1次サプライヤ、自社工場、製品、顧客へどう流れるかをハイライトします。</p>`;
-    return;
-  }
-  el.innerHTML = `
-    <span class="network-selection-kicker">選択中</span>
-    <strong>${esc(detail.node.name)}</strong>
-    <p>${esc(detail.node.role_note || detail.node.makes || detail.node.country || "サプライチェーン上のノード")}</p>
-    <dl>
-      <div><dt>波及製品</dt><dd>${esc(detail.products.join("、") || "なし")}</dd></div>
-      <div><dt>影響受注</dt><dd>${esc(detail.orders.length)}件</dd></div>
-      <div><dt>月間調達額</dt><dd>${esc(compactUsdJa(detail.spend))}</dd></div>
-    </dl>`;
-}
-
-function renderNetworkStory(model) {
-  const el = document.getElementById("network-story");
-  if (!el) return;
-  const metrics = model.propagation?.metrics || {};
-  const month = model.month || {};
-  const scenario = activeScenario || {};
-  const material = materialLabel(scenario.material || model.assessment?.material);
-  el.innerHTML = `
-    <div class="network-story-main">
-      <span>${esc(month.label || "現在")} / ${esc(material)}</span>
-      <strong>${esc(scenario.headline || model.risk_event?.summary || "供給リスクを監視中")}</strong>
-      <p>${esc(scenario.layperson_story || "外部シグナルを自社の製品・顧客影響へ翻訳します。")}</p>
-    </div>
-    <div class="network-story-kpis">
-      <div><span>リスク</span><b>${esc(metrics.risk_score ?? model.assessment?.risk_score ?? "-")}</b></div>
-      <div><span>調達影響</span><b>${esc(metrics.affected_supply_ratio ?? 0)}%</b></div>
-      <div><span>在庫</span><b>${esc(metrics.inventory_days_min ?? "-")}日</b></div>
-      <div><span>金額</span><b>${esc(compactUsdJa(metrics.spend_at_risk_usd ?? 0))}</b></div>
-    </div>`;
-}
-
-function renderScenarioTimeline(model) {
-  const el = document.getElementById("scenario-timeline");
-  if (!el) return;
-  const months = asArray(model.timeline);
-  if (!months.length) {
-    el.innerHTML = `<p class="empty">時系列データがありません。</p>`;
-    return;
-  }
-  el.innerHTML = `
-    <div class="timeline-bars">
-      ${months
-        .map((month, index) => {
-          const metrics = month.metrics && Object.keys(month.metrics).length ? month.metrics : computeMetrics(activeScenario.network, month.disruption || {}, {
-            inventory: month.inventory || activeScenario.inventory || [],
-            alternatives: activeScenario.alternatives || [],
-            risk_inputs: month.risk_inputs || activeScenario.risk_inputs || {},
-          }).metrics;
-          const score = Number(metrics.risk_score) || 0;
-          const price = Number(month.price_index) || 100;
-          const active = index === activeMonthIndex ? " is-active" : "";
-          return `
-            <button type="button" class="timeline-month${active}" data-month-index="${index}" aria-label="${esc(month.label)}を表示">
-              <span>${esc(month.label || month.month)}</span>
-              <i style="height:${Math.max(8, Math.min(100, score))}%"></i>
-              <b>${esc(score)}</b>
-              <em>価格 ${esc(price)}</em>
-            </button>`;
-        })
-        .join("")}
-    </div>
-    <div class="timeline-events">
-      ${asArray(model.month?.events)
-        .map((event) => `<div><span>${esc(sourceKindLabel(event.kind))}</span><p>${esc(event.text)}</p></div>`)
-        .join("") || `<div><span>監視</span><p>この月は大きなシグナルなし。基準値として利用します。</p></div>`}
-    </div>`;
-  el.querySelectorAll("[data-month-index]").forEach((button) => {
-    button.addEventListener("click", () => {
-      activeMonthIndex = Number(button.getAttribute("data-month-index")) || 0;
-      stopDemo();
-      renderCurrentDashboard();
-    });
-  });
-}
-
-function renderProvenance(model) {
-  const el = document.getElementById("provenance-list");
-  if (!el) return;
-  const sources = asArray(model.provenance);
-  el.innerHTML = sources.length
-    ? sources
-        .map((source) => `
-          <article class="provenance-card">
-            <div>
-              <span>${esc(sourceKindLabel(source.kind))}</span>
-              <strong>${esc(source.label || source.source)}</strong>
-            </div>
-            <p>${esc(source.claim)}</p>
-            <footer>
-              <em>${source.url ? `<a href="${escAttr(source.url)}" target="_blank" rel="noreferrer">${esc(source.source || "記事を開く")}</a>` : esc(source.source || "デモ情報源")}</em>
-              <b>確度 ${esc(source.confidence || "-")}</b>
-            </footer>
-          </article>`)
-        .join("")
-    : `<p class="empty">根拠データはありません。</p>`;
-}
-
-function renderNetworkPanel(model) {
-  const legend = document.getElementById("network-legend");
-  if (legend) legend.innerHTML = networkLegendHtml();
-  renderNetworkStory(model);
-  renderScenarioTimeline(model);
-  renderProvenance(model);
-  renderNetworkSelection(null);
-  const container = document.getElementById("supply-network");
-  if (!container) return;
-  if (!networkInstance) {
-    networkInstance = createNetwork(container);
-    container.addEventListener("supply-network-select", (event) => renderNetworkSelection(event.detail));
-  }
-  networkInstance.render(model);
-}
-
-function updateDemoControls() {
-  const stage = (currentDashboardData && currentDashboardData.demo) || {};
-  const title = document.getElementById("demo-stage-title");
-  const detail = document.getElementById("demo-stage-detail");
-  const progress = document.getElementById("demo-progress-bar");
-  const play = document.getElementById("demo-play");
-  if (title) title.textContent = stage.title || "巡回デモ待機中";
-  if (detail) detail.textContent = stage.detail || "外部シグナルと社内データを順に照合します。";
-  if (progress) {
-    const denom = Math.max(1, (stage.total_steps || 1) - 1);
-    progress.style.width = `${Math.round(((stage.step_index || 0) / denom) * 100)}%`;
-  }
-  if (play) play.textContent = demoPlaying ? "巡回中..." : "巡回デモ開始";
-}
-
-function renderCurrentDashboard() {
-  currentDashboardData = buildScenarioOverlayModel(applyDemoStage(dashboardData, demoStep));
-  renderPanels(currentDashboardData);
-  renderNetworkPanel(currentDashboardData);
-  renderAgentPanel(currentDashboardData);
-  renderAgentRuntime(currentDashboardData);
-  updateDemoControls();
-  renderMapInsight(null);
-  mapInstance?.highlightRoute(null);
-  ensureMap();
-}
-
-function stopDemo() {
-  if (demoTimer) {
-    clearInterval(demoTimer);
-    demoTimer = null;
-  }
-  agentConsoleInstance?.stop({ silent: true });
-  clearAgentStepHighlight();
-  demoPlaying = false;
-  updateDemoControls();
-}
-
-function startDemo() {
-  stopDemo();
-  demoPlaying = true;
-  demoStep = 0;
-  renderCurrentDashboard();
-  setActiveView("response");
-  ensureAgentConsole()?.play({ stepMs: 760 });
-  demoTimer = setInterval(() => {
-    if (demoStep >= (demoConfig.stages || []).length - 1) {
-      stopDemo();
-      renderCurrentDashboard();
-      return;
-    }
-    demoStep += 1;
-    renderCurrentDashboard();
-  }, demoConfig.interval_ms || 1800);
-}
-
-function resetDemo() {
-  stopDemo();
-  demoStep = 0;
-  renderCurrentDashboard();
-}
-
-function bindDemoControls() {
-  const play = document.getElementById("demo-play");
-  const reset = document.getElementById("demo-reset");
-  if (play) play.addEventListener("click", startDemo);
-  if (reset) reset.addEventListener("click", resetDemo);
-}
-
-function setActiveView(viewName) {
-  if (!VIEW_TITLES[viewName]) {
-    viewName = "dashboard";
-  }
-  document.querySelectorAll("[data-view-panel]").forEach((panel) => {
-    panel.classList.toggle("is-active", panel.dataset.viewPanel === viewName);
-  });
-  document.querySelectorAll("[data-view]").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.view === viewName);
-  });
-  const title = document.getElementById("view-title");
-  if (title) title.textContent = VIEW_TITLES[viewName] || viewName;
-
-  if (viewName === "dashboard") {
-    ensureMap();
-  }
-}
-
-function bindNavigation() {
-  document.querySelectorAll("[data-view]").forEach((button) => {
-    button.addEventListener("click", () => setActiveView(button.dataset.view));
-  });
-}
-
-function bindSidebarToggle() {
-  const shell = document.getElementById("app-shell");
-  const button = document.getElementById("sidebar-toggle");
-  if (!shell || !button) return;
-
-  button.addEventListener("click", () => {
-    const collapsed = shell.classList.toggle("sidebar-collapsed");
-    button.setAttribute("aria-expanded", String(!collapsed));
-    button.setAttribute("aria-label", collapsed ? "サイドバーを開く" : "サイドバーを閉じる");
-    button.textContent = collapsed ? "›" : "‹";
-    ensureMap();
-  });
-}
-
-function applyInitialSidebarState() {
-  const shell = document.getElementById("app-shell");
-  const button = document.getElementById("sidebar-toggle");
-  if (!shell || !button) return;
-
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("sidebar") !== "closed") return;
-
-  shell.classList.add("sidebar-collapsed");
-  button.setAttribute("aria-expanded", "false");
-  button.setAttribute("aria-label", "サイドバーを開く");
-  button.textContent = "›";
-}
-
-async function init() {
-  setLoaderText("Cloud API と供給網データを読み込んでいます");
-  [dashboardData, worldGeojson, demoConfig, scenarioIndex] = await Promise.all([
-    fetchDashboardData(),
-    fetchJson("./assets/world.geojson"),
-    fetchJson("./demo_events.json").catch(() => demoConfig),
-    fetchJson("./assets/scenarios/index.json").catch(() => ({ scenarios: [] })),
-  ]);
-
-  setLoaderText("監視シナリオと多段サプライヤネットワークを準備しています");
-  const params = new URLSearchParams(window.location.search);
-  const scenarioParam = params.get("scenario");
-  const defaultScenario =
-    (scenarioParam && (scenarioIndex.scenarios || []).find((item) => item.id === scenarioParam)) ||
-    (scenarioIndex.scenarios || []).find((item) => item.default) ||
-    (scenarioIndex.scenarios || [])[0];
-  if (defaultScenario) {
-    await loadScenario(defaultScenario.id);
-    activeMaterial = activeScenario?.material || defaultScenario.material || activeMaterial;
-  }
-  const materialParam = params.get("material");
-  if (MATERIAL_PROFILES[materialParam]) {
-    activeMaterial = materialParam;
-    const scenario = scenarioByMaterial(materialParam);
-    if (scenario) await loadScenario(scenario.id);
-  }
-  const monthParam = params.get("month");
-  if (monthParam && activeTimeseries?.months) {
-    const index = activeTimeseries.months.findIndex((item) => item.month === monthParam || item.label === monthParam);
-    if (index >= 0) activeMonthIndex = index;
-  }
-  demoStep = Math.max(0, (demoConfig.stages || []).length - 1);
-  bindMaterialSwitch();
-  bindScenarioSwitch();
-  bindAgentChat();
-  bindAgentRuntimeControls();
-  setLoaderText("AI判断ログと初動対応ボードを描画しています");
-  renderCurrentDashboard();
-
-  bindNavigation();
-  bindSidebarToggle();
-  bindDemoControls();
-  bindSourcingInteraction();
-  applyInitialSidebarState();
-  const initialView = params.get("view") || "dashboard";
-  setActiveView(initialView);
-  if (params.get("demo") === "play") {
-    setTimeout(startDemo, 400);
-  } else if (params.get("demo") === "reset") {
-    resetDemo();
-  }
-  hideLoader();
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => init().catch((err) => showFatalError(err.message || err)));
-} else {
-  init().catch((err) => showFatalError(err.message || err));
+function trim1(value) {
+  const string = Number(value).toFixed(1);
+  return string.endsWith(".0") ? string.slice(0, -2) : string;
 }
