@@ -647,16 +647,26 @@ body.modal-open {
   grid-area: map;
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   background: linear-gradient(180deg, #0b1222, #08101f);
   border-color: #1f3558;
   box-shadow: 0 14px 34px rgba(15, 39, 66, 0.22);
 }
 
-.map-panel::after {
+/* The map canvas + its floating overlays (toolbar, insight, tooltip) live in
+   their own positioned stage so the demo console below can sit in normal flow
+   and never overlap the toolbar, regardless of how short the panel gets. */
+.map-stage {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.map-stage::after {
   content: "";
   position: absolute;
-  inset: 53px 0 0;
+  inset: 0;
   pointer-events: none;
   background:
     radial-gradient(circle at 74% 38%, rgba(201, 54, 47, 0.14), transparent 22%),
@@ -683,8 +693,8 @@ body.modal-open {
 
 .map-toolbar {
   position: absolute;
-  top: 68px;
-  left: 16px;
+  top: 12px;
+  left: 12px;
   z-index: 16;
   display: flex;
   gap: 8px;
@@ -731,11 +741,12 @@ body.modal-open {
 
 .map-insight {
   position: absolute;
-  right: 16px;
-  bottom: 16px;
+  right: 12px;
+  bottom: 12px;
   z-index: 13;
-  width: min(360px, calc(100% - 432px));
-  min-width: 280px;
+  width: clamp(240px, 30%, 340px);
+  max-height: calc(100% - 24px);
+  overflow: auto;
   padding: 14px 15px;
   border: 1px solid rgba(155, 180, 220, 0.28);
   border-radius: 8px;
@@ -793,18 +804,21 @@ body.modal-open {
 }
 
 .demo-console {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
+  position: relative;
   z-index: 12;
-  width: min(380px, calc(100% - 32px));
-  padding: 13px 14px 12px;
-  border: 1px solid rgba(155, 180, 220, 0.28);
-  border-radius: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 6px;
+  padding: 9px 14px;
+  border-top: 1px solid #1f3558;
   color: #fff;
-  background: rgba(7, 20, 38, 0.84);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(8px);
+  background: rgba(7, 20, 38, 0.92);
+}
+
+.demo-console-copy {
+  min-width: 0;
 }
 
 .demo-kicker {
@@ -822,14 +836,20 @@ body.modal-open {
 }
 
 .demo-console p {
-  margin: 4px 0 10px;
+  margin: 2px 0 0;
   color: #c5d6ea;
   font-size: 12px;
+  /* Keep the narration to one line so a long story can never blow up the bar. */
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .demo-controls {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .primary-action,
@@ -855,8 +875,9 @@ body.modal-open {
 }
 
 .demo-progress {
+  grid-column: 1 / -1;
   height: 4px;
-  margin-top: 10px;
+  margin-top: 2px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(197, 214, 234, 0.22);
@@ -4039,10 +4060,12 @@ li {
 #view-dashboard .overview-stack {
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: auto 166px minmax(220px, 1fr) 285px;
+  /* Map gets a viewport-relative height (not 1fr) so it scales with the screen
+     without greedily ballooning the page on short viewports. */
+  grid-template-rows: auto auto minmax(340px, 50vh) minmax(240px, auto);
   gap: 10px;
-  height: 100%;
-  min-height: 0;
+  height: auto;
+  min-height: 100%;
 }
 
 .view.is-active {
@@ -4064,7 +4087,8 @@ li {
 }
 
 #view-dashboard.view.is-active {
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 #view-dashboard .dashboard-action-bar {
@@ -4106,7 +4130,7 @@ li {
 
 #view-dashboard .map-panel-wide {
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 #view-dashboard .map-panel-wide .panel-head {
@@ -4114,25 +4138,12 @@ li {
 }
 
 #view-dashboard .map-panel-wide .map-toolbar {
-  top: 72px;
+  top: 12px;
 }
 
 #view-dashboard .map-panel-wide #world-map {
   min-height: 0;
   height: 100%;
-}
-
-#view-dashboard .map-insight {
-  right: 14px;
-  bottom: 86px;
-  width: min(330px, 34vw);
-}
-
-#view-dashboard .demo-console {
-  left: 16px;
-  right: auto;
-  bottom: 14px;
-  width: min(430px, 45vw);
 }
 
 #view-dashboard .compact-network-panel .panel-head {
@@ -4158,10 +4169,10 @@ li {
 
 #view-ai .ai-analysis-layout {
   width: 100%;
-  height: 100%;
-  min-height: 0;
-  grid-template-columns: minmax(0, 1fr) minmax(420px, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) 230px;
+  height: auto;
+  min-height: 100%;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 1fr);
+  grid-template-rows: auto auto auto;
   grid-template-areas:
     "actions actions"
     "report chat"
@@ -4190,6 +4201,13 @@ li {
 #view-ai .agent-run-panel {
   grid-area: run;
   min-height: 0;
+}
+
+/* The run console is a log: cap the agent list and let it scroll internally so
+   it never stretches the column (and the chat that spans it) off the page. */
+#view-ai .agent-run-panel .agentrun-agents {
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 #view-ai .agent-chat-panel-live {
