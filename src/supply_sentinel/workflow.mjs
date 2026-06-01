@@ -69,6 +69,9 @@ export function buildDashboardModel({ riskEvent, assessment, routeIntel, materia
         live_fetched_at: data.liveEvidence?.fetched_at ?? null,
         live_count: Array.isArray(data.liveEvidence?.provenance) ? data.liveEvidence.provenance.length : 0,
         live_queries: Array.isArray(data.liveEvidence?.queries) ? data.liveEvidence.queries : [],
+        // Why the agent path fell back to rss (null when it ran as "agent" or is
+        // disabled). Surfaced so prod liveness is debuggable without server logs.
+        live_agent_error: data.liveEvidence?.agent_error ?? null,
         live_errors: Array.isArray(data.liveEvidence?.errors) ? data.liveEvidence.errors : [],
       },
     },

@@ -86,6 +86,7 @@ export async function runResearchAgent({
   }
 
   const cloud = (mode === "azure" || mode === "cloud") && isConfigured(config);
+  let agentError = null;
   if (cloud && typeof fetchImpl === "function") {
     try {
       const agentResult = await researchWithAzureOpenAi({ fetchImpl, fetchedAt, config, materials });
@@ -93,15 +94,20 @@ export async function runResearchAgent({
       if (agentResult.provenance.length || agentResult.queries.length) {
         return { enabled: true, mode: "agent", fetched_at: fetchedAt, ...agentResult };
       }
+      agentError = "agent path produced no searches or grounded evidence";
     } catch (err) {
-      const message = err && err.message ? err.message : String(err);
+      agentError = err && err.message ? err.message : String(err);
       // Fail safe: never break a scheduled run because the model path is down.
-      console.warn(`[researchAgent] LLM research unavailable (${message}); using deterministic RSS collection.`);
+      console.warn(`[researchAgent] LLM research unavailable (${agentError}); using deterministic RSS collection.`);
     }
   }
 
-  // Deterministic fallback: the existing config-driven RSS collection.
+  // Deterministic fallback: the existing config-driven RSS collection. We carry
+  // the agent failure reason into errors so it is visible in the dashboard
+  // (meta.evidence_collection.live_errors) without needing server logs.
   const rss = await collectLiveEvidence({ rootDir, fetchImpl, now, enabled: true });
+  const errors = [...rss.errors];
+  if (agentError) errors.push({ source: "research_agent", message: agentError });
   return {
     enabled: rss.enabled,
     mode: "rss",
@@ -109,7 +115,9 @@ export async function runResearchAgent({
     queries: [],
     newsEvents: rss.newsEvents,
     provenance: rss.provenance,
-    errors: rss.errors,
+    errors,
+    agent_attempted: cloud,
+    agent_error: agentError,
     agent_log: [],
   };
 }
@@ -132,7 +140,10 @@ async function researchWithAzureOpenAi({ fetchImpl, fetchedAt, config, materials
   let searches = 0;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-    const body = { messages, tools: [SEARCH_TOOL], tool_choice: "auto" };
+    // Force a search on the first turn so the agent always grounds in fresh web
+    // results instead of answering from priors; let it choose freely afterwards.
+    const toolChoice = round === 0 ? { type: "function", function: { name: "search_news" } } : "auto";
+    const body = { messages, tools: [SEARCH_TOOL], tool_choice: toolChoice };
     applyTokenBudget(body, config.deployment);
 
     const response = await fetchImpl(url, { method: "POST", headers, body: JSON.stringify(body) });

@@ -92,8 +92,9 @@ test("agent path: model drives a search via tool-calling and grounds the curated
   assert.equal(result.mode, "agent");
   assert.deepEqual(result.queries, ["naphtha refinery outage Asia"]);
 
-  // The first Azure request must advertise the search_news tool.
+  // The first Azure request must advertise the search_news tool and force it.
   assert.equal(azureBodies[0].tools[0].function.name, "search_news");
+  assert.equal(azureBodies[0].tool_choice.function.name, "search_news");
   // The second request must include the tool result message we fed back.
   assert.ok(azureBodies[1].messages.some((m) => m.role === "tool"));
 
@@ -130,6 +131,9 @@ test("falls back to deterministic RSS collection when the cloud model errors", a
   assert.equal(result.enabled, true);
   assert.ok(result.provenance.length >= 1);
   assert.equal(result.provenance[0].url, "https://example.org/fallback-rss");
+  // The agent failure reason is carried out for prod observability.
+  assert.match(result.agent_error || "", /429/);
+  assert.ok(result.errors.some((e) => e.source === "research_agent"));
 });
 
 test("returns disabled/empty when live evidence is turned off", async () => {
