@@ -217,6 +217,21 @@ function esc(value) {
 
 const escAttr = esc;
 
+// Turn bare http(s) URLs in already-escaped text into clickable links.
+// Runs on esc() output, so the matched URL is HTML-safe; &amp; in the href is
+// valid and decodes back to & in the browser.
+function linkify(escapedText) {
+  return String(escapedText ?? "").replace(
+    /(https?:\/\/[^\s<>"')）]+)/g,
+    (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`,
+  );
+}
+
+// esc() then linkify — for chat text that may contain URLs.
+function escLink(value) {
+  return linkify(esc(value));
+}
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -391,7 +406,7 @@ function makeAgentAnswer(question, model) {
       <span>2. 在庫/BOM照合</span>
       <span>3. 初動起案</span>
     </div>
-    <ul>${bullets.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>
+    <ul>${bullets.map((item) => `<li>${escLink(item)}</li>`).join("")}</ul>
     <p class="agent-footnote">実行判断が必要なもの: ${esc(approvalText)}</p>`;
 }
 
@@ -441,14 +456,14 @@ function renderAdviceAnswer(advice) {
     : `${meta.model || "gpt-5.4-mini"} / cloud`;
   return `
     <div class="agent-answer-title">AI相談結果 <span class="agent-answer-badge">${esc(badge)}</span></div>
-    <p>${esc(advice?.answer || "現在のコンテキストから初動案を整理しました。")}</p>
+    <p>${escLink(advice?.answer || "現在のコンテキストから初動案を整理しました。")}</p>
     ${
       steps.length
         ? `<div class="agent-trace">${steps.map((step) => `<span>${esc(step.agent)}: ${esc(step.result)}</span>`).join("")}</div>`
         : ""
     }
-    ${evidence.length ? `<h5>根拠</h5><ul>${evidence.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
-    ${actions.length ? `<h5>推奨初動</h5><ul>${actions.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
+    ${evidence.length ? `<h5>根拠</h5><ul>${evidence.map((item) => `<li>${escLink(item)}</li>`).join("")}</ul>` : ""}
+    ${actions.length ? `<h5>推奨初動</h5><ul>${actions.map((item) => `<li>${escLink(item)}</li>`).join("")}</ul>` : ""}
     ${decisions.length ? `<p class="agent-footnote">人の承認が必要: ${esc(decisions.join("、"))}</p>` : ""}`;
 }
 
@@ -1616,6 +1631,61 @@ function bindDemoControls() {
   if (reset) reset.addEventListener("click", resetDemo);
 }
 
+// Panel "拡大" modal: move the live content node into a fullscreen dialog so
+// cramped grid panels can be read at full size, then move it back on close.
+// Moving the actual node (not a clone) keeps event listeners and live re-renders
+// working while the modal is open.
+let panelModalState = null;
+
+function openPanelModal(targetId, title) {
+  const modal = document.getElementById("panel-modal");
+  const body = document.getElementById("panel-modal-body");
+  const titleEl = document.getElementById("panel-modal-title");
+  const content = document.getElementById(targetId);
+  if (!modal || !body || !content || panelModalState) return;
+  const placeholder = document.createComment(`panel-modal:${targetId}`);
+  content.parentNode.insertBefore(placeholder, content);
+  content.classList.add("is-in-modal");
+  body.appendChild(content);
+  if (titleEl) titleEl.textContent = title || "";
+  modal.hidden = false;
+  document.body.classList.add("modal-open");
+  panelModalState = { content, placeholder };
+  document.getElementById("panel-modal-close")?.focus();
+}
+
+function closePanelModal() {
+  const modal = document.getElementById("panel-modal");
+  if (!panelModalState) {
+    if (modal) modal.hidden = true;
+    document.body.classList.remove("modal-open");
+    return;
+  }
+  const { content, placeholder } = panelModalState;
+  content.classList.remove("is-in-modal");
+  if (placeholder.parentNode) placeholder.parentNode.replaceChild(content, placeholder);
+  if (modal) modal.hidden = true;
+  document.body.classList.remove("modal-open");
+  panelModalState = null;
+}
+
+function bindPanelModal() {
+  document.addEventListener("click", (event) => {
+    const opener = event.target.closest?.("[data-expand-target]");
+    if (opener) {
+      event.preventDefault();
+      openPanelModal(opener.getAttribute("data-expand-target"), opener.getAttribute("data-expand-title"));
+      return;
+    }
+    if (event.target.closest?.("[data-modal-close]")) {
+      closePanelModal();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && panelModalState) closePanelModal();
+  });
+}
+
 function setActiveView(viewName) {
   if (!VIEW_TITLES[viewName]) {
     viewName = "dashboard";
@@ -1711,6 +1781,7 @@ async function init() {
   bindNavigation();
   bindSidebarToggle();
   bindDemoControls();
+  bindPanelModal();
   bindSourcingInteraction();
   applyInitialSidebarState();
   const initialView = params.get("view") || "dashboard";
