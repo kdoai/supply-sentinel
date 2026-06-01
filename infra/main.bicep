@@ -43,6 +43,16 @@ param agentAdviceAllowOrigin string = '*'
 @description('Enable low-cost live public-web evidence collection through curated allowlisted sources.')
 param liveEvidenceEnabled bool = true
 
+@description('Search provider: auto tries hosted web_search first, then Google News/GDELT fallback.')
+@allowed([
+  'auto'
+  'azure_web_search'
+  'openai_web_search'
+  'google_news'
+  'gdelt'
+])
+param searchProvider string = 'auto'
+
 var suffix = toLower(uniqueString(resourceGroup().id, appName))
 var webStorageName = take('${appName}web${suffix}', 24)
 var acrName = take('${appName}acr${suffix}', 50)
@@ -278,6 +288,10 @@ var appEnv = [
   {
     name: 'SUPPLY_SENTINEL_LIVE_EVIDENCE'
     value: string(liveEvidenceEnabled)
+  }
+  {
+    name: 'SUPPLY_SENTINEL_SEARCH_PROVIDER'
+    value: searchProvider
   }
   {
     name: 'HOST'

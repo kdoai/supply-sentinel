@@ -1547,10 +1547,22 @@ function renderScenarioTimeline(model) {
 function renderProvenance(model) {
   const el = document.getElementById("provenance-list");
   if (!el) return;
-  const sources = asArray(model.provenance).filter((source) => hasPublicUrl(source) && !isInjectedSource(source));
-  el.innerHTML = sources.length
-    ? sources
-        .map((source) => `
+  const all = asArray(model.provenance).filter((source) => !isInjectedSource(source));
+  const publicSources = all.filter((source) => source.origin === "live_web" && hasPublicUrl(source));
+  const internalSources = all.filter((source) => source.origin === "internal_supplier_notice");
+  const demoSources = all.filter((source) => source.origin === "demo_source");
+  const groups = [
+    ["公開Web根拠", publicSources, "実検索で取得したクリック可能な公開URLです。"],
+    ["内部通知", internalSources, "サプライヤ通知など社内で受領した根拠です。"],
+    ["デモ根拠", demoSources, "デモ用の固定データです。公開Web根拠とは分けて扱います。"],
+  ].filter(([, items]) => items.length);
+  el.innerHTML = groups.length
+    ? groups
+        .map(([title, sources, note]) => `
+          <section class="provenance-group">
+            <h4>${esc(title)}</h4>
+            <p>${esc(note)}</p>
+            ${sources.map((source) => `
           <article class="provenance-card">
             <div>
               <span>${esc(sourceKindLabel(source.kind))}</span>
@@ -1558,12 +1570,13 @@ function renderProvenance(model) {
             </div>
             <p>${esc(source.claim)}</p>
             <footer>
-              <em><a href="${escAttr(source.url)}" target="_blank" rel="noreferrer">${esc(source.source || "記事を開く")}</a></em>
+              <em>${source.url ? `<a href="${escAttr(source.url)}" target="_blank" rel="noreferrer">${esc(source.source || "根拠を開く")}</a>` : esc(source.source || "URLなし")}</em>
               <b>確度 ${esc(source.confidence || "-")}</b>
             </footer>
-          </article>`)
+          </article>`).join("")}
+          </section>`)
         .join("")
-    : `<p class="empty">公開URL付きの根拠はありません。</p>`;
+    : `<p class="empty">根拠はまだありません。</p>`;
 }
 
 function renderNetworkPanel(model) {

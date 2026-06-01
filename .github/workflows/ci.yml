@@ -42,6 +42,7 @@ jobs:
           node --check src/supply_sentinel/config.mjs
           node --check src/supply_sentinel/aiClient.mjs
           node --check src/supply_sentinel/liveEvidence.mjs
+          node --check src/supply_sentinel/evidenceSchema.mjs
           node --check src/supply_sentinel/evidenceTimeline.mjs
           node --check src/supply_sentinel/researchAgent.mjs
           node --check src/supply_sentinel/ingestion.mjs

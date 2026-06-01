@@ -695,8 +695,11 @@ function renderAlternatives(data) {
 
 function renderLiveEvidenceList(data) {
   const sources = publicEvidenceSources(data).slice(0, 5);
+  const collection = data?.meta?.evidence_collection || {};
+  const health = collection.search_health || {};
+  const healthHtml = renderSearchHealth(collection, health);
   const html = sources.length
-    ? sources
+    ? healthHtml + sources
         .map((source) => `
           <article class="live-evidence-card">
             <div>
@@ -708,12 +711,33 @@ function renderLiveEvidenceList(data) {
             <a href="${esc(source.url)}" target="_blank" rel="noreferrer">根拠URL</a>
           </article>`)
         .join("")
-    : `
+    : healthHtml + `
       <div class="live-evidence-empty">
-        <strong>公開URL付き根拠を取得中</strong>
-        <p>デモでは架空ソースを根拠にしません。Cloud巡回で取得した公開記事だけを表示します。</p>
+        <strong>${collection.live_enabled === false ? "ライブ検索はOFFです" : "公開URL付き根拠を取得中"}</strong>
+        <p>${collection.live_enabled === false ? "この実行ではWeb検索を行っていません。Cloud環境で SUPPLY_SENTINEL_LIVE_EVIDENCE=true にすると、検索結果だけを根拠として保存します。" : "架空ソースは根拠にしません。Hosted Web Search / Google News / GDELT から取得した公開記事だけを表示します。"}</p>
       </div>`;
   setHtml("live-evidence-list", html);
+}
+
+function renderSearchHealth(collection, health) {
+  const provider = health.provider || collection.live_mode || "unknown";
+  const errors = asArray(health.errors || collection.live_errors);
+  const queries = asArray(collection.live_queries || health.queries).slice(0, 3);
+  return `
+    <div class="search-health-card">
+      <div>
+        <span>検索ヘルス</span>
+        <strong>${esc(provider)}</strong>
+      </div>
+      <dl>
+        <div><dt>取得</dt><dd>${esc(health.retrieved_count ?? collection.live_count ?? 0)}</dd></div>
+        <div><dt>採用</dt><dd>${esc(health.accepted_count ?? collection.live_count ?? 0)}</dd></div>
+        <div><dt>除外</dt><dd>${esc(health.rejected_count ?? 0)}</dd></div>
+        <div><dt>エラー</dt><dd>${esc(health.error_count ?? errors.length)}</dd></div>
+      </dl>
+      ${queries.length ? `<p>${queries.map((q) => `<code>${esc(q)}</code>`).join("")}</p>` : ""}
+      ${errors.length ? `<em>${esc(errors[0].source || errors[0].provider || "search")}: ${esc(errors[0].message || "検索エラー")}</em>` : ""}
+    </div>`;
 }
 
 function renderAgentActivityLog(data) {

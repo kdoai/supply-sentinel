@@ -1558,6 +1558,82 @@ body.modal-open {
   padding: 12px;
 }
 
+.search-health-card {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #dbe6f2;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.search-health-card > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.search-health-card span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.search-health-card strong {
+  color: var(--blue-700);
+  font-size: 12px;
+}
+
+.search-health-card dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.search-health-card dl div {
+  padding: 6px;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.search-health-card dt {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.search-health-card dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.search-health-card p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+}
+
+.search-health-card code {
+  max-width: 100%;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #e9eff8;
+  color: var(--blue-700);
+  font-size: 10px;
+  white-space: normal;
+}
+
+.search-health-card em {
+  color: var(--red);
+  font-size: 11px;
+  font-style: normal;
+}
+
 .agent-log-head {
   margin-bottom: 8px;
   padding: 9px 10px;
@@ -1820,6 +1896,24 @@ body.modal-open {
   display: grid;
   gap: 6px;
   margin-bottom: 8px;
+}
+
+.provenance-group {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.provenance-group h4 {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.provenance-group > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .provenance-card strong {
