@@ -88,25 +88,28 @@
               </div>
               <div id="map-legend"></div>
             </div>
-            <div class="map-toolbar" aria-label="地図操作">
-              <div class="map-tool-group" role="group" aria-label="ズーム">
-                <button type="button" class="map-tool" id="map-zoom-in" aria-label="拡大">+</button>
-                <button type="button" class="map-tool" id="map-zoom-out" aria-label="縮小">−</button>
-                <button type="button" class="map-tool wide" id="map-reset" aria-label="全体表示">全体</button>
+            <div class="map-stage">
+              <div class="map-toolbar" aria-label="地図操作">
+                <div class="map-tool-group" role="group" aria-label="ズーム">
+                  <button type="button" class="map-tool" id="map-zoom-in" aria-label="拡大">+</button>
+                  <button type="button" class="map-tool" id="map-zoom-out" aria-label="縮小">−</button>
+                  <button type="button" class="map-tool wide" id="map-reset" aria-label="全体表示">全体</button>
+                </div>
+                <div class="map-tool-group" role="group" aria-label="表示範囲">
+                  <button type="button" class="map-tool wide" data-map-focus="asia">アジア</button>
+                  <button type="button" class="map-tool wide" data-map-focus="japan">日本</button>
+                </div>
               </div>
-              <div class="map-tool-group" role="group" aria-label="表示範囲">
-                <button type="button" class="map-tool wide" data-map-focus="asia">アジア</button>
-                <button type="button" class="map-tool wide" data-map-focus="japan">日本</button>
-              </div>
+              <canvas id="world-map"></canvas>
+              <aside class="map-insight" id="map-insight" aria-live="polite">
+                <span class="map-insight-kicker">マップ分析</span>
+                <strong>供給元・工場・物流ルートを選択</strong>
+                <p>地図上のノードやルートを選ぶと、AIが検知した外部シグナルとの関係を確認できます。</p>
+              </aside>
+              <div id="map-tooltip" hidden></div>
             </div>
-            <canvas id="world-map"></canvas>
-            <aside class="map-insight" id="map-insight" aria-live="polite">
-              <span class="map-insight-kicker">マップ分析</span>
-              <strong>供給元・工場・物流ルートを選択</strong>
-              <p>地図上のノードやルートを選ぶと、AIが検知した外部シグナルとの関係を確認できます。</p>
-            </aside>
             <div class="demo-console" aria-label="デモ操作">
-              <div>
+              <div class="demo-console-copy">
                 <span class="demo-kicker">エージェント巡回デモ</span>
                 <strong id="demo-stage-title">巡回デモ待機中</strong>
                 <p id="demo-stage-detail">外部シグナルと社内データを順に照合します。</p>
@@ -117,7 +120,6 @@
               </div>
               <div class="demo-progress" aria-hidden="true"><span id="demo-progress-bar"></span></div>
             </div>
-            <div id="map-tooltip" hidden></div>
           </section>
 
           <section class="panel network-panel compact-network-panel">
