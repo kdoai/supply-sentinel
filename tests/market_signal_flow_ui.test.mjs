@@ -13,6 +13,8 @@ test("dashboard frames the product as early warning plus scenario decision suppo
   assert.match(html, /シナリオ化/);
   assert.match(html, /製品影響・優先順位/);
   assert.match(html, /打ち手・承認/);
+  assert.match(html, /今日の判断キュー/);
+  assert.match(html, /decision-home/);
   assert.match(html, /signal-decision-flow/);
   assert.match(html, /generated-scenario/);
   assert.match(html, /company-policy-panel/);
@@ -20,6 +22,8 @@ test("dashboard frames the product as early warning plus scenario decision suppo
 
 test("panel rendering includes scenario agent, company policy, and demo evidence disclosure", async () => {
   const panels = await read("../web/js/panels.js");
+  assert.match(panels, /renderDecisionHome/);
+  assert.match(panels, /What needs your decision now\?/);
   assert.match(panels, /Scenario Agent/);
   assert.match(panels, /Demo Manufacturing SCM Policy/);
   assert.match(panels, /demo_scenario/);

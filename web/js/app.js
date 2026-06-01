@@ -1770,6 +1770,12 @@ function bindNavigation() {
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => setActiveView(button.dataset.view));
   });
+  document.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-home-jump]");
+    if (!button) return;
+    const view = button.getAttribute("data-home-jump");
+    if (view) setActiveView(view);
+  });
 }
 
 function bindSidebarToggle() {

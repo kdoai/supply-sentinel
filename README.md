@@ -52,6 +52,9 @@ data on startup and serves a dark "mission-control" dashboard:
   route, with the portion now at risk highlighted.
 - **Early warning to scenario flow** — detected signal, AI-generated scenario,
   business impact, and recommended actions in one top-level chain.
+- **Decision queue home** — after sign-in, the first panel shows the urgent
+  decision, deadline, products to protect or reduce, approval count, and next
+  actions.
 - **Scenario Builder** — AI-proposed supply reduction, impact period, affected
   node, and human-adjustable assumptions.
 - **Company policy panel** — demo thresholds and priority weights are shown as

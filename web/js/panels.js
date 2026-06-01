@@ -391,6 +391,64 @@ function renderGeneratedAt(data) {
   );
 }
 
+function renderDecisionHome(data) {
+  const basis = scenarioBasis(data);
+  const policy = getCompanyPolicy(data);
+  const decision = policyDecisionLevel(data, policy);
+  const products = basis.products;
+  const approvals = asArray(data.assessment?.approval_required).map(translateText);
+  const firstProduct = products[0] || "対象製品なし";
+  const secondProduct = products[1] || "配分候補なし";
+  const thirdProduct = products[2] || "縮小候補なし";
+  const due = Number(basis.inventoryDays) <= 7 ? "72時間以内" : "今週中";
+  const mode = basis.trigger.includes("AI市場監視") ? "live_web / AI市場監視" : "demo_scenario / 手動デモ";
+  setHtml(
+    "decision-home",
+    `
+      <div class="decision-home-layout">
+        <section class="decision-home-hero">
+          <span class="decision-home-kicker">What needs your decision now?</span>
+          <h4>${esc(basis.material)} ${esc(basis.reduction)}%供給減シナリオを確認し、${esc(firstProduct)}を守るか判断</h4>
+          <p>最短在庫 ${esc(basis.inventoryDays)}日、影響製品 ${esc(products.length)}品目、影響顧客 ${esc(basis.customers.length)}社。${esc(policy.company_policy_name)} では <b>${esc(decision.label)}</b> です。</p>
+          <div class="decision-home-ctas">
+            <button type="button" class="primary-action" data-home-jump="scenario">シナリオ案を確認</button>
+            <button type="button" class="ghost-action" data-home-jump="analysis">製品影響を見る</button>
+            <button type="button" class="ghost-action" data-home-jump="response">承認キューへ進む</button>
+          </div>
+        </section>
+        <section class="decision-home-summary" aria-label="判断サマリ">
+          <div><span>判断期限</span><strong>${esc(due)}</strong><em>最短在庫 ${esc(basis.inventoryDays)}日</em></div>
+          <div><span>守る候補</span><strong>${esc(firstProduct)}</strong><em>高優先顧客・在庫逼迫</em></div>
+          <div><span>配分 / 縮小候補</span><strong>${esc(secondProduct)} / ${esc(thirdProduct)}</strong><em>供給配分・代替材確認</em></div>
+          <div><span>承認待ち</span><strong>${esc(approvals.length)}件</strong><em>${esc(approvals.slice(0, 2).join("、") || "なし")}</em></div>
+        </section>
+        <section class="decision-home-journey">
+          <article>
+            <span>1. 何を見る?</span>
+            <strong>市場予兆とAI生成シナリオ</strong>
+            <p>${esc(mode)}。根拠、供給減少率、期間、影響ノードを確認します。</p>
+          </article>
+          <article>
+            <span>2. どう考える?</span>
+            <strong>企業基準と自社影響</strong>
+            <p>在庫日数、影響供給比率、顧客優先度、代替材有無を企業ポリシーで比較します。</p>
+          </article>
+          <article>
+            <span>3. 何をする?</span>
+            <strong>打ち手を承認キューへ</strong>
+            <p>供給配分、発注変更、顧客通知、生産計画変更は人間承認に回します。</p>
+          </article>
+          <article>
+            <span>4. 何を得る?</span>
+            <strong>判断可能なBrief</strong>
+            <p>守る製品、縮小候補、事前準備、追加確認ポイント、管理職向け説明を得ます。</p>
+          </article>
+        </section>
+      </div>
+    `,
+  );
+}
+
 function renderSignalDecisionFlow(data) {
   const basis = scenarioBasis(data);
   const policy = getCompanyPolicy(data);
@@ -1319,6 +1377,7 @@ export function renderPanels(data) {
 
   renderScenario(model);
   renderGeneratedAt(model);
+  renderDecisionHome(model);
   renderSignalDecisionFlow(model);
   renderRiskGauge(model);
   renderKpiGrid(model);
