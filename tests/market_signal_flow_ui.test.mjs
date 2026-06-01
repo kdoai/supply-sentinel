@@ -13,9 +13,10 @@ test("dashboard frames the product as early warning plus scenario decision suppo
   assert.match(html, /シナリオ化/);
   assert.match(html, /製品影響・優先順位/);
   assert.match(html, /打ち手・承認/);
+  assert.match(html, /AI市場監視サマリ/);
   assert.match(html, /今日の判断キュー/);
-  assert.match(html, /判断キューと製品判断フロー/);
-  assert.match(html, /decision-lane-panel/);
+  assert.match(html, /analysis-decision-panel/);
+  assert.match(html, /dashboard-hero-panel/);
   assert.match(html, /guided-workflow-dashboard/);
   assert.match(html, /guided-workflow-scenario/);
   assert.match(html, /guided-workflow-analysis/);

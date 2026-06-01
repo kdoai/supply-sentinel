@@ -50,11 +50,12 @@ data on startup and serves a dark "mission-control" dashboard:
   plants). Disrupted routes pulse red, resilient routes glow green.
 - **Sourcing mix & spend** — share (%) and monthly procurement spend (課金額) per
   route, with the portion now at risk highlighted.
-- **Early warning to scenario flow** — detected signal, AI-generated scenario,
-  business impact, and recommended actions in one top-level chain.
-- **Decision lane on the Early Warning screen** — after sign-in, the old
-  procurement-composition area is replaced by the urgent decision queue and the
-  detected signal → scenario → business impact → recommended action chain.
+- **Contest-ready first screen** — after sign-in, Early Warning focuses on the
+  detected market signal, AI-generated scenario chain, global map, evidence, and
+  agent pipeline instead of crowding every decision artifact into one sheet.
+- **Role-specific decision surfaces** — the urgent decision queue appears on the
+  Impact & Priority screen, where users can review product impact before moving
+  to approval.
 - **Guided decision workflow** — each screen tells the SCM user what to look at,
   how to think, what action to take next, and what insight they should gain:
   signal confirmation → scenario adoption → product impact review → approval →

@@ -64,6 +64,17 @@
       </header>
 
       <section class="view is-active" id="view-dashboard" data-view-panel="dashboard">
+        <section class="panel signal-flow-panel dashboard-hero-panel">
+          <div class="panel-head compact-head">
+            <div>
+              <h3>AI市場監視サマリ</h3>
+              <span class="panel-note">検知した予兆を供給減少シナリオへ変換し、製品影響分析へ接続</span>
+            </div>
+            <button type="button" class="primary-action" data-home-jump="scenario">シナリオ化へ進む</button>
+          </div>
+          <div id="signal-decision-flow"></div>
+        </section>
+
         <section class="panel guided-workflow-panel">
           <div id="guided-workflow-dashboard"></div>
         </section>
@@ -127,29 +138,6 @@
             </section>
           </aside>
 
-          <section class="panel decision-lane-panel">
-            <div class="panel-head compact-head">
-              <h3>判断キューと製品判断フロー</h3>
-              <span class="panel-note">市場予兆から、シナリオ・業務影響・承認判断までを一箇所で確認</span>
-            </div>
-            <div class="decision-lane-body">
-              <section class="decision-lane-block">
-                <div class="decision-lane-block-head">
-                  <strong>今日の判断キュー</strong>
-                  <span>最初に見るべき判断と次アクション</span>
-                </div>
-                <div id="decision-home"></div>
-              </section>
-              <section class="decision-lane-block">
-                <div class="decision-lane-block-head">
-                  <strong>市場予兆から製品判断まで</strong>
-                  <span>AI市場監視で検知した予兆をSCM判断へ接続</span>
-                </div>
-                <div id="signal-decision-flow"></div>
-              </section>
-            </div>
-          </section>
-
           <section class="panel summary-panel">
             <div class="panel-head compact-head">
               <h3>予兆検知イベント</h3>
@@ -163,6 +151,16 @@
       <section class="view" id="view-analysis" data-view-panel="analysis">
         <section class="panel guided-workflow-panel">
           <div id="guided-workflow-analysis"></div>
+        </section>
+
+        <section class="panel decision-home-panel analysis-decision-panel">
+          <div class="panel-head compact-head">
+            <div>
+              <h3>今日の判断キュー</h3>
+              <span class="panel-note">製品影響を見たうえで、守る製品・縮小候補・承認事項を確認</span>
+            </div>
+          </div>
+          <div id="decision-home"></div>
         </section>
 
         <div class="analysis-grid">

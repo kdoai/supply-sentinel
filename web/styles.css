@@ -508,11 +508,11 @@ button {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 340px);
   grid-template-rows: auto auto;
   grid-template-areas:
     "map side"
-    "decision summary";
+    "summary summary";
   gap: 16px;
   width: 100%;
   max-width: 100%;
@@ -522,15 +522,75 @@ button {
 }
 
 .app-shell.sidebar-collapsed .dashboard-grid {
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) 300px;
 }
 
 .signal-flow-panel {
   margin-bottom: 16px;
 }
 
+.dashboard-hero-panel {
+  border-color: #cfe0f5;
+  background:
+    linear-gradient(180deg, #f8fbff, #fff),
+    #fff;
+  box-shadow: 0 12px 30px rgba(15, 39, 66, 0.08);
+}
+
+.dashboard-hero-panel .panel-head {
+  color: #eef6ff;
+  background:
+    linear-gradient(90deg, #071426, #0f2742 54%, #174a8b),
+    #071426;
+  border-bottom-color: rgba(197, 214, 234, 0.22);
+}
+
+.dashboard-hero-panel .panel-head h3 {
+  color: #fff;
+}
+
+.dashboard-hero-panel .panel-note {
+  color: #c5d6ea;
+}
+
+.dashboard-hero-panel .primary-action {
+  border-color: #3ddc97;
+  color: #071426;
+  background: #3ddc97;
+}
+
+.dashboard-hero-panel #signal-decision-flow {
+  padding: 12px;
+}
+
+.dashboard-hero-panel .signal-flow-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-hero-panel .signal-flow-card {
+  position: relative;
+  min-height: 154px;
+  border-color: #cfe0f5;
+  background:
+    linear-gradient(180deg, #ffffff, #f7fbff),
+    #fff;
+  box-shadow: 0 8px 18px rgba(15, 39, 66, 0.05);
+}
+
+.dashboard-hero-panel .signal-flow-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #72d2ff, #3ddc97);
+}
+
 .guided-workflow-panel {
   margin-bottom: 16px;
+}
+
+#view-dashboard .guided-workflow-panel {
+  margin-bottom: 12px;
 }
 
 #guided-workflow-dashboard,
@@ -713,8 +773,71 @@ button {
   background: #dff3e9;
 }
 
+#view-dashboard #guided-workflow-dashboard {
+  padding: 10px;
+}
+
+#view-dashboard .workflow-shell {
+  grid-template-columns: minmax(280px, 0.54fr) minmax(0, 1.46fr);
+  gap: 10px;
+}
+
+#view-dashboard .workflow-focus {
+  gap: 8px;
+  padding: 12px;
+}
+
+#view-dashboard .workflow-focus h4 {
+  font-size: 16px;
+}
+
+#view-dashboard .workflow-focus p {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+#view-dashboard .workflow-focus dl {
+  display: none;
+}
+
+#view-dashboard .workflow-metrics {
+  gap: 4px;
+}
+
+#view-dashboard .workflow-metrics span {
+  padding: 3px 7px;
+  font-size: 10.5px;
+}
+
+#view-dashboard .workflow-actions .ghost-action {
+  display: none;
+}
+
+#view-dashboard .workflow-steps {
+  gap: 6px;
+}
+
+#view-dashboard .workflow-step {
+  grid-template-rows: auto auto auto;
+  min-height: 86px;
+  padding: 8px;
+}
+
+#view-dashboard .workflow-step strong {
+  font-size: 12px;
+}
+
+#view-dashboard .workflow-step em {
+  display: none;
+}
+
 .decision-home-panel {
   margin-bottom: 16px;
+}
+
+.analysis-decision-panel {
+  border-color: #cfe0f5;
+  box-shadow: 0 10px 24px rgba(15, 39, 66, 0.06);
 }
 
 .decision-lane-panel {
@@ -3763,8 +3886,15 @@ li {
     grid-template-areas:
       "map"
       "side"
-      "decision"
       "summary";
+  }
+
+  .dashboard-hero-panel .signal-flow-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #view-dashboard .workflow-shell {
+    grid-template-columns: 1fr;
   }
 
   .map-panel {
@@ -4123,6 +4253,27 @@ li {
   .policy-threshold-grid,
   .policy-weight-list {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-hero-panel .signal-flow-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #view-dashboard .workflow-shell,
+  #view-dashboard .workflow-steps {
+    grid-template-columns: 1fr;
+  }
+
+  #view-dashboard .workflow-steps {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  #view-dashboard .workflow-step {
+    flex: 0 0 136px;
+    min-height: 76px;
   }
 
   .decision-lane-block-head {
