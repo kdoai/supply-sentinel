@@ -90,10 +90,31 @@ PORT=4173
 
 ## 8. モード切替
 
+`deploy-azure.yml` の `run_mode` 既定は **`cloud`**(本番で AI を生かすのが既定)。
+
 | mode | CI/CD での指定 | 用途 |
 | --- | --- | --- |
-| `demo` | `workflow_dispatch -f run_mode=demo` | 安定デモ。GPT quota がなくても動く。 |
-| `cloud` | `workflow_dispatch -f run_mode=cloud` | Azure OpenAI 実呼び出し。本番デモで使う。 |
+| `cloud` | 既定 / `workflow_dispatch -f run_mode=cloud` | Azure OpenAI 実呼び出し(チャット相談 + LLM 調査エージェント)。本番デモで使う。 |
+| `demo` | `workflow_dispatch -f run_mode=demo` | 安定デモ。GPT quota がなくても動く。LLM は呼ばない。 |
+
+### 8.1 AI を「本当に生かす」ための前提(cloud)
+
+`run_mode=cloud` だけでは不十分で、以下が揃って初めて LLM が呼ばれる。1つでも欠けると安全側で決定論 fallback に落ちる(壊れはしない)。
+
+1. **`run_mode=cloud`**(既定)。
+2. GitHub Variables に **`AZURE_OPENAI_ENDPOINT`** が設定済み(空だと `azureOpenAiConfigured()=false` → fallback)。
+3. **`AZURE_OPENAI_ACCOUNT_NAME`** を設定(Runtime Managed Identity に Cognitive Services OpenAI User ロールを付与するため。未設定だと AAD 認証で 401)。
+4. デプロイ名 (`AZURE_OPENAI_DEPLOYMENT`) が実在し、**quota が残っている**(429 だと fallback)。
+5. `SUPPLY_SENTINEL_LIVE_EVIDENCE=true`(調査エージェントが Web 検索する。Bicep 既定 true)。
+
+### 8.2 生きているかの判定方法
+
+- **チャット**: 回答カードのバッジが `… / cloud` なら LLM 応答、`… / fallback` なら決定論 fallback。
+- **調査エージェント**: `latest-dashboard` の `dashboard.meta.evidence_collection.live_mode` が
+  - `agent` … モデルが tool-calling で検索を駆動(本番の狙い)
+  - `rss` … 決定論の RSS 収集に fallback
+  - `disabled` … ライブ証拠オフ
+  - `live_queries` にモデルが実際に投げた検索クエリが入る。`live_count` が取得記事数。
 
 ## 9. デプロイ確認
 

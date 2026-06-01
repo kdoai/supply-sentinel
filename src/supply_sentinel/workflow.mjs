@@ -63,8 +63,12 @@ export function buildDashboardModel({ riskEvent, assessment, routeIntel, materia
       ai: buildAiMeta(data),
       evidence_collection: {
         live_enabled: Boolean(data.liveEvidence?.enabled),
+        // "agent" = the LLM research agent drove the searches; "rss" = the
+        // deterministic config-driven fallback; "disabled" = no live evidence.
+        live_mode: data.liveEvidence?.mode ?? "rss",
         live_fetched_at: data.liveEvidence?.fetched_at ?? null,
         live_count: Array.isArray(data.liveEvidence?.provenance) ? data.liveEvidence.provenance.length : 0,
+        live_queries: Array.isArray(data.liveEvidence?.queries) ? data.liveEvidence.queries : [],
         live_errors: Array.isArray(data.liveEvidence?.errors) ? data.liveEvidence.errors : [],
       },
     },

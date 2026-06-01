@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       run_mode:
-        description: "Application mode"
+        description: "Application mode (cloud = live Azure OpenAI chat + LLM research agent; demo = deterministic, no LLM calls)"
         required: true
-        default: "demo"
+        default: "cloud"
         type: choice
         options:
-          - demo
           - cloud
+          - demo
 
 permissions:
   contents: read
@@ -56,6 +56,10 @@ jobs:
           node --check src/supply_sentinel/config.mjs
           node --check src/supply_sentinel/stateStore.mjs
           node --check src/supply_sentinel/aiClient.mjs
+          node --check src/supply_sentinel/liveEvidence.mjs
+          node --check src/supply_sentinel/researchAgent.mjs
+          node --check src/supply_sentinel/ingestion.mjs
+          node --check src/supply_sentinel/workflow.mjs
           node --check src/supply_sentinel/agentTrace.mjs
           node --check src/supply_sentinel/networkSchema.mjs
           node --check src/supply_sentinel/propagationEngine.mjs

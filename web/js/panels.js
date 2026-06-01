@@ -442,9 +442,21 @@ function renderAiExtraction(data) {
   const runMode = ai.run_mode === "cloud" ? "cloud" : "demo";
   const runLabel = runMode === "cloud" ? "Azure OpenAI ライブ" : "デモ抽出(決定論)";
   const confidence = risk.confidence ? `確度 ${esc(risk.confidence)}` : "";
+  // 調査エージェント(情報収集)の実行モードと検索クエリ。agent = モデルが
+  // tool-calling でWeb検索を駆動、rss = 決定論の自動収集、disabled = オフ。
+  const evidenceCol = meta.evidence_collection || {};
+  const liveModeLabel =
+    { agent: "AI調査エージェント (Web検索)", rss: "RSS自動収集", disabled: "オフ" }[evidenceCol.live_mode] ||
+    (evidenceCol.live_enabled ? "RSS自動収集" : "オフ");
+  const liveQueries = asArray(evidenceCol.live_queries).filter(Boolean);
+  const liveCountText =
+    evidenceCol.live_enabled && typeof evidenceCol.live_count === "number"
+      ? ` / ${evidenceCol.live_count}件取得`
+      : "";
   const cloudFacts = [
     { label: "実行モード", value: `${ai.provider || "Azure OpenAI"} / ${runMode}` },
     { label: "モデル", value: ai.model || "gpt-5.4-mini" },
+    { label: "証拠収集", value: `${liveModeLabel}${liveCountText}` },
     { label: "Cloud API応答", value: cloud.served_at ? formatDateTime(cloud.served_at) : formatDateTime(meta.generated_at) },
     { label: "保存先", value: `${cloudStoreLabel(cloud.state_store)}${cloud.persisted ? " 保存済み" : " fallback"}` },
     { label: "実行ID", value: assessment.alert_id || "latest-dashboard" },
@@ -467,6 +479,14 @@ function renderAiExtraction(data) {
       <dl>
         ${cloudFacts.map((item) => `<div><dt>${esc(item.label)}</dt><dd>${esc(item.value)}</dd></div>`).join("")}
       </dl>
+      ${
+        liveQueries.length
+          ? `<div class="cloud-proof-queries"><span>調査エージェントの検索クエリ</span><div>${liveQueries
+              .slice(0, 5)
+              .map((q) => `<code>${esc(q)}</code>`)
+              .join("")}</div></div>`
+          : ""
+      }
     </div>`;
 
   const inputCards = inputs

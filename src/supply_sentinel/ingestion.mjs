@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { collectLiveEvidence } from "./liveEvidence.mjs";
+import { runResearchAgent } from "./researchAgent.mjs";
 
 export async function loadJson(filePath) {
   const text = await readFile(filePath, "utf8");
@@ -109,7 +109,10 @@ export async function loadSampleData(rootDir = process.cwd()) {
     loadJsonOptional(path.join(samplesDir, "materials.json"), []),
   ]);
 
-  const liveEvidence = await collectLiveEvidence({ rootDir });
+  // The scheduled research agent searches the public web for fresh evidence.
+  // When cloud + Azure OpenAI is configured the model drives the searches via
+  // tool-calling; otherwise it degrades to the deterministic RSS collection.
+  const liveEvidence = await runResearchAgent({ rootDir, materials });
 
   return {
     // Keep deterministic demo sources first so the impact narrative remains
