@@ -508,16 +508,17 @@ button {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  grid-template-rows: minmax(320px, 1fr) minmax(340px, auto);
+  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-rows: auto auto;
   grid-template-areas:
     "map side"
     "decision summary";
   gap: 16px;
   width: 100%;
   max-width: 100%;
-  height: calc(100vh - 300px);
-  min-height: 700px;
+  height: auto;
+  min-height: 0;
+  align-items: stretch;
 }
 
 .app-shell.sidebar-collapsed .dashboard-grid {
@@ -719,8 +720,9 @@ button {
 .decision-lane-panel {
   grid-area: decision;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   min-width: 0;
+  align-self: start;
 }
 
 .decision-lane-body {
@@ -728,13 +730,14 @@ button {
   grid-template-columns: minmax(330px, 0.95fr) minmax(330px, 1.05fr);
   gap: 12px;
   min-height: 0;
-  overflow: auto;
+  align-items: start;
+  overflow: visible;
   padding: 12px;
 }
 
 .decision-lane-block {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   min-width: 0;
   min-height: 0;
   border: 1px solid var(--line);
@@ -765,7 +768,7 @@ button {
 .decision-lane-panel #decision-home,
 .decision-lane-panel #signal-decision-flow {
   min-height: 0;
-  overflow: auto;
+  overflow: visible;
   padding: 10px;
 }
 
@@ -981,6 +984,7 @@ button {
   position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  min-height: 560px;
   background: linear-gradient(180deg, #0b1222, #08101f);
   border-color: #1f3558;
   box-shadow: 0 14px 34px rgba(15, 39, 66, 0.22);
@@ -1252,6 +1256,7 @@ button {
   display: grid;
   grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
+  height: 560px;
   min-height: 0;
 }
 
@@ -1374,6 +1379,8 @@ button {
 
 .summary-panel {
   grid-area: summary;
+  align-self: start;
+  min-height: 340px;
 }
 
 #sourcing-mix,
@@ -3760,6 +3767,10 @@ li {
       "summary";
   }
 
+  .map-panel {
+    min-height: 620px;
+  }
+
   .analysis-grid,
   .response-grid {
     grid-template-areas: none;
@@ -3793,6 +3804,8 @@ li {
 
   .dashboard-side {
     grid-template-rows: none;
+    height: auto;
+    min-height: 0;
   }
 
   .orders-panel {
@@ -3996,6 +4009,16 @@ li {
     gap: 6px;
   }
 
+  .map-panel {
+    grid-template-rows: auto 420px auto auto;
+    min-height: 0;
+  }
+
+  #world-map {
+    height: 420px;
+    min-height: 420px;
+  }
+
   .map-tool-group {
     gap: 3px;
     padding: 3px;
@@ -4013,12 +4036,23 @@ li {
   }
 
   .map-insight {
-    left: 10px;
-    right: 10px;
-    bottom: 174px;
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
     width: auto;
     min-width: 0;
+    margin: 10px 10px 0;
     padding: 11px 12px;
+  }
+
+  .demo-console {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    width: auto;
+    margin: 10px;
   }
 
   .map-insight dl {
