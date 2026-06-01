@@ -98,6 +98,9 @@ const APPROVAL_META = {
   "Supplier switching": { title: "サプライヤ切替", approver: "調達部長 / 品質保証", category: "sourcing" },
   "Formal customer notification": { title: "顧客への正式通知", approver: "営業部長", category: "customer" },
   "Major production plan changes": { title: "生産計画の大幅変更", approver: "生産管理責任者", category: "production" },
+  "Supply allocation decision": { title: "供給配分判断", approver: "SCM責任者", category: "allocation" },
+  "Product reduction decision": { title: "縮小判断", approver: "事業責任者", category: "reduction" },
+  "Alternative material approval process": { title: "代替材承認プロセス開始", approver: "品質保証 / 顧客担当", category: "quality" },
 };
 
 function approvalMeta(raw) {

@@ -1,0 +1,24 @@
+{
+  "company_policy_name": "Demo Manufacturing SCM Policy",
+  "thresholds": {
+    "attention": {
+      "min_inventory_days": 30,
+      "affected_supply_ratio_percent": 20
+    },
+    "danger": {
+      "min_inventory_days": 14,
+      "affected_supply_ratio_percent": 50
+    },
+    "stop_or_allocation_decision": {
+      "min_inventory_days": 7,
+      "affected_supply_ratio_percent": 70
+    }
+  },
+  "priority_weights": {
+    "customer_priority": 0.3,
+    "revenue_impact": 0.25,
+    "inventory_days": 0.2,
+    "alternative_availability": 0.15,
+    "single_supplier_dependency": 0.1
+  }
+}

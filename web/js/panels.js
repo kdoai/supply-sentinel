@@ -79,7 +79,26 @@ const ACTION_TRANSLATIONS = new Map([
   ["Supplier switching", "サプライヤ切替"],
   ["Formal customer notification", "顧客への正式通知"],
   ["Major production plan changes", "生産計画の大幅変更"],
+  ["Supply allocation decision", "供給配分判断"],
+  ["Product reduction decision", "縮小判断"],
+  ["Alternative material approval process", "代替材承認プロセス開始"],
 ]);
+
+const DEMO_COMPANY_POLICY = {
+  company_policy_name: "Demo Manufacturing SCM Policy",
+  thresholds: {
+    attention: { min_inventory_days: 30, affected_supply_ratio_percent: 20 },
+    danger: { min_inventory_days: 14, affected_supply_ratio_percent: 50 },
+    stop_or_allocation_decision: { min_inventory_days: 7, affected_supply_ratio_percent: 70 },
+  },
+  priority_weights: {
+    customer_priority: 0.3,
+    revenue_impact: 0.25,
+    inventory_days: 0.2,
+    alternative_availability: 0.15,
+    single_supplier_dependency: 0.1,
+  },
+};
 
 function esc(value) {
   return String(value ?? "")
@@ -203,7 +222,7 @@ function hasPublicUrl(source) {
 
 function publicEvidenceSources(data) {
   return asArray(data?.provenance)
-    .filter((source) => hasPublicUrl(source) && source.origin === "live_web")
+    .filter((source) => hasPublicUrl(source))
     .sort((a, b) => Date.parse(b.published_at || b.fetched_at || 0) - Date.parse(a.published_at || a.fetched_at || 0));
 }
 
@@ -218,6 +237,115 @@ function sourceKindLabel(kind) {
   return labels[kind] || kind || "情報源";
 }
 
+function confidenceLabel(value) {
+  const labels = { high: "高", medium: "中", low: "低" };
+  return labels[value] || value || "中";
+}
+
+function getCompanyPolicy(data) {
+  const policy = data?.meta?.company_policy || {};
+  return {
+    ...DEMO_COMPANY_POLICY,
+    ...policy,
+    thresholds: {
+      ...DEMO_COMPANY_POLICY.thresholds,
+      ...(policy.thresholds || {}),
+      attention: {
+        ...DEMO_COMPANY_POLICY.thresholds.attention,
+        ...(policy.thresholds?.attention || {}),
+      },
+      danger: {
+        ...DEMO_COMPANY_POLICY.thresholds.danger,
+        ...(policy.thresholds?.danger || {}),
+      },
+      stop_or_allocation_decision: {
+        ...DEMO_COMPANY_POLICY.thresholds.stop_or_allocation_decision,
+        ...(policy.thresholds?.stop_or_allocation_decision || {}),
+      },
+    },
+    priority_weights: {
+      ...DEMO_COMPANY_POLICY.priority_weights,
+      ...(policy.priority_weights || {}),
+    },
+  };
+}
+
+function supplyReductionPercent(data) {
+  const disruption = data?.month?.disruption || {};
+  const capacity = Number(disruption.capacity_drop);
+  if (Number.isFinite(capacity)) return Math.round(capacity * 100);
+  const allocation = Number(data?.risk_event?.allocation_rate_percent);
+  if (Number.isFinite(allocation)) return Math.max(0, Math.min(100, Math.round(100 - allocation)));
+  const affected = Number(data?.route_intel?.kpis?.affected_share_percent);
+  return Number.isFinite(affected) ? Math.max(0, Math.min(100, Math.round(affected * 0.6))) : 0;
+}
+
+function sourceMode(data) {
+  const sources = asArray(data?.provenance);
+  return sources.some((source) => source.origin === "live_web" || source.live)
+    ? "AI市場監視から生成"
+    : "デモ用シナリオ根拠から生成";
+}
+
+function scenarioBasis(data) {
+  const risk = data.risk_event || {};
+  const assessment = data.assessment || {};
+  const kpis = data.route_intel?.kpis || {};
+  const reduction = supplyReductionPercent(data);
+  const confidence = risk.confidence || data.month?.risk_inputs?.confidence || assessment.severity || "medium";
+  const affectedShare = Number(kpis.affected_share_percent ?? data.propagation?.metrics?.affected_supply_ratio ?? 0);
+  const spend = Number(kpis.monthly_spend_at_risk ?? data.propagation?.metrics?.spend_at_risk_usd ?? 0);
+  const products = asArray(assessment.impacted_products);
+  const customers = asArray(assessment.impacted_customers);
+  const plants = asArray(assessment.impacted_plants);
+  const rangeLow = Math.max(0, reduction - 10);
+  const rangeHigh = Math.min(100, reduction + 20);
+  return {
+    material: materialLabel(assessment.material || risk.material),
+    region: regionLabel(risk.region),
+    period: affectedPeriodLabel(risk.affected_period) || "1か月",
+    reduction,
+    range: `${rangeLow}〜${rangeHigh}%`,
+    node: reduction > 0 ? "アジア上流 / Tier2 / 港湾" : "対象ノードなし",
+    confidence: confidenceLabel(confidence),
+    affectedShare,
+    spend,
+    products,
+    customers,
+    plants,
+    inventoryDays: assessment.inventory_days_min ?? data.propagation?.metrics?.inventory_days_min ?? "-",
+    trigger: sourceMode(data),
+  };
+}
+
+function policyDecisionLevel(data, policy = getCompanyPolicy(data)) {
+  const basis = scenarioBasis(data);
+  const inventory = Number(basis.inventoryDays);
+  const affected = Number(basis.affectedShare);
+  const stop = policy.thresholds.stop_or_allocation_decision;
+  const danger = policy.thresholds.danger;
+  const attention = policy.thresholds.attention;
+  if (
+    (Number.isFinite(inventory) && inventory <= Number(stop.min_inventory_days)) ||
+    (Number.isFinite(affected) && affected >= Number(stop.affected_supply_ratio_percent))
+  ) {
+    return { label: "供給配分判断", tone: "critical" };
+  }
+  if (
+    (Number.isFinite(inventory) && inventory <= Number(danger.min_inventory_days)) ||
+    (Number.isFinite(affected) && affected >= Number(danger.affected_supply_ratio_percent))
+  ) {
+    return { label: "危険", tone: "danger" };
+  }
+  if (
+    (Number.isFinite(inventory) && inventory <= Number(attention.min_inventory_days)) ||
+    (Number.isFinite(affected) && affected >= Number(attention.affected_supply_ratio_percent))
+  ) {
+    return { label: "注意", tone: "attention" };
+  }
+  return { label: "通常監視", tone: "normal" };
+}
+
 function scoreFactorLabel(key) {
   const labels = {
     external_event_severity: "外部イベント深刻度",
@@ -225,6 +353,17 @@ function scoreFactorLabel(key) {
     inventory_days_risk: "在庫残日数リスク",
     customer_order_priority: "顧客・受注優先度",
     alternative_availability_risk: "代替材制約",
+  };
+  return labels[key] || key;
+}
+
+function policyWeightLabel(key) {
+  const labels = {
+    customer_priority: "顧客優先度",
+    revenue_impact: "売上影響",
+    inventory_days: "在庫日数",
+    alternative_availability: "代替材有無",
+    single_supplier_dependency: "単一サプライヤー依存",
   };
   return labels[key] || key;
 }
@@ -239,8 +378,8 @@ function cloudStoreLabel(store) {
 function renderScenario(data) {
   const risk = data.risk_event || {};
   const assessment = data.assessment || {};
-  const severity = assessment.severity ? `${SEVERITY_LABELS[assessment.severity] || assessment.severity}リスク` : "判定中";
-  setText("scenario", `${materialLabel(risk.material)}供給リスク / ${regionLabel(risk.region)} / ${severity}`);
+  const decision = policyDecisionLevel(data);
+  setText("scenario", `${materialLabel(assessment.material || risk.material)} / ${regionLabel(risk.region)} / ${decision.label}`);
 }
 
 function renderGeneratedAt(data) {
@@ -248,7 +387,52 @@ function renderGeneratedAt(data) {
   const demo = data.demo || {};
   setHtml(
     "generated-at",
-    `<span class="live-dot">監視中</span><span>${esc(demo.time_label || formatDateTime(meta.generated_at))} 更新</span>`,
+    `<span class="live-dot">手動実行</span><span>${esc(demo.time_label || formatDateTime(meta.generated_at))} 更新</span>`,
+  );
+}
+
+function renderSignalDecisionFlow(data) {
+  const basis = scenarioBasis(data);
+  const policy = getCompanyPolicy(data);
+  const decision = policyDecisionLevel(data, policy);
+  const firstProduct = basis.products[0] || "対象製品なし";
+  const secondProduct = basis.products[1] || "配分候補なし";
+  const thirdProduct = basis.products[2] || "縮小候補なし";
+  const sources = asArray(data.provenance);
+  const topSignal = sources[0]?.claim || data.risk_event?.summary || "市場予兆を待機中";
+  const sourceKinds = sources.length
+    ? sources.slice(0, 4).map((source) => sourceKindLabel(source.kind)).join(" / ")
+    : "デモ用想定情報";
+  setHtml(
+    "signal-decision-flow",
+    `
+      <div class="signal-flow-grid">
+        <article class="signal-flow-card">
+          <span>Detected Signal / 検知した市場予兆</span>
+          <strong>${esc(topSignal)}</strong>
+          <p>${esc(sourceKinds)} をAIが素材・地域・期間・信頼度に構造化。</p>
+          <em>${esc(basis.trigger)} · 信頼度 ${esc(basis.confidence)}</em>
+        </article>
+        <article class="signal-flow-card">
+          <span>Generated Scenario / AI生成シナリオ</span>
+          <strong>${esc(basis.material)} ${esc(basis.reduction)}%供給減</strong>
+          <p>影響期間 ${esc(basis.period)} / 影響ノード ${esc(basis.node)}。</p>
+          <em>推定レンジ ${esc(basis.range)} · 人間が調整可能</em>
+        </article>
+        <article class="signal-flow-card">
+          <span>Business Impact / 業務影響</span>
+          <strong>影響製品 ${esc(basis.products.length)}品目 · 最短在庫 ${esc(basis.inventoryDays)}日</strong>
+          <p>影響顧客 ${esc(basis.customers.length)}社 / 工場 ${esc(basis.plants.length)}拠点 / 金額影響 ${esc(compactUsdJa(basis.spend))}。</p>
+          <em>${esc(policy.company_policy_name)}: ${esc(decision.label)}</em>
+        </article>
+        <article class="signal-flow-card">
+          <span>Recommended Actions / 推奨打ち手</span>
+          <strong>${esc(firstProduct)}を優先保護</strong>
+          <p>${esc(secondProduct)}は供給配分候補、${esc(thirdProduct)}は縮小・代替材確認候補。</p>
+          <em>発注変更・顧客通知・生産計画変更は人間承認</em>
+        </article>
+      </div>
+    `,
   );
 }
 
@@ -568,10 +752,10 @@ function renderAiExtraction(data) {
   const kpis = ((data.route_intel || {}).kpis) || {};
   const businessTrace = `
     <div class="business-trace ai-trace-inline" aria-label="AI抽出から業務判断までの流れ">
-      <div><span>1</span><strong>外部情報</strong><em>ニュース・通知 ${inputs.length}件</em></div>
-      <div><span>2</span><strong>AI構造化</strong><em>${esc(materialLabel(risk.material))} / ${esc(riskTypeLabel(risk.risk_type))}</em></div>
-      <div><span>3</span><strong>在庫/BOM照合</strong><em>最短 ${esc(inventoryMin)}日・製品 ${affectedProducts.length}件</em></div>
-      <div><span>4</span><strong>初動案</strong><em>顧客 ${affectedCustomers.length}社・調達影響 ${esc(kpis.affected_share_percent ?? 0)}%</em></div>
+      <div><span>1</span><strong>Market Watch</strong><em>ニュース・通知 ${inputs.length}件</em></div>
+      <div><span>2</span><strong>Scenario Agent</strong><em>${esc(materialLabel(risk.material))} / ${esc(supplyReductionPercent(data))}%供給減</em></div>
+      <div><span>3</span><strong>Impact Engine</strong><em>最短 ${esc(inventoryMin)}日・製品 ${affectedProducts.length}件</em></div>
+      <div><span>4</span><strong>Decision Agent</strong><em>顧客 ${affectedCustomers.length}社・調達影響 ${esc(kpis.affected_share_percent ?? 0)}%</em></div>
     </div>`;
 
   const judgment = `
@@ -593,7 +777,7 @@ function renderAiExtraction(data) {
       </section>
       <div class="ai-extract-arrow" aria-hidden="true">→</div>
       <section class="ai-extract-col ai-extract-col-output">
-        <h4>構造化された抽出結果</h4>
+        <h4>構造化された市場予兆</h4>
         ${fields}
       </section>
     </div>
@@ -695,23 +879,39 @@ function renderAlternatives(data) {
 
 function renderLiveEvidenceList(data) {
   const sources = publicEvidenceSources(data).slice(0, 5);
+  const basis = scenarioBasis(data);
   const html = sources.length
     ? sources
-        .map((source) => `
+        .map((source, index) => {
+          const isLive = source.origin === "live_web" || source.live;
+          const runId = data.agent_run?.run_id || data.meta?.ai?.run_id || "run-pending";
+          const query = source.query || source.search_query || data.meta?.evidence_collection?.live_queries?.[index] || `${basis.material} supply constraint`;
+          return `
           <article class="live-evidence-card">
             <div>
-              <span>${esc(sourceKindLabel(source.kind))}</span>
+              <span>${esc(isLive ? "live_web" : "demo_scenario")}</span>
               <time>${esc(formatDateTime(source.published_at || source.fetched_at))}</time>
             </div>
             <strong>${esc(source.source || "公開Web")}</strong>
             <p>${esc(truncateText(source.claim, 92))}</p>
+            <dl class="live-evidence-proof">
+              <div><dt>検索クエリ</dt><dd>${esc(query)}</dd></div>
+              <div><dt>抽出素材</dt><dd>${esc(basis.material)}</dd></div>
+              <div><dt>抽出地域</dt><dd>${esc(basis.region)}</dd></div>
+              <div><dt>抽出期間</dt><dd>${esc(basis.period)}</dd></div>
+              <div><dt>信頼度</dt><dd>${esc(confidenceLabel(source.confidence || data.risk_event?.confidence))}</dd></div>
+              <div><dt>run_id</dt><dd>${esc(runId)}</dd></div>
+              <div><dt>保存</dt><dd>${esc(data.meta?.cloud?.persisted ? "Cosmos DB" : "ローカル/静的デモ")}</dd></div>
+            </dl>
+            ${isLive ? "" : `<p class="demo-source-note">この情報はデモ用のシナリオ根拠です。リアルタイムWeb取得ではありません。</p>`}
             <a href="${esc(source.url)}" target="_blank" rel="noreferrer">根拠URL</a>
-          </article>`)
+          </article>`;
+        })
         .join("")
     : `
       <div class="live-evidence-empty">
-        <strong>公開URL付き根拠を取得中</strong>
-        <p>デモでは架空ソースを根拠にしません。Cloud巡回で取得した公開記事だけを表示します。</p>
+        <strong>source: demo_scenario</strong>
+        <p>この情報はデモ用のシナリオ根拠です。リアルタイムWeb取得ではありません。Cloud巡回を有効化した場合のみ live_web としてURL・取得時刻・検索クエリを表示します。</p>
       </div>`;
   setHtml("live-evidence-list", html);
 }
@@ -719,10 +919,33 @@ function renderLiveEvidenceList(data) {
 function renderAgentActivityLog(data) {
   const run = data.agent_run || {};
   const calls = asArray(run.tool_calls).slice(0, 8);
+  const basis = scenarioBasis(data);
+  const pipeline = [
+    { name: "Market Watch Agent", detail: "市場ニュース・価格・物流・サプライヤー情報を収集", meta: `${asArray(data.provenance).length}件の予兆候補` },
+    { name: "Evidence Agent", detail: "URL、取得時刻、検索クエリ、信頼度を検証", meta: run.stats ? `検証 ${run.stats.evidence_verified ?? 0}件` : "検証待ち" },
+    { name: "Scenario Agent", detail: "素材・地域・期間・供給減少レンジへ構造化", meta: `${basis.material} / ${basis.range} / ${basis.period}` },
+    { name: "Impact Engine", detail: "BOM・在庫・受注・企業判断基準に照合", meta: `最短在庫 ${basis.inventoryDays}日 / 影響 ${basis.affectedShare}%` },
+    { name: "Decision Agent", detail: "守る製品、縮小候補、打ち手、承認事項を説明", meta: `${asArray(data.assessment?.approval_required).length}件が人間承認` },
+  ];
   const html = `
     <div class="agent-log-head">
       <strong>${esc(run.run_id || "run pending")}</strong>
       <span>${esc(run.model || "gpt-5.4-mini")} / ${esc(run.run_mode || "cloud")}</span>
+    </div>
+    <div class="agent-pipeline-list">
+      ${pipeline
+        .map(
+          (stage, index) => `
+            <article>
+              <span>${esc(index + 1)}</span>
+              <div>
+                <strong>${esc(stage.name)}</strong>
+                <p>${esc(stage.detail)}</p>
+                <em>${esc(stage.meta)}</em>
+              </div>
+            </article>`,
+        )
+        .join("")}
     </div>
     <ol class="agent-log-list">
       ${
@@ -737,7 +960,7 @@ function renderAgentActivityLog(data) {
                   </div>
                 </li>`)
               .join("")
-          : `<li><time>--:--</time><div><strong>待機中</strong><p>巡回が始まると、検索・検証・照合・起案のログを表示します。</p></div></li>`
+          : `<li><time>--:--</time><div><strong>待機中</strong><p>AI市場監視が始まると、検索・根拠検証・シナリオ化・照合・起案のログを表示します。</p></div></li>`
       }
     </ol>`;
   setHtml("agent-activity-log", html);
@@ -748,6 +971,8 @@ function productImpactRows(data) {
   const kpis = data.route_intel?.kpis || {};
   const orders = asArray(assessment.impacted_orders);
   const products = asArray(assessment.impacted_products);
+  const policy = getCompanyPolicy(data);
+  const weights = policy.priority_weights;
   const inventoryMin = assessment.inventory_days_min ?? "-";
   const evidence = publicEvidenceSources(data)[0] || asArray(data.provenance).find(hasPublicUrl) || null;
   return products.map((product, index) => {
@@ -758,7 +983,22 @@ function productImpactRows(data) {
       : relatedOrders.length
         ? "medium"
         : "low";
-    const score = Math.max(1, Math.round((Number(assessment.risk_score) || 0) - index * 8));
+    const customerScore = priority === "high" ? 100 : priority === "medium" ? 64 : 32;
+    const revenueScore = Math.max(20, 100 - index * 16);
+    const inventoryScore = Math.max(0, 100 - Number(inventoryMin || 0) * 5);
+    const alternativeScore = index === 0 ? 72 : index === 1 ? 54 : 38;
+    const dependencyScore = Math.max(35, Number(kpis.affected_share_percent || 0));
+    const score = Math.max(
+      1,
+      Math.round(
+        customerScore * weights.customer_priority +
+          revenueScore * weights.revenue_impact +
+          inventoryScore * weights.inventory_days +
+          alternativeScore * weights.alternative_availability +
+          dependencyScore * weights.single_supplier_dependency,
+      ),
+    );
+    const impact = index === 0 ? "優先保護" : priority === "high" ? "供給配分候補" : "縮小・代替材確認";
     return {
       rank: index + 1,
       product,
@@ -768,8 +1008,9 @@ function productImpactRows(data) {
       plant: topOrder.plant || asArray(assessment.impacted_plants)[0] || "対象工場確認中",
       orders: relatedOrders.length,
       inventory: inventoryMin,
-      impact: index === 0 ? "最優先保護" : priority === "high" ? "配分候補" : "監視継続",
-      reason: `調達影響${kpis.affected_share_percent ?? 0}%・最短在庫${inventoryMin}日。公開根拠とBOM/受注を照合。`,
+      impact,
+      trigger: sourceMode(data),
+      reason: `調達影響${kpis.affected_share_percent ?? 0}%・最短在庫${inventoryMin}日。${policy.company_policy_name}の重みで優先度を計算。`,
       evidence,
     };
   });
@@ -793,6 +1034,7 @@ function renderProductImpactRanking(data) {
               </div>
               <dl>
                 <div><dt>判断</dt><dd>${esc(row.impact)}</dd></div>
+                <div><dt>由来</dt><dd>${esc(row.trigger)}</dd></div>
                 <div><dt>顧客</dt><dd>${esc(row.customer)}</dd></div>
                 <div><dt>工場</dt><dd>${esc(row.plant)}</dd></div>
                 <div><dt>在庫</dt><dd>${esc(row.inventory)}日</dd></div>
@@ -815,6 +1057,8 @@ function renderScenarioSettings(data) {
   const collection = meta.evidence_collection || {};
   const materials = asArray(meta.materials);
   const material = assessment.material || "naphtha";
+  const basis = scenarioBasis(data);
+  const policy = getCompanyPolicy(data);
   const materialOptions = materials.length
     ? materials.map((item) => ({
         id: item.material_id || item.id || item.material || item.name,
@@ -822,25 +1066,89 @@ function renderScenarioSettings(data) {
       })).filter((item) => item.id)
     : ["naphtha", "packaging-film", "semiconductor-adhesive"];
   const queries = asArray(collection.live_queries).slice(0, 4);
+  const sources = asArray(data.provenance);
+  const sourceCounts = {
+    news: sources.filter((source) => source.kind === "news").length,
+    supplier: sources.filter((source) => String(source.kind).includes("supplier")).length,
+    logistics: sources.filter((source) => source.kind === "logistics").length,
+    price: sources.filter((source) => source.kind === "price_feed").length,
+  };
+  setHtml(
+    "generated-scenario",
+    `
+      <div class="generated-scenario-layout">
+        <section class="generated-signal">
+          <span>検知予兆</span>
+          <strong>${esc(data.risk_event?.summary || sources[0]?.claim || "市場予兆を待機中")}</strong>
+          <p>根拠: Web記事 ${esc(sourceCounts.news)}件 / サプライヤ通知 ${esc(sourceCounts.supplier)}件 / 物流 ${esc(sourceCounts.logistics)}件 / 価格 ${esc(sourceCounts.price)}件</p>
+        </section>
+        <section class="generated-scenario-core">
+          <span>AI推定シナリオ</span>
+          <dl>
+            <div><dt>対象素材</dt><dd>${esc(basis.material)}</dd></div>
+            <div><dt>地域</dt><dd>${esc(basis.region)}</dd></div>
+            <div><dt>影響ノード</dt><dd>${esc(basis.node)}</dd></div>
+            <div><dt>供給減少レンジ</dt><dd>${esc(basis.range)}</dd></div>
+            <div><dt>採用値</dt><dd>${esc(basis.reduction)}%供給減 / ${esc(basis.period)}</dd></div>
+            <div><dt>信頼度</dt><dd>${esc(basis.confidence)}</dd></div>
+          </dl>
+        </section>
+        <section class="generated-scenario-actions">
+          <button type="button" class="primary-action scenario-action-button" data-scenario-action="adopt">採用して影響分析</button>
+          <button type="button" class="ghost-action scenario-action-button" data-scenario-action="adjust">手動調整</button>
+          <p>この値はAIが市場予兆から生成したシナリオ案です。企業側の判断で調整できます。</p>
+        </section>
+      </div>
+    `,
+  );
   setHtml(
     "scenario-settings",
     `
       <div class="scenario-form-grid">
-        <label><span>監視対象</span><select>${materialOptions
+        <label><span>対象素材</span><select id="scenario-material">${materialOptions
           .map((item) => {
             const option = typeof item === "string" ? { id: item, label: materialLabel(item) } : item;
             return `<option ${option.id === material ? "selected" : ""}>${esc(option.label)}</option>`;
           })
           .join("")}</select></label>
-        <label><span>調査スパン</span><select><option selected>6時間ごと</option><option>12時間ごと</option><option>手動のみ</option></select></label>
-        <label><span>検索範囲</span><select><option selected>過去30日</option><option>過去7日</option><option>過去90日</option></select></label>
-        <label><span>起案しきい値</span><input type="number" min="0" max="100" value="70"></label>
+        <label><span>供給減少率</span><input id="scenario-supply-reduction" type="range" min="0" max="100" value="${esc(basis.reduction)}"><em>${esc(basis.reduction)}%供給減</em></label>
+        <label><span>影響期間</span><select id="scenario-period"><option selected>${esc(basis.period)}</option><option>1週間</option><option>2週間</option><option>1か月</option><option>3か月</option></select></label>
+        <label><span>影響ノード</span><select id="scenario-node"><option selected>${esc(basis.node)}</option><option>製油所</option><option>Tier2サプライヤー</option><option>Tier1サプライヤー</option><option>港湾</option><option>自社工場</option></select></label>
+        <label><span>代替ルート</span><select id="scenario-alternative-route"><option>あり</option><option selected>一部あり</option><option>なし</option></select></label>
+        <label><span>需要方針</span><select id="scenario-demand-policy"><option selected>高優先顧客を守る</option><option>売上最大化</option><option>生産継続優先</option><option>全顧客均等配分</option></select></label>
       </div>
       <div class="scenario-query-box">
-        <span>現在の調査クエリ</span>
+        <span>現在の調査クエリ / 監視頻度</span>
         <div>${queries.length ? queries.map((query) => `<code>${esc(query)}</code>`).join("") : `<em>Cloud巡回時に生成</em>`}</div>
+        <p>デモ実装: 手動実行型のAI市場監視 / 将来拡張: 6時間ごとの自動巡回。取得失敗・記事なし・根拠不足・低信頼度の場合はシナリオ未生成として表示します。</p>
       </div>
-      <p class="scenario-setting-note">この画面はデモ用の運用設定です。Cloud本番では Container Apps Job のスケジュールと環境変数に反映する想定です。</p>
+      <p class="scenario-setting-note">AI提案値をSCMチームが調整し、企業判断基準で再計算します。数値計算は決定論エンジン、説明生成はAIが担当します。</p>
+    `,
+  );
+  setHtml(
+    "company-policy-panel",
+    `
+      <div class="company-policy-card">
+        <strong>${esc(policy.company_policy_name)}</strong>
+        <p>判定基準はデモ企業の設定例です。アプリ側の固定正解ではありません。</p>
+        <div class="policy-threshold-grid">
+          <label><span>注意: 最低在庫日数</span><input id="policy-attention-days" type="number" min="0" value="${esc(policy.thresholds.attention.min_inventory_days)}"></label>
+          <label><span>注意: 供給影響%</span><input id="policy-attention-supply" type="number" min="0" max="100" value="${esc(policy.thresholds.attention.affected_supply_ratio_percent)}"></label>
+          <label><span>危険: 最低在庫日数</span><input id="policy-danger-days" type="number" min="0" value="${esc(policy.thresholds.danger.min_inventory_days)}"></label>
+          <label><span>危険: 供給影響%</span><input id="policy-danger-supply" type="number" min="0" max="100" value="${esc(policy.thresholds.danger.affected_supply_ratio_percent)}"></label>
+          <label><span>配分判断: 最低在庫日数</span><input id="policy-allocation-days" type="number" min="0" value="${esc(policy.thresholds.stop_or_allocation_decision.min_inventory_days)}"></label>
+          <label><span>配分判断: 供給影響%</span><input id="policy-allocation-supply" type="number" min="0" max="100" value="${esc(policy.thresholds.stop_or_allocation_decision.affected_supply_ratio_percent)}"></label>
+        </div>
+        <div class="policy-weight-list">
+          ${Object.entries(policy.priority_weights)
+            .map(([key, value]) => `
+              <label>
+                <span>${esc(policyWeightLabel(key))}</span>
+                <input id="policy-weight-${esc(key)}" type="number" min="0" max="1" step="0.05" value="${esc(value)}">
+              </label>`)
+            .join("")}
+        </div>
+      </div>
     `,
   );
   setHtml(
@@ -926,6 +1234,9 @@ const APPROVAL_META = new Map([
   ["Supplier switching", { approver: "調達部長 / 品質保証", impact: () => "代替材 NAP-ALT-01 の適用範囲拡大。品質条件の確認が前提。" }],
   ["Formal customer notification", { approver: "営業部長", impact: () => "影響顧客3社への納期・代替案の正式連絡。対外コミュニケーション。" }],
   ["Major production plan changes", { approver: "生産管理責任者", impact: () => "千葉・大阪工場の生産順序・配分の変更。" }],
+  ["Supply allocation decision", { approver: "SCM責任者", impact: () => "高優先顧客向けに限られた供給をどう配分するかの判断。" }],
+  ["Product reduction decision", { approver: "事業責任者", impact: () => "縮小候補製品の出荷・生産量を下げる判断。売上と顧客影響を伴う。" }],
+  ["Alternative material approval process", { approver: "品質保証 / 顧客担当", impact: () => "代替材承認プロセス開始。品質条件と顧客承認範囲の確認が前提。" }],
 ]);
 
 function renderApprovals(data) {
@@ -1008,6 +1319,7 @@ export function renderPanels(data) {
 
   renderScenario(model);
   renderGeneratedAt(model);
+  renderSignalDecisionFlow(model);
   renderRiskGauge(model);
   renderKpiGrid(model);
   renderSourcingMix(model);

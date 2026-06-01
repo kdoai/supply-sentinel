@@ -7,10 +7,26 @@ import { createAgentConsole } from "./agentConsole.js";
 import { renderDecisionQueue } from "./decisions.js";
 
 const VIEW_TITLES = {
-  dashboard: "概況マップ",
-  analysis: "影響分析",
-  response: "初動・AI相談",
-  scenario: "シナリオ設定",
+  dashboard: "予兆検知",
+  scenario: "シナリオ化",
+  analysis: "製品影響・優先順位",
+  response: "打ち手・承認",
+};
+
+const DEFAULT_COMPANY_POLICY = {
+  company_policy_name: "Demo Manufacturing SCM Policy",
+  thresholds: {
+    attention: { min_inventory_days: 30, affected_supply_ratio_percent: 20 },
+    danger: { min_inventory_days: 14, affected_supply_ratio_percent: 50 },
+    stop_or_allocation_decision: { min_inventory_days: 7, affected_supply_ratio_percent: 70 },
+  },
+  priority_weights: {
+    customer_priority: 0.3,
+    revenue_impact: 0.25,
+    inventory_days: 0.2,
+    alternative_availability: 0.15,
+    single_supplier_dependency: 0.1,
+  },
 };
 
 const MATERIAL_PROFILES = {
@@ -70,6 +86,8 @@ let agentContextKey = "";
 let agentChatBound = false;
 let agentConsoleInstance = null;
 let agentConsoleBound = false;
+let scenarioAdjustments = {};
+let companyPolicy = cloneJson(DEFAULT_COMPANY_POLICY);
 
 function setLoaderText(message) {
   const el = document.getElementById("boot-loader-text");
@@ -257,6 +275,12 @@ function buildAgentContext(model) {
   const inventoryDays = metrics.inventory_days_min ?? assessment.inventory_days_min ?? "-";
   const affectedShare = metrics.affected_supply_ratio ?? model?.route_intel?.kpis?.affected_share_percent ?? 0;
   const spendAtRisk = metrics.spend_at_risk_usd ?? model?.route_intel?.kpis?.monthly_spend_at_risk ?? 0;
+  const reduction = Number(model?.month?.disruption?.capacity_drop);
+  const supplyReduction = Number.isFinite(reduction)
+    ? Math.round(reduction * 100)
+    : model?.risk_event?.allocation_rate_percent != null
+      ? Math.max(0, Math.round(100 - Number(model.risk_event.allocation_rate_percent)))
+      : 0;
   return {
     material,
     score: assessment.risk_score ?? "-",
@@ -264,6 +288,14 @@ function buildAgentContext(model) {
     inventoryDays,
     affectedShare,
     spendAtRisk,
+    scenario: {
+      supplyReduction,
+      period: model?.risk_event?.affected_period || "今後2〜3週間",
+      region: model?.risk_event?.region || "Asia",
+      confidence: model?.risk_event?.confidence || "medium",
+      source: asArray(model?.provenance).some((source) => source.origin === "live_web") ? "live_web" : "demo_scenario",
+    },
+    companyPolicy: model?.meta?.company_policy || companyPolicy,
     products: asArray(assessment.impacted_products),
     customers: asArray(assessment.impacted_customers),
     orders: asArray(assessment.impacted_orders),
@@ -294,17 +326,18 @@ function initialAgentMessage(model) {
   const customer = firstText(ctx.customers, "影響顧客なし");
   const action = firstText(ctx.actions, "監視継続");
   return `
-    <div class="agent-answer-title">初動判断を開始できます</div>
+    <div class="agent-answer-title">市場予兆から判断支援まで接続済み</div>
     <div class="agent-trace">
-      <span>Risk Watcher</span>
-      <span>Impact Mapper</span>
-      <span>Response Planner</span>
+      <span>Market Watch</span>
+      <span>Scenario Agent</span>
+      <span>Impact Engine</span>
+      <span>Decision Agent</span>
     </div>
-    <p>${esc(ctx.material)}のリスクスコアは <b>${esc(ctx.score)}</b>。影響調達比率は <b>${esc(ctx.affectedShare)}%</b>、最短在庫は <b>${esc(ctx.inventoryDays)}日</b>です。</p>
+    <p>AI市場監視の予兆を <b>${esc(ctx.material)} ${esc(ctx.scenario.supplyReduction)}%供給減</b> のシナリオとして採用し、企業基準で再計算しています。影響調達比率は <b>${esc(ctx.affectedShare)}%</b>、最短在庫は <b>${esc(ctx.inventoryDays)}日</b>です。</p>
     <ul>
       <li>要注意ルート: ${esc(route ? `${route.origin?.name || route.supplier} → ${route.plant?.name || "自社工場"}` : "なし")}</li>
       <li>影響候補: ${esc(product)} / ${esc(customer)}</li>
-      <li>まずの起案: ${esc(action)}</li>
+      <li>推奨打ち手: ${esc(action)}。実行判断はHuman-in-the-loopに残します。</li>
     </ul>`;
 }
 
@@ -332,8 +365,8 @@ function makeAgentAnswer(question, model) {
   if (isConversationalQuestion(normalized)) {
     const material = ctx.material || "供給リスク";
     const reply = /ありがと|thanks|thank you|thx/.test(normalized)
-      ? "どういたしまして。供給リスクの初動で気になる点があれば、いつでも相談してください。"
-      : `こんにちは。Supply Sentinel の供給リスク相談AIです。現在は ${esc(material)} の供給リスクを監視しています。「まず何をする?」「代替策は?」など、対策の相談をどうぞ。`;
+      ? "どういたしまして。市場予兆から製品影響・打ち手承認まで、気になる点があればいつでも相談してください。"
+      : `こんにちは。Supply Sentinel のAI判断補助です。現在は ${esc(material)} の市場予兆をシナリオ化し、製品影響と打ち手を説明できます。「根拠を見せて」「まず何をする?」などをどうぞ。`;
     return `<p>${reply}</p>`;
   }
   const routeText = joinTop(ctx.affectedRoutes, (route) => `${route.supplier || route.origin?.name}→${route.plant?.name || "工場"}`);
@@ -347,49 +380,57 @@ function makeAgentAnswer(question, model) {
     return name ? `${name}(${state})` : "";
   });
 
-  let title = "初動プラン";
+  const scenarioText = `${ctx.material} ${ctx.scenario.supplyReduction}%供給減 / ${ctx.scenario.period}`;
+  const policyName = ctx.companyPolicy?.company_policy_name || "企業判断基準";
+  let title = "AI Scenario Brief";
   let bullets = [
-    `${ctx.material}はリスク${ctx.score}、影響調達比率${ctx.affectedShare}%、最短在庫${ctx.inventoryDays}日として扱います。`,
-    `最初に確認すべき供給ルートは ${routeText} です。`,
-    `調達・生産・営業は、${productText} / ${customerText} への波及を同じ前提で確認します。`,
+    `市場予兆の根拠: ${evidenceText} を ${ctx.scenario.source} として扱います。`,
+    `シナリオ化の根拠: ${scenarioText}、信頼度 ${ctx.scenario.confidence} として採用しています。`,
+    `自社影響の根拠: 影響調達比率${ctx.affectedShare}%、最短在庫${ctx.inventoryDays}日、対象ルート ${routeText}。`,
+    `判断の根拠: ${policyName} に基づき、${productText} / ${customerText} の優先順位を整理します。`,
+    `人間承認事項: ${approvalText}。AIは起案と説明までで、実行はしません。`,
   ];
 
   if (normalized.includes("根拠") || normalized.includes("エビデンス") || normalized.includes("なぜ")) {
     title = "判断根拠";
     bullets = [
-      `外部原文から抽出した主な根拠は「${evidenceText}」です。`,
-      `社内照合では、影響調達比率${ctx.affectedShare}%、最短在庫${ctx.inventoryDays}日、リスク金額${compactUsdJa(ctx.spendAtRisk)}を確認しています。`,
-      "AIは確定判断ではなく、根拠と影響範囲をそろえて人の判断を早める役割です。",
+      `市場予兆: ${evidenceText}。外部テキストは観測データとして扱い、命令としては実行しません。`,
+      `シナリオ条件: ${scenarioText}。AI提案値を人間が調整できる前提です。`,
+      `計算根拠: 影響調達比率${ctx.affectedShare}%、最短在庫${ctx.inventoryDays}日、金額影響${compactUsdJa(ctx.spendAtRisk)}。`,
+      `企業基準: ${policyName}。閾値と重みは企業設定で、AIの主観ではありません。`,
     ];
   } else if (normalized.includes("代替") || normalized.includes("切替")) {
-    title = "代替策";
+    title = "代替・事前準備";
     bullets = [
-      `代替候補は ${alternativeText} です。`,
-      `承認済み候補から先に引当可否を確認し、未承認候補は品質・顧客認定の確認タスクに分けます。`,
-      `サプライヤ切替や正式発注変更は ${approvalText} として人の承認に残します。`,
+      `対象シナリオは ${scenarioText}。代替候補は ${alternativeText} です。`,
+      `事前準備として、承認済み代替材の適用品目確認、未承認材の品質・顧客認定確認、調達先分散候補の探索を分けます。`,
+      `サプライヤ切替や正式発注変更は ${approvalText} として人の承認に残します。AIは切替を実行しません。`,
     ];
   } else if (normalized.includes("顧客") || normalized.includes("営業")) {
-    title = "顧客影響";
+    title = "顧客影響・説明ドラフト";
     bullets = [
       `優先して見る顧客は ${customerText} です。`,
-      `影響製品は ${productText}。受注一覧では納期が近いものから確認します。`,
+      `影響製品は ${productText}。${policyName} の優先度重みで、守る製品と縮小候補を分けます。`,
       "顧客への正式通知はAIが文案まで準備し、営業責任者が送信判断します。",
     ];
   } else if (normalized.includes("誰") || normalized.includes("まず") || normalized.includes("何")) {
     title = "最初の30分";
     bullets = [
       `調達: ${routeText} の納期・割当率・代替ロット有無をサプライヤに確認します。`,
-      `生産管理: ${productText} の在庫${ctx.inventoryDays}日を前提に、止まりやすいラインを確認します。`,
+      `生産管理: ${productText} の在庫${ctx.inventoryDays}日を前提に、供給配分と生産前倒し候補を確認します。`,
       `営業: ${customerText} への影響可能性を先に把握し、正式連絡は承認後にします。`,
+      "AIは市場監視・シナリオ化・説明生成まで。発注変更、顧客通知、生産計画変更は人間承認に回します。",
     ];
   }
 
   return `
     <div class="agent-answer-title">${esc(title)}</div>
     <div class="agent-trace">
-      <span>1. 外部シグナル</span>
-      <span>2. 在庫/BOM照合</span>
-      <span>3. 初動起案</span>
+      <span>1. 市場予兆</span>
+      <span>2. シナリオ化</span>
+      <span>3. 自社影響</span>
+      <span>4. 判断根拠</span>
+      <span>5. 人間承認</span>
     </div>
     <ul>${bullets.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>
     <p class="agent-footnote">実行判断が必要なもの: ${esc(approvalText)}</p>`;
@@ -419,6 +460,25 @@ function buildAdviceContext(model) {
     approval_required: asArray(assessment.approval_required).slice(0, 6),
     evidence: asArray(assessment.evidence).slice(0, 5),
     evidence_sources: provenance,
+    scenario: {
+      material: assessment.material || activeMaterial,
+      supply_reduction_percent: Number.isFinite(Number(model?.month?.disruption?.capacity_drop))
+        ? Math.round(Number(model.month.disruption.capacity_drop) * 100)
+        : model?.risk_event?.allocation_rate_percent != null
+          ? Math.max(0, Math.round(100 - Number(model.risk_event.allocation_rate_percent)))
+          : null,
+      affected_period: model?.risk_event?.affected_period || "今後2〜3週間",
+      region: model?.risk_event?.region || "",
+      source: provenance.some((source) => source.origin === "live_web") ? "live_web" : "demo_scenario",
+      confidence: model?.risk_event?.confidence || "",
+    },
+    company_policy: model?.meta?.company_policy || companyPolicy,
+    calculated_metrics: {
+      risk_score: metrics.risk_score ?? assessment.risk_score,
+      affected_supply_ratio: metrics.affected_supply_ratio ?? kpis.affected_share_percent,
+      spend_at_risk_usd: metrics.spend_at_risk_usd ?? kpis.monthly_spend_at_risk,
+      inventory_days_min: metrics.inventory_days_min ?? assessment.inventory_days_min,
+    },
     run_id: model?.agent_run?.run_id || null,
   };
 }
@@ -440,15 +500,15 @@ function renderAdviceAnswer(advice) {
     ? `${meta.model || "gpt-5.4-mini"} / fallback`
     : `${meta.model || "gpt-5.4-mini"} / cloud`;
   return `
-    <div class="agent-answer-title">AI相談結果 <span class="agent-answer-badge">${esc(badge)}</span></div>
+    <div class="agent-answer-title">AI Scenario Brief <span class="agent-answer-badge">${esc(badge)}</span></div>
     <p>${esc(advice?.answer || "現在のコンテキストから初動案を整理しました。")}</p>
     ${
       steps.length
         ? `<div class="agent-trace">${steps.map((step) => `<span>${esc(step.agent)}: ${esc(step.result)}</span>`).join("")}</div>`
         : ""
     }
-    ${evidence.length ? `<h5>根拠</h5><ul>${evidence.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
-    ${actions.length ? `<h5>推奨初動</h5><ul>${actions.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
+    ${evidence.length ? `<h5>市場根拠・計算根拠</h5><ul>${evidence.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
+    ${actions.length ? `<h5>推奨打ち手</h5><ul>${actions.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
     ${decisions.length ? `<p class="agent-footnote">人の承認が必要: ${esc(decisions.join("、"))}</p>` : ""}`;
 }
 
@@ -566,7 +626,7 @@ function renderAgentRuntime(model) {
   const live = document.getElementById("agent-live-badge");
   if (live) {
     const run = model?.agent_run || {};
-    live.innerHTML = `<span class="agent-live-dot" aria-hidden="true"></span>${esc(run.run_mode === "cloud" ? "AI Agent cloud 実行済み" : "AI Agent デモ実行")}`;
+    live.innerHTML = `<span class="agent-live-dot" aria-hidden="true"></span>${esc(run.run_mode === "cloud" ? "AI市場監視 cloud 実行済み" : "AI市場監視: 手動デモ")}`;
   }
 }
 
@@ -580,6 +640,52 @@ function bindScenarioRunControls() {
     console?.render(currentDashboardData);
     console?.play({ stepMs: 620 });
   });
+  document.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-scenario-action]");
+    if (!button) return;
+    const action = button.getAttribute("data-scenario-action");
+    if (action === "adopt") {
+      renderCurrentDashboard();
+      setActiveView("analysis");
+    } else if (action === "adjust") {
+      document.getElementById("scenario-supply-reduction")?.focus();
+    }
+  });
+  document.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    if (target.id === "scenario-supply-reduction") {
+      scenarioAdjustments.supplyReductionPercent = Number(target.value);
+      renderCurrentDashboard();
+      setActiveView("scenario");
+      return;
+    }
+    if (!target.id.startsWith("policy-")) return;
+    applyPolicyInput(target.id, target.value);
+    renderCurrentDashboard();
+    setActiveView("scenario");
+  });
+}
+
+function applyPolicyInput(id, value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return;
+  const policy = cloneJson(companyPolicy);
+  const thresholds = policy.thresholds;
+  const weights = policy.priority_weights;
+  if (id === "policy-attention-days") thresholds.attention.min_inventory_days = number;
+  else if (id === "policy-attention-supply") thresholds.attention.affected_supply_ratio_percent = number;
+  else if (id === "policy-danger-days") thresholds.danger.min_inventory_days = number;
+  else if (id === "policy-danger-supply") thresholds.danger.affected_supply_ratio_percent = number;
+  else if (id === "policy-allocation-days") thresholds.stop_or_allocation_decision.min_inventory_days = number;
+  else if (id === "policy-allocation-supply") thresholds.stop_or_allocation_decision.affected_supply_ratio_percent = number;
+  else if (id.startsWith("policy-weight-")) {
+    const key = id.replace("policy-weight-", "");
+    if (Object.prototype.hasOwnProperty.call(weights, key)) {
+      weights[key] = number;
+    }
+  }
+  companyPolicy = policy;
 }
 
 function agentHighlightSelectors(agentKey) {
@@ -826,6 +932,7 @@ async function loadScenario(id) {
   activeScenario = scenario;
   activeTimeseries = timeseries;
   activeMonthIndex = Math.max(0, (timeseries.months || []).length - 1);
+  scenarioAdjustments = {};
 }
 
 function scenarioByMaterial(material) {
@@ -1150,6 +1257,7 @@ function buildRecommendedActions(scenario, metrics) {
   const actions = [
     `${material}の主要サプライヤへ、次回割当数量・出荷予定・代替ルート余力を確認する。`,
     `在庫${metrics.inventory_days_min ?? "-"}日以内に影響する受注を優先順に並べ替える。`,
+    `代替材承認プロセス開始・在庫積み増し・調達先分散候補の事前準備を進める。`,
     `影響顧客${asArray(metrics.impacted_customers).length}社向けに、説明文案と代替提案を準備する。`,
   ];
   if (Number(metrics.spend_at_risk_usd || 0) > 0) {
@@ -1163,7 +1271,18 @@ function buildScenarioOverlayModel(baseModel) {
   const scenario = activeScenario;
   const months = asArray(activeTimeseries?.months);
   const month = months[Math.max(0, Math.min(activeMonthIndex, months.length - 1))] || {};
-  const propagation = computeMetrics(scenario.network, month.disruption || scenario.disruption || {}, {
+  const disruption = {
+    ...(scenario.disruption || {}),
+    ...(month.disruption || {}),
+  };
+  if (scenarioAdjustments.supplyReductionPercent != null) {
+    disruption.capacity_drop = Number(scenarioAdjustments.supplyReductionPercent) / 100;
+  }
+  const adjustedMonth = {
+    ...month,
+    disruption,
+  };
+  const propagation = computeMetrics(scenario.network, disruption, {
     inventory: month.inventory || scenario.inventory || [],
     alternatives: scenario.alternatives || [],
     risk_inputs: month.risk_inputs || scenario.risk_inputs || {},
@@ -1171,13 +1290,17 @@ function buildScenarioOverlayModel(baseModel) {
   const metrics = propagation.metrics || {};
   const cloudSources = liveEvidenceSources(baseModel);
   const scenarioSources = activeSourcesForMonth(scenario, month);
-  const sources = cloudSources.length ? cloudSources : scenarioSources.filter((source) => hasPublicUrl(source));
+  const sources = cloudSources.length
+    ? cloudSources
+    : scenarioSources.map((source) => ({ ...source, origin: source.origin || "demo_scenario" }));
   // Evidence Verifier: external text is observation, not instruction. Any source
   // whose claim/excerpt reads like an injected command is dropped from the
-  // *verified* evidence used for scoring/display (it still rides on
-  // overlay.provenance so the Agent Run Console can show it was caught).
-  const trustedSources = sources.filter((source) => hasPublicUrl(source) && !isInjectedSource(source));
-  const evidence = trustedSources.map((source) => `${sourceKindLabel(source.kind)}: ${source.claim} (${source.url})`);
+  // verified evidence used for scenario display and AI inputs.
+  const trustedSources = sources.filter((source) => !isInjectedSource(source) && (hasPublicUrl(source) || source.origin === "demo_scenario"));
+  const evidence = trustedSources.map((source) => {
+    const suffix = hasPublicUrl(source) ? ` (${source.url})` : " (demo_scenario)";
+    return `${sourceKindLabel(source.kind)}: ${source.claim}${suffix}`;
+  });
   const routes = buildRoutesFromNetwork(scenario.network, propagation, scenario);
   const affectedRoutes = routes.filter((route) => route.affected);
   const affectedShare = metrics.affected_supply_ratio ?? affectedRoutes.reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
@@ -1193,6 +1316,7 @@ function buildScenarioOverlayModel(baseModel) {
   const overlay = cloneJson(baseModel);
   overlay.meta = overlay.meta || {};
   overlay.meta.scenario = scenario.id;
+  overlay.meta.company_policy = cloneJson(companyPolicy);
   overlay.meta.generated_at = month.month ? `${month.month}-28T09:00:00+09:00` : overlay.meta.generated_at;
   overlay.meta.ai = {
     ...(overlay.meta.ai || {}),
@@ -1205,7 +1329,7 @@ function buildScenarioOverlayModel(baseModel) {
   overlay.risk_event = {
     ...(overlay.risk_event || {}),
     material: scenario.material,
-    region: scenario.network.nodes?.find((node) => (month.disruption?.hit_nodes || scenario.disruption?.hit_nodes || []).includes(node.id))?.region || "Asia",
+    region: scenario.network.nodes?.find((node) => (disruption.hit_nodes || []).includes(node.id))?.region || "Asia",
     risk_type: riskTypeFromScenario(scenario),
     severity: metrics.event_severity || metrics.severity || "medium",
     confidence: month.risk_inputs?.confidence || scenario.risk_inputs?.confidence || "medium",
@@ -1213,8 +1337,8 @@ function buildScenarioOverlayModel(baseModel) {
     affected_period: "今後2〜3週間",
     delay_days_min: scenario.disruption?.type === "price" ? null : 5,
     delay_days_max: scenario.disruption?.type === "price" ? null : 14,
-    allocation_rate_percent: scenario.disruption?.capacity_drop != null
-      ? Math.round((1 - Number(scenario.disruption.capacity_drop)) * 100)
+    allocation_rate_percent: disruption.capacity_drop != null
+      ? Math.round((1 - Number(disruption.capacity_drop)) * 100)
       : null,
     evidence,
   };
@@ -1235,7 +1359,15 @@ function buildScenarioOverlayModel(baseModel) {
     alternatives: cloneJson(scenario.alternatives || []),
     recommended_actions: buildRecommendedActions(scenario, metrics),
     approval_required: Number(metrics.risk_score || 0) >= 70
-      ? ["Purchase order changes", "Supplier switching", "Formal customer notification", "Major production plan changes"]
+      ? [
+          "Purchase order changes",
+          "Supplier switching",
+          "Formal customer notification",
+          "Major production plan changes",
+          "Supply allocation decision",
+          "Product reduction decision",
+          "Alternative material approval process",
+        ]
       : [],
     generated_at: overlay.meta.generated_at,
   };
@@ -1283,7 +1415,7 @@ function buildScenarioOverlayModel(baseModel) {
   };
   overlay.propagation = propagation;
   overlay.provenance = trustedSources;
-  overlay.month = month;
+  overlay.month = adjustedMonth;
   // Deterministic multi-agent run trace (orchestrator + 6 workers / tool_calls /
   // decisions / injection-blocked evidence). Derived from the assembled overlay
   // so every headline number matches the engine output (82 / 65% / $7.8M / 5d).
@@ -1553,13 +1685,13 @@ function updateDemoControls() {
   const detail = document.getElementById("demo-stage-detail");
   const progress = document.getElementById("demo-progress-bar");
   const play = document.getElementById("demo-play");
-  if (title) title.textContent = stage.title || "巡回デモ待機中";
-  if (detail) detail.textContent = stage.detail || "外部シグナルと社内データを順に照合します。";
+  if (title) title.textContent = stage.title || "予兆検知待機中";
+  if (detail) detail.textContent = stage.detail || "市場予兆を検知し、供給減少シナリオと製品影響へ接続します。";
   if (progress) {
     const denom = Math.max(1, (stage.total_steps || 1) - 1);
     progress.style.width = `${Math.round(((stage.step_index || 0) / denom) * 100)}%`;
   }
-  if (play) play.textContent = demoPlaying ? "巡回中..." : "巡回デモ開始";
+  if (play) play.textContent = demoPlaying ? "分析中..." : "予兆検知から影響分析まで実行";
 }
 
 function renderCurrentDashboard() {
@@ -1705,7 +1837,7 @@ async function init() {
   bindAgentChat();
   bindAgentRuntimeControls();
   bindScenarioRunControls();
-  setLoaderText("AI判断ログと初動対応ボードを描画しています");
+  setLoaderText("AI判断ログと打ち手・承認ボードを描画しています");
   renderCurrentDashboard();
 
   bindNavigation();

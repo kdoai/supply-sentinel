@@ -1,24 +1,34 @@
 # Supply Sentinel
 
-Supply Sentinel is an early-warning AI agent for supply risk.
+Supply Sentinel is an AI early-warning and scenario decision-support tool for downstream SCM teams.
 
-It monitors external signals such as news and supplier notices, matches them with internal inventory, BOM, alternatives, and order data, then generates business impact assessments and first-response recommendations.
+AI agents monitor market news, logistics, prices, and supplier information to detect early signals of naphtha and petrochemical material supply constraints. Detected signals are converted into supply-reduction scenarios, connected to BOM, components, suppliers, inventory, and orders, then translated into product impact, durability, priority, recommended actions, and human approval items.
 
 ## Core Message
 
-Supply Sentinel translates external supply risks into internal business impact.
+Supply Sentinel connects early market warning to product-level decisions.
 
-Instead of trying to predict the future perfectly, it shortens the time from "something happened outside the company" to "we know which products, customers, plants, and actions are affected."
+It does not stop at "AI found a news article." The value is the full chain:
+
+```text
+AI market watch
+  -> detected signal
+  -> generated supply-reduction scenario
+  -> deterministic BOM / inventory / order impact calculation
+  -> products to protect, products to reduce, preparation actions, and approvals
+```
+
+Numeric impact and threshold decisions are rule-based and reproducible. AI is used for market-signal extraction, scenario framing, rationale explanation, action organization, additional confirmation points, and draft communications. Final execution remains human-approved.
 
 ## MVP Scope
 
 The hackathon MVP focuses on one high-impact scenario:
 
-- Detect naphtha supply risk from external news and supplier notice text.
-- Extract material, region, period, delay, and confidence using Azure OpenAI.
+- Detect naphtha and petrochemical supply constraint signals from market news, supplier notices, logistics, and price signals.
+- Extract material, region, period, confidence, and a candidate supply-reduction scenario using Azure OpenAI or deterministic demo fallback.
 - Compare the event with sample inventory, BOM, alternatives, and order data.
-- Calculate affected products, customers, plants, remaining inventory days, and risk score.
-- Generate first-response actions, approval items, and a management report.
+- Calculate affected products, customers, plants, remaining inventory days, affected supply ratio, and scenario-based priority.
+- Generate products to protect, allocation/reduction candidates, preparation actions, approval items, and a management report.
 - Keep final decisions human-approved.
 
 ## Quick Start
@@ -40,8 +50,14 @@ data on startup and serves a dark "mission-control" dashboard:
   plants). Disrupted routes pulse red, resilient routes glow green.
 - **Sourcing mix & spend** — share (%) and monthly procurement spend (課金額) per
   route, with the portion now at risk highlighted.
-- **Risk score, KPIs, and impact** — affected products, customers, plants, and
-  minimum inventory days.
+- **Early warning to scenario flow** — detected signal, AI-generated scenario,
+  business impact, and recommended actions in one top-level chain.
+- **Scenario Builder** — AI-proposed supply reduction, impact period, affected
+  node, and human-adjustable assumptions.
+- **Company policy panel** — demo thresholds and priority weights are shown as
+  company criteria, not hard-coded universal truth.
+- **Impact and priority** — affected products, customers, plants, minimum
+  inventory days, affected supply ratio, and product-level recommended decisions.
 - **Process-mining flow** — Origin → Supplier/Port → Plant → Product → Customer.
 - Impacted orders, evidence, recommended first actions, and human-approval items.
 
@@ -165,4 +181,4 @@ outputs/latest/
 - Broad multi-material monitoring
 - Large dashboard platform
 
-The MVP wins by doing one thing clearly: external risk detection plus internal impact assessment.
+The MVP wins by doing one thing clearly: AI early warning that reaches product-level scenario decisions, without letting AI execute irreversible business actions.

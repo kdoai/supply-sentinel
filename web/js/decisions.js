@@ -233,6 +233,39 @@ function autoCardHtml(decision) {
     </div>`;
 }
 
+function decisionOutputPanelHtml(run) {
+  const agents = asArray((run || {}).agents);
+  const impactAgent = agents.find((agent) => agent && agent.key === "impact_mapper") || {};
+  const products = asArray(impactAgent.impacted_products);
+  const protect = products[0] || "影響製品なし";
+  const allocation = products[1] || "供給配分候補なし";
+  const reduce = products[2] || "縮小候補なし";
+  const approvals = asArray((run || {}).decisions).filter((decision) => decision && decision.requires_human);
+  return `
+    <div class="decision-output-grid">
+      <section>
+        <span>今すぐ判断</span>
+        <strong>${esc(protect)}を優先保護</strong>
+        <p>${esc(allocation)}は供給配分候補、${esc(reduce)}は縮小・代替材確認候補として扱います。</p>
+      </section>
+      <section>
+        <span>事前準備</span>
+        <strong>代替材・在庫・調達先分散</strong>
+        <p>代替材承認プロセス開始、在庫積み増し検討、高優先顧客への事前説明準備を起案します。</p>
+      </section>
+      <section>
+        <span>継続監視</span>
+        <strong>価格・港湾・サプライヤ通知</strong>
+        <p>価格変動、港湾遅延、追加通知を次回の市場監視で再評価します。</p>
+      </section>
+      <section>
+        <span>人間承認が必要</span>
+        <strong>${esc(approvals.length)}件を承認キューへ</strong>
+        <p>発注変更、サプライヤ切替、顧客正式通知、生産計画変更、配分・縮小判断はAIが実行しません。</p>
+      </section>
+    </div>`;
+}
+
 // action(approve/reject/hold)→ 保存する状態名へのマップ。
 const ACTION_TO_STATE = {
   approve: "approved",
@@ -261,7 +294,7 @@ export function renderDecisionQueue(containerEl, run, options) {
   // 冪等性のため既存内容を必ずクリアしてから組み直す。
   containerEl.innerHTML = "";
 
-  const lead = `<p class="decision-lead">AIは起案まで。発注変更・サプライヤ切替・顧客通知・生産計画変更は人の承認が必要です。</p>`;
+  const lead = `<p class="decision-lead">AIは市場予兆の抽出、シナリオ化、影響説明、打ち手起案まで。発注変更・サプライヤ切替・顧客通知・生産計画変更は人の承認が必要です。</p>`;
 
   const cards = decisions
     .map((decision) => {
@@ -273,7 +306,7 @@ export function renderDecisionQueue(containerEl, run, options) {
     })
     .join("");
 
-  containerEl.innerHTML = lead + `<div class="decision-queue">${cards}</div>`;
+  containerEl.innerHTML = decisionOutputPanelHtml(run) + lead + `<div class="decision-queue">${cards}</div>`;
 
   // 生成済みの承認ボタンへイベントを束ねる(inline ハンドラは使わない)。
   const buttons = containerEl.querySelectorAll(".decision-actions .decision-btn");
