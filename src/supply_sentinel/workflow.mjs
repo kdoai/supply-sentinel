@@ -9,6 +9,7 @@ import { writeDashboardHtml } from "./dashboardWriter.mjs";
 import { createStateStore } from "./stateStore.mjs";
 import { resolveRunMode, azureOpenAiConfig, azureOpenAiConfigured } from "./config.mjs";
 import { buildAgentRun } from "./agentTrace.mjs";
+import { buildEvidenceTimeline } from "./evidenceTimeline.mjs";
 
 export async function runSupplySentinel({
   rootDir = process.cwd(),
@@ -73,6 +74,7 @@ export function buildDashboardModel({ riskEvent, assessment, routeIntel, materia
         // disabled). Surfaced so prod liveness is debuggable without server logs.
         live_agent_error: data.liveEvidence?.agent_error ?? null,
         live_errors: Array.isArray(data.liveEvidence?.errors) ? data.liveEvidence.errors : [],
+        watched_materials: materialWatchlist(materials),
       },
     },
     risk_event: riskEvent,
@@ -80,10 +82,21 @@ export function buildDashboardModel({ riskEvent, assessment, routeIntel, materia
     route_intel: routeIntel,
     provenance,
   };
+  model.evidence_timeline = buildEvidenceTimeline({ provenance, assessment, riskEvent, materials });
   // 多段エージェント実行トレース(orchestrator+6エージェント / tool_calls / decisions /
   // injection除外)。決定論で model から導出されるため数値は assessment と必ず一致する。
   model.agent_run = buildAgentRun(model);
   return model;
+}
+
+function materialWatchlist(materials = []) {
+  return (Array.isArray(materials) ? materials : [])
+    .map((item) => ({
+      id: item.material_id || item.id || item.material || item.name || "",
+      label: item.display_name || item.label || item.name || item.material_id || item.id || "",
+      keywords: Array.isArray(item.monitoring_keywords) ? item.monitoring_keywords.slice(0, 8) : [],
+    }))
+    .filter((item) => item.id || item.label);
 }
 
 // AIが読んだ生テキスト(入力)と実行モードを meta.ai として組み立てる。

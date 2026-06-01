@@ -23,7 +23,7 @@ import { parseJsonObject } from "./jsonOutput.mjs";
 
 // Tight budgets keep the scheduled run cheap (a few searches, one small model).
 const MAX_TOOL_ROUNDS = 3;
-const MAX_SEARCHES = 4;
+const MAX_SEARCHES = 6;
 const MAX_RESULTS_PER_SEARCH = 4;
 const RESEARCH_TOKEN_BUDGET = 1200;
 
@@ -188,7 +188,7 @@ async function researchWithAzureOpenAi({ fetchImpl, fetchedAt, config, materials
           fetchImpl,
           fetchedAt,
           maxItems: MAX_RESULTS_PER_SEARCH,
-          material: args.material || watchlist[0] || "unknown",
+          material: args.material || watchlist[0]?.id || watchlist[0]?.label || "unknown",
         });
         collectedNews.push(...found.newsEvents);
         collectedProv.push(...found.provenance);
@@ -276,9 +276,9 @@ function tryParseObject(content) {
 
 function buildResearchPrompt(watchlist) {
   return [
-    `Watched materials: ${watchlist.join(", ")}.`,
+    `Watched materials: ${watchlist.map((item) => `${item.label} (${item.id}) keywords: ${item.keywords.join(", ")}`).join(" / ")}.`,
     "Find the most important recent supply-risk signals: allocation, refinery outage, plant shutdown, logistics delay, price spike.",
-    "Prioritize the last 30 days. Run focused searches per material, then return the curated JSON.",
+    "Prioritize the last 30 days. Run at least one focused search per watched material when possible, then return the curated JSON.",
   ].join("\n");
 }
 
@@ -286,13 +286,24 @@ function normalizeMaterials(materials) {
   const list = [];
   for (const entry of Array.isArray(materials) ? materials : []) {
     if (typeof entry === "string" && entry.trim()) {
-      list.push(entry.trim());
+      list.push({ id: entry.trim(), label: entry.trim(), keywords: [entry.trim()] });
     } else if (entry && typeof entry === "object") {
-      const label = entry.label || entry.name || entry.id || entry.material;
-      if (typeof label === "string" && label.trim()) list.push(label.trim());
+      const id = entry.material_id || entry.id || entry.material || entry.name || entry.display_name;
+      const label = entry.display_name || entry.label || entry.name || id;
+      const keywords = [
+        ...(Array.isArray(entry.aliases) ? entry.aliases : []),
+        ...(Array.isArray(entry.monitoring_keywords) ? entry.monitoring_keywords : []),
+      ].filter(Boolean);
+      if (typeof label === "string" && label.trim()) {
+        list.push({
+          id: String(id || label).trim(),
+          label: label.trim(),
+          keywords: keywords.length ? keywords.slice(0, 8) : [label.trim()],
+        });
+      }
     }
   }
-  return list.length ? list.slice(0, 4) : ["naphtha"];
+  return list.length ? list.slice(0, 4) : [{ id: "naphtha", label: "naphtha", keywords: ["naphtha"] }];
 }
 
 function toolResultMessage(toolCallId, payload) {

@@ -51,8 +51,8 @@ export async function collectLiveEvidence({
   return {
     enabled: true,
     fetched_at: fetchedAt,
-    newsEvents: dedupeByUrl(newsEvents).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 6)),
-    provenance: dedupeByUrl(provenance).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 6)),
+    newsEvents: dedupeByUrl(newsEvents).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 12)),
+    provenance: dedupeByUrl(provenance).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 12)),
     errors,
   };
 }

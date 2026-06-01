@@ -1477,6 +1477,7 @@ function renderNetworkStory(model) {
 function renderScenarioTimeline(model) {
   const el = document.getElementById("scenario-timeline");
   if (!el) return;
+  const entries = asArray(model.evidence_timeline);
   const sources = liveEvidenceSources(model).length
     ? liveEvidenceSources(model)
     : asArray(model.provenance).filter((source) => hasPublicUrl(source) && !isInjectedSource(source));
@@ -1486,7 +1487,7 @@ function renderScenarioTimeline(model) {
   const inventoryDays = metrics.inventory_days_min ?? model.assessment?.inventory_days_min ?? "-";
   const material = materialLabel(model.assessment?.material || model.risk_event?.material || activeMaterial);
 
-  if (!sources.length) {
+  if (!entries.length && !sources.length) {
     el.innerHTML = `
       <div class="timeline-empty">
         <strong>公開URL付きの根拠がまだありません</strong>
@@ -1502,7 +1503,25 @@ function renderScenarioTimeline(model) {
       <div><span>在庫</span><strong>${esc(inventoryDays)}日</strong><em>最短残日数</em></div>
     </div>
     <ol class="evidence-timeline">
-      ${sources
+      ${
+        entries.length
+          ? entries.map((entry) => `
+            <li class="evidence-timeline-item evidence-timeline-scored">
+              <time>${esc(formatDateTime(entry.published_at || entry.fetched_at))}</time>
+              <div>
+                <span>${esc(entry.material_label || entry.material || "監視対象")} / ${esc(entry.source || "公開Web")}</span>
+                <strong>${esc(entry.title || entry.claim || "公開記事")}</strong>
+                <p>${esc(entry.reason || entry.claim || "")}</p>
+                <div class="timeline-score-move">
+                  <b>${esc(entry.score_before ?? "-")}</b>
+                  <i aria-hidden="true">→</i>
+                  <b>${esc(entry.score_after ?? "-")}</b>
+                  <em>${Number(entry.score_delta || 0) >= 0 ? "+" : ""}${esc(entry.score_delta ?? 0)}</em>
+                </div>
+                <a href="${escAttr(entry.url)}" target="_blank" rel="noreferrer">根拠記事を開く</a>
+              </div>
+            </li>`).join("")
+          : sources
         .map((source, index) => {
           const when = source.published_at || source.fetched_at || "";
           const impact = index === sources.length - 1
@@ -1520,7 +1539,8 @@ function renderScenarioTimeline(model) {
               </div>
             </li>`;
         })
-        .join("")}
+        .join("")
+      }
     </ol>`;
 }
 
