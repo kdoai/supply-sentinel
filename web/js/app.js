@@ -307,9 +307,34 @@ function initialAgentMessage(model) {
     </ul>`;
 }
 
+// Mirror of the backend classifier: greeting/thanks/meta with no supply-risk
+// signal => conversational. A real question always wins.
+function isConversationalQuestion(normalized) {
+  const q = String(normalized || "").trim();
+  if (!q) return false;
+  if (/(供給|在庫|代替|切替|切り替|リスク|顧客|取引先|調達|根拠|エビデンス|証拠|初動|対応|対策|納期|遅延|影響|サプライ|発注|価格|割当|配分|生産|出荷|物流|どうす|何をす|なにをす|naphtha|ナフサ|材料|原料)/.test(q)) {
+    return false;
+  }
+  if (/^(hi|hello|hey|yo|hiya|test|ping)\b/.test(q)) return true;
+  if (/(こんにち|こんばん|おはよ|はじめま|よろしく|やあ|どうも|ハロー|テスト)/.test(q)) return true;
+  if (/(ありがと|thanks|thank you|thx|助かった)/.test(q)) return true;
+  if (/((君|あなた|きみ|お前|だれ|誰)は|何ができ|なにができ|使い方|どう使|ヘルプ|help|自己紹介|何者)/.test(q)) return true;
+  return false;
+}
+
 function makeAgentAnswer(question, model) {
   const ctx = buildAgentContext(model);
   const normalized = String(question || "").toLowerCase();
+
+  // Offline mirror of the backend: greetings / small talk get a light reply,
+  // unless the message also carries a supply-risk signal (then analyze).
+  if (isConversationalQuestion(normalized)) {
+    const material = ctx.material || "供給リスク";
+    const reply = /ありがと|thanks|thank you|thx/.test(normalized)
+      ? "どういたしまして。供給リスクの初動で気になる点があれば、いつでも相談してください。"
+      : `こんにちは。Supply Sentinel の供給リスク相談AIです。現在は ${esc(material)} の供給リスクを監視しています。「まず何をする?」「代替策は?」など、対策の相談をどうぞ。`;
+    return `<p>${reply}</p>`;
+  }
   const routeText = joinTop(ctx.affectedRoutes, (route) => `${route.supplier || route.origin?.name}→${route.plant?.name || "工場"}`);
   const productText = joinTop(ctx.products, (item) => item.product || item.name || item);
   const customerText = joinTop(ctx.customers, (item) => item.customer || item.name || item);
@@ -398,6 +423,13 @@ function buildAdviceContext(model) {
 }
 
 function renderAdviceAnswer(advice) {
+  // Conversational replies (greetings / small talk) render as a light bubble —
+  // no title, no 3-agent analysis, no cloud/fallback badge (the sender label
+  // already reads "Supply Sentinel AI").
+  if (advice?.mode === "conversational") {
+    return `<p>${esc(advice?.answer || "ご用件をどうぞ。")}</p>`;
+  }
+
   const steps = asArray(advice?.reasoning_steps);
   const evidence = asArray(advice?.evidence).slice(0, 4);
   const actions = asArray(advice?.recommended_actions).slice(0, 4);

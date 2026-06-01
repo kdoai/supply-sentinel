@@ -96,6 +96,14 @@ export async function agentAdvice(input = {}) {
   const safeContext =
     context && typeof context === "object" && !Array.isArray(context) ? context : {};
 
+  // --- CONVERSATIONAL SHORT-CIRCUIT --------------------------------------
+  // Greetings / thanks / "what can you do" are answered briefly WITHOUT the
+  // heavy 3-agent supply-risk analysis (and without spending a model call).
+  // A real supply-risk question always wins, so this never suppresses analysis.
+  if (classifyMessageKind(trimmedQuestion) === "conversational") {
+    return buildConversationalReply(trimmedQuestion, safeContext);
+  }
+
   // --- CLOUD PATH ---------------------------------------------------------
   const mode = resolveRunMode();
   if ((mode === "azure" || mode === "cloud") && azureOpenAiConfigured()) {
@@ -250,6 +258,7 @@ function normalizeAdvice(raw, context, meta) {
   }));
 
   return {
+    mode: "analysis",
     answer: stringOr(next.answer, fallback.answer),
     reasoning_steps,
     evidence: stringArrayOr(next.evidence, fallback.evidence),
@@ -343,6 +352,7 @@ function buildFallbackAdvice(question, context) {
   });
 
   return {
+    mode: "analysis",
     answer,
     reasoning_steps: [
       { agent: "Risk Scout", result: riskScoutResult },
@@ -356,6 +366,75 @@ function buildFallbackAdvice(question, context) {
       run_mode: "demo",
       model: azureOpenAiConfig().deployment,
       fallback: true,
+    },
+  };
+}
+
+/**
+ * Decide whether a message should get the full supply-risk analysis or a short
+ * conversational reply. A real supply-risk signal always wins, so greetings that
+ * also contain a question (e.g. "こんにちは、代替策は?") still get analysis.
+ * @param {string} question
+ * @returns {"conversational"|"analysis"}
+ */
+function classifyMessageKind(question) {
+  const q = String(question || "").trim().toLowerCase();
+  if (!q) return "analysis";
+  if (hasAnalysisSignal(q)) return "analysis";
+  if (isGreetingOrMeta(q)) return "conversational";
+  return "analysis";
+}
+
+// Supply-risk / operational keywords. Presence => the user wants analysis.
+function hasAnalysisSignal(q) {
+  return /(供給|在庫|代替|切替|切り替|リスク|顧客|取引先|調達|根拠|エビデンス|証拠|初動|対応|対策|納期|遅延|影響|サプライ|発注|価格|割当|配分|生産|出荷|物流|どうす|何をす|なにをす|naphtha|ナフサ|材料|原料)/.test(
+    q,
+  );
+}
+
+// Greetings / thanks / identity / help / test pings.
+function isGreetingOrMeta(q) {
+  if (/^(hi|hello|hey|yo|hiya|test|ping)\b/.test(q)) return true;
+  if (/(こんにち|こんばん|おはよ|はじめま|よろしく|やあ|どうも|ハロー|テスト)/.test(q)) return true;
+  if (/(ありがと|thanks|thank you|thx|助かった)/.test(q)) return true;
+  if (/((君|あなた|きみ|お前|だれ|誰)は|何ができ|なにができ|使い方|どう使|ヘルプ|help|自己紹介|何者)/.test(q)) return true;
+  return false;
+}
+
+/**
+ * Short, natural reply for greetings / small talk / meta questions. Deterministic
+ * (no model call, no cost) and carries mode:"conversational" so the front-end
+ * renders a light bubble without the 3-agent analysis layout.
+ * @param {string} question
+ * @param {object} context
+ * @returns {object}
+ */
+function buildConversationalReply(question, context) {
+  const ctx = context && typeof context === "object" ? context : {};
+  const material = stringOr(ctx.material, "供給リスク");
+  const q = String(question || "").toLowerCase();
+
+  let answer;
+  if (/(ありがと|thanks|thank you|thx|助かった)/.test(q)) {
+    answer = "どういたしまして。供給リスクの初動で気になる点があれば、いつでも相談してください。";
+  } else if (/((君|あなた|きみ|お前|だれ|誰)は|何ができ|なにができ|使い方|どう使|ヘルプ|help|自己紹介|何者)/.test(q)) {
+    answer = `Supply Sentinel の供給リスク相談AIです。現在のダッシュボード(監視中: ${material})をもとに、根拠・影響範囲・初動対応を整理します。「まず何をする?」「根拠を見せて」「代替策は?」「顧客影響を要約」などを試してください。`;
+  } else {
+    answer = `こんにちは。Supply Sentinel の供給リスク相談AIです。現在は ${material} の供給リスクを監視しています。「まず何をする?」「代替策は?」など、対策の相談をどうぞ。`;
+  }
+
+  return {
+    mode: "conversational",
+    answer,
+    reasoning_steps: [],
+    evidence: [],
+    recommended_actions: [],
+    human_decision_required: [],
+    meta: {
+      run_mode: resolveRunMode() === "azure" || resolveRunMode() === "cloud" ? "cloud" : "demo",
+      model: azureOpenAiConfig().deployment,
+      fallback: false,
+      kind: "conversational",
     },
   };
 }

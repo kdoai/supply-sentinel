@@ -105,6 +105,24 @@ test("works with no context at all (question only)", async () => {
   assert.ok(result.human_decision_required.length > 0);
 });
 
+test("greetings get a short conversational reply, not the full analysis", async () => {
+  for (const greeting of ["こんにちは", "hi", "ありがとう", "何ができますか?"]) {
+    const r = await agentAdvice({ question: greeting, context: SAMPLE_CONTEXT });
+    assert.equal(r.mode, "conversational", `"${greeting}" should be conversational`);
+    assert.deepEqual(r.reasoning_steps, [], "conversational reply omits the 3-agent analysis");
+    assert.deepEqual(r.recommended_actions, []);
+    assert.ok(r.answer.length > 0);
+    // It must NOT dump the canned risk briefing.
+    assert.doesNotMatch(r.answer, /リスクスコア82|調達影響65/);
+  }
+});
+
+test("a greeting that also asks a real question still gets analysis", async () => {
+  const r = await agentAdvice({ question: "こんにちは、代替策は?", context: SAMPLE_CONTEXT });
+  assert.equal(r.mode, "analysis");
+  assert.equal(r.reasoning_steps.length, 3);
+});
+
 test("the deterministic fallback varies by question intent (not a fixed value)", async () => {
   const ask = (question) => agentAdvice({ question, context: SAMPLE_CONTEXT });
   const [evidence, alternatives, customer, inventory] = await Promise.all([
