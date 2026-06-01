@@ -55,6 +55,10 @@ data on startup and serves a dark "mission-control" dashboard:
 - **Decision queue home** — after sign-in, the first panel shows the urgent
   decision, deadline, products to protect or reduce, approval count, and next
   actions.
+- **Guided decision workflow** — each screen tells the SCM user what to look at,
+  how to think, what action to take next, and what insight they should gain:
+  signal confirmation → scenario adoption → product impact review → approval →
+  executive/customer brief.
 - **Scenario Builder** — AI-proposed supply reduction, impact period, affected
   node, and human-adjustable assumptions.
 - **Company policy panel** — demo thresholds and priority weights are shown as

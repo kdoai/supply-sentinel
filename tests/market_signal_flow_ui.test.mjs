@@ -14,10 +14,26 @@ test("dashboard frames the product as early warning plus scenario decision suppo
   assert.match(html, /製品影響・優先順位/);
   assert.match(html, /打ち手・承認/);
   assert.match(html, /今日の判断キュー/);
+  assert.match(html, /guided-workflow-dashboard/);
+  assert.match(html, /guided-workflow-scenario/);
+  assert.match(html, /guided-workflow-analysis/);
+  assert.match(html, /guided-workflow-response/);
   assert.match(html, /decision-home/);
   assert.match(html, /signal-decision-flow/);
   assert.match(html, /generated-scenario/);
   assert.match(html, /company-policy-panel/);
+});
+
+test("guided workflow makes the next user action explicit", async () => {
+  const app = await read("../web/js/app.js");
+  assert.match(app, /WORKFLOW_STEPS/);
+  assert.match(app, /予兆を確認/);
+  assert.match(app, /シナリオを採用/);
+  assert.match(app, /製品影響を確認/);
+  assert.match(app, /打ち手を承認/);
+  assert.match(app, /Briefを出力/);
+  assert.match(app, /data-workflow-action/);
+  assert.match(app, /renderGuidedWorkflow/);
 });
 
 test("panel rendering includes scenario agent, company policy, and demo evidence disclosure", async () => {

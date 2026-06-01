@@ -528,6 +528,190 @@ button {
   margin-bottom: 16px;
 }
 
+.guided-workflow-panel {
+  margin-bottom: 16px;
+}
+
+#guided-workflow-dashboard,
+#guided-workflow-scenario,
+#guided-workflow-analysis,
+#guided-workflow-response {
+  padding: 12px;
+}
+
+.workflow-shell {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.72fr) minmax(0, 1.28fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.workflow-focus {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  border: 1px solid #dbe7f6;
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, #f7fbff, #fff),
+    #fff;
+}
+
+.workflow-kicker {
+  color: var(--blue-700);
+  font-size: 10.5px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.workflow-focus h4 {
+  margin: 0;
+  color: var(--text);
+  font-size: 19px;
+  line-height: 1.28;
+}
+
+.workflow-focus p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.workflow-focus dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.workflow-focus dl div {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.workflow-focus dt {
+  color: var(--blue-700);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.workflow-focus dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.workflow-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.workflow-metrics span {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: var(--text);
+  background: #fff;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.workflow-metrics b {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.workflow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.workflow-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.workflow-step {
+  display: grid;
+  grid-template-rows: auto auto minmax(44px, 1fr) auto;
+  gap: 5px;
+  min-height: 132px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--text);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workflow-step:hover {
+  border-color: var(--blue-600);
+}
+
+.workflow-step.is-current {
+  border-color: var(--blue-600);
+  background: #f5f9ff;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 168, 0.08);
+}
+
+.workflow-step.is-complete {
+  border-color: #b8ddca;
+  background: #f4fbf7;
+}
+
+.workflow-step span,
+.workflow-step small {
+  font-size: 10.5px;
+  font-weight: 900;
+}
+
+.workflow-step span {
+  color: var(--blue-700);
+}
+
+.workflow-step strong {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.workflow-step em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.workflow-step small {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: var(--muted);
+  background: #eef2f7;
+}
+
+.workflow-step.is-current small {
+  color: #fff;
+  background: var(--blue-600);
+}
+
+.workflow-step.is-complete small {
+  color: var(--green);
+  background: #dff3e9;
+}
+
 .decision-home-panel {
   margin-bottom: 16px;
 }
@@ -3440,8 +3624,18 @@ li {
 
   .signal-flow-grid,
   .generated-scenario-layout,
+  .workflow-shell,
   .decision-home-layout {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workflow-focus,
+  .workflow-steps {
+    grid-column: 1 / -1;
+  }
+
+  .workflow-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .decision-home-hero,
@@ -3792,6 +3986,8 @@ li {
   .product-ranking-list,
   .evidence-timeline-summary,
   .signal-flow-grid,
+  .workflow-shell,
+  .workflow-steps,
   .decision-home-layout,
   .decision-home-summary,
   .decision-home-journey,
@@ -3800,6 +3996,15 @@ li {
   .policy-threshold-grid,
   .policy-weight-list {
     grid-template-columns: 1fr;
+  }
+
+  .workflow-focus dl div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .workflow-step {
+    min-height: 112px;
   }
 
   .generated-scenario-actions {

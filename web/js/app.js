@@ -29,6 +29,60 @@ const DEFAULT_COMPANY_POLICY = {
   },
 };
 
+const WORKFLOW_STORAGE_KEY = "supply-sentinel.workflow.v1";
+const WORKFLOW_STEPS = [
+  {
+    id: "signal",
+    view: "dashboard",
+    title: "予兆を確認",
+    focus: "市場ニュース、物流、価格、サプライヤー情報から検知した予兆と根拠を確認します。",
+    thinking: "この予兆はどの素材・地域・期間に影響しそうか。根拠は十分か。",
+    action: "予兆を確認済みにする",
+    outcome: "供給制約の入口と、分析に進めるだけの根拠が見える",
+    nextView: "scenario",
+  },
+  {
+    id: "scenario",
+    view: "scenario",
+    title: "シナリオを採用",
+    focus: "AI生成シナリオを、人間が供給減少率・影響期間・企業基準で調整します。",
+    thinking: "この前提で製品影響を計算してよいか。感度分析したい値はどれか。",
+    action: "この前提で分析する",
+    outcome: "BOM・在庫・受注に照合する分析前提が決まる",
+    nextView: "analysis",
+  },
+  {
+    id: "impact",
+    view: "analysis",
+    title: "製品影響を確認",
+    focus: "製品別ランキング、在庫残日数、顧客優先度、代替材状況を確認します。",
+    thinking: "守る製品、供給配分する製品、縮小候補はどれか。",
+    action: "打ち手案へ進む",
+    outcome: "製品別の優先順位と判断理由がそろう",
+    nextView: "response",
+  },
+  {
+    id: "approval",
+    view: "response",
+    title: "打ち手を承認",
+    focus: "発注変更、サプライヤー切替、顧客通知、生産計画変更を承認キューで確認します。",
+    thinking: "AIが起案した打ち手のうち、人間が今決めるべきものは何か。",
+    action: "承認キューを確認済みにする",
+    outcome: "実行してよい打ち手と、保留・差し戻す打ち手が分かれる",
+    nextView: "response",
+  },
+  {
+    id: "brief",
+    view: "response",
+    title: "Briefを出力",
+    focus: "管理職向け要約と顧客向け説明ドラフトを確認します。",
+    thinking: "どの数字と根拠で、誰にどう説明するか。",
+    action: "Briefを確認済みにする",
+    outcome: "説明可能な判断材料と次アクションが残る",
+    nextView: "response",
+  },
+];
+
 const MATERIAL_PROFILES = {
   naphtha: {
     label: "ナフサ",
@@ -88,6 +142,8 @@ let agentConsoleInstance = null;
 let agentConsoleBound = false;
 let scenarioAdjustments = {};
 let companyPolicy = cloneJson(DEFAULT_COMPANY_POLICY);
+let activeViewName = "dashboard";
+let workflowState = loadWorkflowState();
 
 function setLoaderText(message) {
   const el = document.getElementById("boot-loader-text");
@@ -308,6 +364,121 @@ function buildAgentContext(model) {
     ai,
     cloud,
   };
+}
+
+function loadWorkflowState() {
+  if (typeof window === "undefined" || !window.localStorage) return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(WORKFLOW_STORAGE_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveWorkflowState() {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(WORKFLOW_STORAGE_KEY, JSON.stringify(workflowState));
+  } catch {
+    // Ignore storage restrictions in private or embedded browser modes.
+  }
+}
+
+function workflowStepForView(viewName) {
+  if (viewName === "response") {
+    return workflowState.approval === "complete" ? WORKFLOW_STEPS.find((step) => step.id === "brief") : WORKFLOW_STEPS.find((step) => step.id === "approval");
+  }
+  return WORKFLOW_STEPS.find((step) => step.view === viewName) || WORKFLOW_STEPS[0];
+}
+
+function workflowStatus(step, activeStep) {
+  if (workflowState[step.id] === "complete") return { label: "完了", cls: "is-complete" };
+  if (activeStep && step.id === activeStep.id) return { label: "現在", cls: "is-current" };
+  return { label: "未対応", cls: "is-pending" };
+}
+
+function workflowMetrics(model) {
+  const ctx = buildAgentContext(model || currentDashboardData || {});
+  const approvalCount = ctx.approvals.length;
+  const due = Number(ctx.inventoryDays) <= 7 ? "72時間以内" : "今週中";
+  return [
+    { label: "シナリオ", value: `${ctx.material} ${ctx.scenario.supplyReduction}%減` },
+    { label: "最短在庫", value: `${ctx.inventoryDays}日` },
+    { label: "影響製品", value: `${ctx.products.length}品目` },
+    { label: "承認待ち", value: `${approvalCount}件` },
+    { label: "判断期限", value: due },
+  ];
+}
+
+function workflowPrimaryCopy(step) {
+  if (workflowState[step.id] === "complete") {
+    return step.id === "brief" ? "Brief確認済み" : "確認済み";
+  }
+  return step.action;
+}
+
+function renderGuidedWorkflow(model) {
+  const activeStep = workflowStepForView(activeViewName);
+  const activeIndex = Math.max(0, WORKFLOW_STEPS.findIndex((step) => step.id === activeStep.id));
+  const metrics = workflowMetrics(model);
+  const stepsHtml = WORKFLOW_STEPS.map((step, index) => {
+    const status = workflowStatus(step, activeStep);
+    return `
+      <button type="button" class="workflow-step ${status.cls}${step.id === activeStep.id ? " is-active" : ""}" data-workflow-jump="${escAttr(step.view)}" data-workflow-step="${escAttr(step.id)}" aria-current="${step.id === activeStep.id ? "step" : "false"}">
+        <span>Step ${index + 1}</span>
+        <strong>${esc(step.title)}</strong>
+        <em>${esc(step.outcome)}</em>
+        <small>${esc(status.label)}</small>
+      </button>`;
+  }).join("");
+  const metricsHtml = metrics
+    .map((item) => `<span><b>${esc(item.label)}</b>${esc(item.value)}</span>`)
+    .join("");
+  const html = `
+    <div class="workflow-shell">
+      <section class="workflow-focus">
+        <span class="workflow-kicker">Guided Decision Workflow / Step ${activeIndex + 1} of ${WORKFLOW_STEPS.length}</span>
+        <h4>${esc(activeStep.title)}</h4>
+        <p>${esc(activeStep.focus)}</p>
+        <dl>
+          <div><dt>どう考える?</dt><dd>${esc(activeStep.thinking)}</dd></div>
+          <div><dt>得られる示唆</dt><dd>${esc(activeStep.outcome)}</dd></div>
+        </dl>
+        <div class="workflow-metrics">${metricsHtml}</div>
+        <div class="workflow-actions">
+          <button type="button" class="primary-action" data-workflow-action="complete" data-workflow-step="${escAttr(activeStep.id)}">${esc(workflowPrimaryCopy(activeStep))}</button>
+          <button type="button" class="ghost-action" data-workflow-action="reset">進行状況をリセット</button>
+        </div>
+      </section>
+      <nav class="workflow-steps" aria-label="判断ワークフロー">
+        ${stepsHtml}
+      </nav>
+    </div>`;
+
+  ["dashboard", "scenario", "analysis", "response"].forEach((view) => {
+    const el = document.getElementById(`guided-workflow-${view}`);
+    if (el) el.innerHTML = html;
+  });
+}
+
+function completeWorkflowStep(stepId) {
+  const step = WORKFLOW_STEPS.find((item) => item.id === stepId) || workflowStepForView(activeViewName);
+  workflowState = {
+    ...workflowState,
+    [step.id]: "complete",
+  };
+  saveWorkflowState();
+  if (step.nextView && step.nextView !== activeViewName) {
+    setActiveView(step.nextView);
+  } else {
+    renderGuidedWorkflow(currentDashboardData);
+  }
+}
+
+function resetWorkflowState() {
+  workflowState = {};
+  saveWorkflowState();
+  renderGuidedWorkflow(currentDashboardData);
 }
 
 function agentStatusLabel(model) {
@@ -1697,6 +1868,7 @@ function updateDemoControls() {
 function renderCurrentDashboard() {
   currentDashboardData = buildScenarioOverlayModel(applyDemoStage(dashboardData, demoStep));
   renderPanels(currentDashboardData);
+  renderGuidedWorkflow(currentDashboardData);
   renderNetworkPanel(currentDashboardData);
   renderAgentPanel(currentDashboardData);
   renderAgentRuntime(currentDashboardData);
@@ -1752,6 +1924,7 @@ function setActiveView(viewName) {
   if (!VIEW_TITLES[viewName]) {
     viewName = "dashboard";
   }
+  activeViewName = viewName;
   document.querySelectorAll("[data-view-panel]").forEach((panel) => {
     panel.classList.toggle("is-active", panel.dataset.viewPanel === viewName);
   });
@@ -1764,6 +1937,7 @@ function setActiveView(viewName) {
   if (viewName === "dashboard") {
     ensureMap();
   }
+  renderGuidedWorkflow(currentDashboardData);
 }
 
 function bindNavigation() {
@@ -1771,10 +1945,24 @@ function bindNavigation() {
     button.addEventListener("click", () => setActiveView(button.dataset.view));
   });
   document.addEventListener("click", (event) => {
-    const button = event.target?.closest?.("[data-home-jump]");
-    if (!button) return;
-    const view = button.getAttribute("data-home-jump");
-    if (view) setActiveView(view);
+    const homeJump = event.target?.closest?.("[data-home-jump]");
+    if (homeJump) {
+      const view = homeJump.getAttribute("data-home-jump");
+      if (view) setActiveView(view);
+      return;
+    }
+    const workflowJump = event.target?.closest?.("[data-workflow-jump]");
+    if (workflowJump) {
+      const view = workflowJump.getAttribute("data-workflow-jump");
+      if (view) setActiveView(view);
+      return;
+    }
+    const workflowAction = event.target?.closest?.("[data-workflow-action]");
+    if (workflowAction) {
+      const action = workflowAction.getAttribute("data-workflow-action");
+      if (action === "reset") resetWorkflowState();
+      if (action === "complete") completeWorkflowStep(workflowAction.getAttribute("data-workflow-step"));
+    }
   });
 }
 
