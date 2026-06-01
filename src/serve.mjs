@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runSupplySentinel } from "./supply_sentinel/workflow.mjs";
 import { createStateStore } from "./supply_sentinel/stateStore.mjs";
+import { buildAgentRun } from "./supply_sentinel/agentTrace.mjs";
 import { agentAdvice } from "./function_app/httpAgentAdvice.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -148,6 +149,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const store = createStateStore({ outputDir: outputsDir });
       const dashboard = await store.getLatestDashboard();
+      enrichCloudDashboard(dashboard, store.kind);
       sendJson(res, 200, {
         served_at: new Date().toISOString(),
         state_store: store.kind,
@@ -194,6 +196,18 @@ function readRequestJson(req, maxBytes) {
     });
     req.on("error", reject);
   });
+}
+
+function enrichCloudDashboard(dashboard, stateStoreKind) {
+  if (!dashboard || typeof dashboard !== "object") return dashboard;
+  dashboard.meta = dashboard.meta || {};
+  dashboard.meta.cloud = {
+    served_at: new Date().toISOString(),
+    state_store: stateStoreKind,
+    persisted: stateStoreKind === "cosmos",
+  };
+  dashboard.agent_run = buildAgentRun(dashboard);
+  return dashboard;
 }
 
 function logSummary(result) {

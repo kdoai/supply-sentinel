@@ -42,7 +42,12 @@ test("HTTP latest dashboard trigger returns API-shaped JSON from local store", a
     assert.equal(context.res, response);
     assert.equal(response.headers["cache-control"], "no-store");
     assert.equal(body.state_store, "local");
-    assert.deepEqual(body.dashboard, dashboard);
+    assert.equal(body.dashboard.meta.app, dashboard.meta.app);
+    assert.equal(body.dashboard.assessment.material, dashboard.assessment.material);
+    assert.deepEqual(body.dashboard.meta.cloud.state_store, "local");
+    assert.equal(body.dashboard.meta.cloud.persisted, false);
+    assert.equal(body.dashboard.agent_run.run_mode, "demo");
+    assert.equal(body.dashboard.agent_run.persisted, false);
   } finally {
     if (previousOutputDir === undefined) {
       delete process.env.SUPPLY_SENTINEL_OUTPUT_DIR;

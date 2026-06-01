@@ -1,5 +1,6 @@
 import path from "node:path";
 import { createStateStore } from "../supply_sentinel/stateStore.mjs";
+import { buildAgentRun } from "../supply_sentinel/agentTrace.mjs";
 
 const DEFAULT_OUTPUT_DIR = path.join(process.cwd(), "outputs", "latest");
 
@@ -9,6 +10,7 @@ export async function httpLatestDashboard(context = {}, req = {}) {
 
   try {
     const dashboard = await store.getLatestDashboard();
+    enrichCloudDashboard(dashboard, store.kind);
     const response = jsonResponse(200, {
       served_at: new Date().toISOString(),
       state_store: store.kind,
@@ -43,8 +45,20 @@ function jsonResponse(status, body) {
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
-      "access-control-allow-origin": "*",
+      "access-control-allow-origin": process.env.AGENT_ADVICE_ALLOW_ORIGIN || "*",
     },
     body: JSON.stringify(body),
   };
+}
+
+function enrichCloudDashboard(dashboard, stateStoreKind) {
+  if (!dashboard || typeof dashboard !== "object") return dashboard;
+  dashboard.meta = dashboard.meta || {};
+  dashboard.meta.cloud = {
+    served_at: new Date().toISOString(),
+    state_store: stateStoreKind,
+    persisted: stateStoreKind === "cosmos",
+  };
+  dashboard.agent_run = buildAgentRun(dashboard);
+  return dashboard;
 }
