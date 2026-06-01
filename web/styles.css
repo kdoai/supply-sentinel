@@ -1566,11 +1566,11 @@ tbody td {
 
 .response-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
-  grid-template-rows: minmax(360px, 0.9fr) minmax(260px, 0.7fr);
+  grid-template-columns: minmax(520px, 1.12fr) minmax(380px, 0.88fr);
+  grid-template-rows: minmax(360px, 0.9fr) minmax(300px, 0.72fr);
   grid-template-areas:
-    "agent ai"
-    "brief brief";
+    "run agent"
+    "brief ai";
   gap: 16px;
   height: calc(100vh - 114px);
 }
@@ -1578,6 +1578,31 @@ tbody td {
 .response-grid .panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.agent-run-panel {
+  grid-area: run;
+  background: #0b1220;
+  border-color: #1f3558;
+}
+
+.agent-run-panel .panel-head {
+  color: #eef6ff;
+  background: #0f1b31;
+  border-bottom-color: rgba(120, 150, 210, 0.22);
+}
+
+.agent-run-panel .panel-note {
+  color: #9fb0d0;
+}
+
+#agent-run-console {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  background: #0b1220;
 }
 
 .agent-panel {
@@ -1594,7 +1619,7 @@ tbody td {
 
 .response-brief-grid {
   display: grid;
-  grid-template-columns: 0.82fr 1.18fr 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   min-height: 0;
   overflow: auto;
@@ -1623,6 +1648,14 @@ tbody td {
   letter-spacing: 0.04em;
 }
 
+.response-brief-cell h4 span {
+  float: right;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
 .response-brief-cell #actions-list,
 .response-brief-cell #approval-list,
 .response-brief-cell #task-board,
@@ -1633,6 +1666,7 @@ tbody td {
 .agent-status {
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
   min-height: 24px;
   border: 1px solid #b8ddca;
   border-radius: 999px;
@@ -1643,11 +1677,14 @@ tbody td {
   font-size: 10.5px;
   font-weight: 800;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .agent-chat {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto auto;
+  min-width: 0;
   min-height: 0;
   background:
     linear-gradient(180deg, rgba(248, 250, 252, 0), #f8fafc),
@@ -1658,14 +1695,18 @@ tbody td {
   display: grid;
   align-content: start;
   gap: 10px;
+  min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 14px;
 }
 
 .agent-message {
   display: grid;
   gap: 5px;
+  width: 94%;
+  min-width: 0;
   max-width: 94%;
 }
 
@@ -1676,10 +1717,12 @@ tbody td {
 }
 
 .agent-message > div {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 11px 12px;
   background: #fff;
+  overflow-wrap: anywhere;
 }
 
 .agent-message-assistant > div {
@@ -1689,6 +1732,8 @@ tbody td {
 
 .agent-message-user {
   justify-self: end;
+  width: auto;
+  max-width: 82%;
 }
 
 .agent-message-user > span {
@@ -1704,6 +1749,7 @@ tbody td {
 .agent-message p,
 .agent-message ul {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .agent-message ul {
@@ -1715,6 +1761,31 @@ tbody td {
   color: var(--navy-900);
   font-size: 14px;
   font-weight: 800;
+}
+
+.agent-answer-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  margin-left: 6px;
+  border: 1px solid #b8ddca;
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--green);
+  background: #e8f5ee;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+.agent-thinking {
+  color: var(--muted);
+}
+
+.agent-message h5 {
+  margin: 9px 0 4px;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .agent-trace {
@@ -2135,7 +2206,7 @@ li {
 
 .cloud-proof {
   display: grid;
-  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.3fr);
+  grid-template-columns: 1fr;
   gap: 12px;
   margin-bottom: 12px;
   border: 1px solid #cfe0f5;
@@ -2162,7 +2233,7 @@ li {
 
 .cloud-proof dl {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
   margin: 0;
 }
@@ -2506,6 +2577,7 @@ li {
   }
 
   .ai-panel,
+  .agent-run-panel,
   .agent-panel,
   .actions-panel,
   .task-panel,

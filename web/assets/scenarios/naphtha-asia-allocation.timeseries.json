@@ -201,7 +201,8 @@
       "sources": [
         "src-supplier",
         "src-logi",
-        "src-price"
+        "src-price",
+        "src-sns"
       ]
     }
   ]

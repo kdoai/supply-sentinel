@@ -1,6 +1,7 @@
 import { app } from "@azure/functions";
 import { runTimer } from "./timerTrigger.mjs";
 import { latestDashboardHandler } from "./httpLatestDashboard.mjs";
+import { agentAdviceHandler } from "./httpAgentAdvice.mjs";
 
 app.timer("supply-sentinel-timer", {
   schedule: process.env.SUPPLY_SENTINEL_TIMER_SCHEDULE || "0 0 */6 * * *",
@@ -12,4 +13,11 @@ app.http("latest-dashboard", {
   authLevel: "anonymous",
   route: "latest-dashboard",
   handler: latestDashboardHandler,
+});
+
+app.http("agent-advice", {
+  methods: ["POST", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "agent-advice",
+  handler: agentAdviceHandler,
 });

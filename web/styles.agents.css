@@ -1,0 +1,906 @@
+/* =========================================================================
+   Supply Sentinel — Agent runtime UI stylesheet (web/styles.agents.css)
+
+   Scope: the agent-runtime layer only — Agent Run Console (timeline +
+   tool-call log + detail modal + replay), Decision queue (human-in-the-loop),
+   blocked-evidence (prompt-injection) cards, the theatrical-replay panel glow,
+   and a corner "AI Agent 監視中" live badge.
+
+   This file is intentionally self-contained and is linked separately from
+   styles.css. It uses the app's DARK theme tokens (not the light dashboard
+   chrome): page bg #0b1220, panel #121b30, raised #1b2742, text #e7eefc,
+   muted #9fb0d0, accent #5aa9ff, plus status colors green/amber/red.
+   Code comments are English; user-facing copy elsewhere is Japanese.
+   ========================================================================= */
+
+/* Local design tokens — kept on the agent-runtime root so they cannot leak
+   into / collide with the light-theme dashboard variables in styles.css. */
+.agentrun,
+.decision-queue,
+.agentrun-modal,
+.agent-live-badge {
+  --ar-bg: #0b1220;          /* page background */
+  --ar-panel: #121b30;       /* panel surface */
+  --ar-raised: #1b2742;      /* raised surface (rows, pills, buttons) */
+  --ar-text: #e7eefc;        /* primary text */
+  --ar-muted: #9fb0d0;       /* secondary / muted text */
+  --ar-accent: #5aa9ff;      /* accent blue */
+  --ar-green: #39d98a;       /* resilient / approved / completed */
+  --ar-amber: #ffae4d;       /* exposed / hold */
+  --ar-red: #ff5a5a;         /* disrupted / rejected / failed / error */
+  --ar-grey: #637083;        /* pending / neutral dot */
+
+  --ar-line: rgba(120, 150, 210, 0.18);        /* subtle borders */
+  --ar-line-strong: rgba(120, 150, 210, 0.34); /* stronger borders */
+  --ar-radius: 14px;         /* rounded panels */
+  --ar-radius-sm: 10px;      /* rounded inner elements */
+  --ar-shadow: 0 18px 40px rgba(4, 8, 18, 0.45);
+  --ar-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ar-font: system-ui, sans-serif;
+}
+
+/* =========================================================================
+   1. AGENT RUN CONSOLE — root + header
+   ========================================================================= */
+
+.agentrun {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--ar-line);
+  border-radius: var(--ar-radius);
+  padding: 16px;
+  color: var(--ar-text);
+  background: var(--ar-panel);
+  box-shadow: var(--ar-shadow);
+  font-family: var(--ar-font);
+  line-height: 1.5;
+}
+
+.agentrun-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* run_id / model / started·completed evidence line (cloud execution proof) */
+.agentrun-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  color: var(--ar-muted);
+  font-family: var(--ar-mono);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+
+/* generic pill badge (run-mode / persisted / cloud markers) */
+.agentrun-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 22px;
+  padding: 2px 10px;
+  border: 1px solid var(--ar-line-strong);
+  border-radius: 999px;
+  color: var(--ar-text);
+  background: var(--ar-raised);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* cloud = green-ish, demo = amber-ish, persist = blue-ish */
+.agentrun-badge-cloud {
+  border-color: rgba(57, 217, 138, 0.45);
+  color: var(--ar-green);
+  background: rgba(57, 217, 138, 0.12);
+}
+
+.agentrun-badge-demo {
+  border-color: rgba(255, 174, 77, 0.45);
+  color: var(--ar-amber);
+  background: rgba(255, 174, 77, 0.12);
+}
+
+.agentrun-badge-persist {
+  border-color: rgba(90, 169, 255, 0.45);
+  color: var(--ar-accent);
+  background: rgba(90, 169, 255, 0.12);
+}
+
+/* =========================================================================
+   2. AGENT TIMELINE — vertical stack of the 7 agents
+   ========================================================================= */
+
+.agentrun-agents {
+  display: grid;
+  gap: 0;            /* rows connect via a continuous spine; no gap */
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each agent row. The left column hosts the status dot + the connecting
+   vertical spine; the right column hosts head + io + time. */
+.agentrun-agent {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 12px;
+  padding: 12px 12px 12px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--ar-radius-sm);
+  transition: background 160ms ease, border-color 160ms ease,
+    box-shadow 160ms ease, opacity 160ms ease;
+}
+
+/* The vertical connecting line runs down the dot column, between rows. */
+.agentrun-agent::before {
+  content: "";
+  position: absolute;
+  left: 18px;                /* aligns with the centre of the 12px dot */
+  top: 28px;
+  bottom: -12px;
+  width: 2px;
+  background: var(--ar-line-strong);
+}
+
+.agentrun-agent:last-child::before {
+  display: none;             /* no spine trailing past the final agent */
+}
+
+/* Left status dot. Base shape; color comes from the state classes below. */
+.agentrun-agent-dot {
+  position: relative;
+  z-index: 1;
+  grid-row: 1 / span 2;
+  width: 12px;
+  height: 12px;
+  margin: 5px auto 0;
+  border-radius: 50%;
+  background: var(--ar-grey);
+  box-shadow: 0 0 0 4px var(--ar-panel); /* mask the spine behind the dot */
+}
+
+/* --- state: pending (grey, dimmed) --- */
+.agentrun-agent.is-pending {
+  opacity: 0.55;
+}
+
+.agentrun-agent.is-pending .agentrun-agent-dot {
+  background: var(--ar-grey);
+}
+
+/* --- state: running (pulsing blue + highlight + left accent border) --- */
+.agentrun-agent.is-running {
+  border-color: var(--ar-line-strong);
+  border-left: 3px solid var(--ar-accent);
+  padding-left: 4px;         /* compensate the 3px accent border */
+  background: rgba(90, 169, 255, 0.10);
+  box-shadow: inset 0 0 0 1px rgba(90, 169, 255, 0.12);
+}
+
+.agentrun-agent.is-running .agentrun-agent-dot {
+  background: var(--ar-accent);
+  animation: agentrun-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes agentrun-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px var(--ar-panel),
+      0 0 0 6px rgba(90, 169, 255, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--ar-panel),
+      0 0 0 11px rgba(90, 169, 255, 0);
+  }
+}
+
+/* --- state: completed (green) --- */
+.agentrun-agent.is-completed .agentrun-agent-dot {
+  background: var(--ar-green);
+}
+
+/* --- state: failed (red) --- */
+.agentrun-agent.is-failed .agentrun-agent-dot {
+  background: var(--ar-red);
+}
+
+.agentrun-agent.is-failed {
+  border-color: rgba(255, 90, 90, 0.32);
+  background: rgba(255, 90, 90, 0.07);
+}
+
+/* Hover affordance — the whole row is clickable (opens the detail modal). */
+.agentrun-agent:hover {
+  border-color: var(--ar-line-strong);
+  background: rgba(90, 169, 255, 0.07);
+  cursor: pointer;
+}
+
+/* head line: agent name + processor pill */
+.agentrun-agent-head {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.agentrun-agent-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ar-text);
+}
+
+/* processor_label — small pill badge (e.g. "Azure OpenAI · gpt-5.4-mini") */
+.agentrun-agent-proc {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 1px 8px;
+  border: 1px solid var(--ar-line);
+  border-radius: 999px;
+  color: var(--ar-muted);
+  background: var(--ar-raised);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* input → output line: input muted, arrow accent, output brighter */
+.agentrun-agent-io {
+  grid-column: 2;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 4px;
+  color: var(--ar-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.agentrun-agent-io .agentrun-agent-arrow {
+  color: var(--ar-accent);
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+/* The output half of the io line reads brighter than the muted input. */
+.agentrun-agent-io b,
+.agentrun-agent-io .agentrun-agent-out {
+  color: var(--ar-text);
+  font-weight: 600;
+}
+
+/* started_hms / completed_hms — small, muted, right-aligned */
+.agentrun-agent-time {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: var(--ar-muted);
+  font-family: var(--ar-mono);
+  font-size: 10.5px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* =========================================================================
+   3. TOOL-CALL LOG — monospace console of tool_calls
+   ========================================================================= */
+
+.agentrun-tools {
+  display: grid;
+  gap: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--ar-line);
+  border-radius: var(--ar-radius-sm);
+  background: #0d1730;        /* slightly deeper than panel — terminal feel */
+  font-family: var(--ar-mono);
+}
+
+.agentrun-toolhead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ar-line);
+  color: var(--ar-muted);
+  background: var(--ar-raised);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* One log line: HH:MM:SS  tool  result */
+.agentrun-tool {
+  display: grid;
+  grid-template-columns: 64px minmax(110px, auto) minmax(0, 1fr);
+  gap: 10px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* zebra striping for log readability */
+.agentrun-tool:nth-child(even) {
+  background: rgba(120, 150, 210, 0.05);
+}
+
+.agentrun-tool + .agentrun-tool {
+  border-top: 1px solid rgba(120, 150, 210, 0.08);
+}
+
+.agentrun-tool-ts {
+  color: var(--ar-muted);
+  white-space: nowrap;
+}
+
+.agentrun-tool-name {
+  color: var(--ar-accent);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.agentrun-tool-result {
+  color: var(--ar-text);
+  overflow-wrap: anywhere;
+}
+
+/* ok:false tool call — render the whole line in red */
+.agentrun-tool.is-error {
+  background: rgba(255, 90, 90, 0.08);
+}
+
+.agentrun-tool.is-error .agentrun-tool-name,
+.agentrun-tool.is-error .agentrun-tool-result {
+  color: var(--ar-red);
+}
+
+/* =========================================================================
+   4. BLOCKED EVIDENCE — prompt-injection "除外" warning panel
+   ========================================================================= */
+
+.agentrun-blocked {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255, 90, 90, 0.34);
+  border-left: 3px solid var(--ar-red);
+  border-radius: var(--ar-radius-sm);
+  padding: 12px 14px;
+  background: rgba(255, 90, 90, 0.08);
+}
+
+.agentrun-blocked-card {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(255, 90, 90, 0.22);
+  border-radius: var(--ar-radius-sm);
+  padding: 10px 12px;
+  background: rgba(11, 18, 32, 0.55);
+}
+
+/* the small "除外" tag — supplied via ::before or an inline marker element */
+.agentrun-blocked-card::before {
+  content: "除外";
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  color: #0b1220;
+  background: var(--ar-red);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* the offending external text — monospace so it reads as raw data, not UI */
+.agentrun-blocked-card strong,
+.agentrun-blocked-card .agentrun-blocked-text {
+  display: block;
+  color: #ffd9d9;
+  font-family: var(--ar-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* the reason — muted explanatory copy */
+.agentrun-blocked-card small,
+.agentrun-blocked-card .agentrun-blocked-reason {
+  color: var(--ar-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* source label inside a blocked card */
+.agentrun-blocked-card em {
+  color: var(--ar-muted);
+  font-size: 10.5px;
+  font-style: normal;
+}
+
+/* =========================================================================
+   5. DETAIL MODAL — full agent input/output/tools/extras
+   ========================================================================= */
+
+.agentrun-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: none;             /* hidden by default */
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(4, 8, 18, 0.66);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.agentrun-modal.is-open {
+  display: flex;             /* shown + centred */
+}
+
+.agentrun-modal-card {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: 80vh;
+  overflow: auto;
+  border: 1px solid var(--ar-line-strong);
+  border-radius: var(--ar-radius);
+  padding: 20px 22px;
+  color: var(--ar-text);
+  background: var(--ar-panel);
+  box-shadow: 0 28px 70px rgba(4, 8, 18, 0.6);
+}
+
+/* round close button, top-right */
+.agentrun-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ar-line-strong);
+  border-radius: 999px;
+  color: var(--ar-text);
+  background: var(--ar-raised);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.agentrun-modal-close:hover,
+.agentrun-modal-close:focus-visible {
+  border-color: var(--ar-accent);
+  background: rgba(90, 169, 255, 0.18);
+  outline: none;
+}
+
+.agentrun-modal-body {
+  display: grid;
+  gap: 12px;
+  padding-right: 6px;        /* keep text clear of the close button */
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.agentrun-modal-body h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.agentrun-modal-body h5 {
+  margin: 4px 0 0;
+  color: var(--ar-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.agentrun-modal-body p {
+  margin: 0;
+  color: var(--ar-text);
+}
+
+.agentrun-modal-body code,
+.agentrun-modal-body .agentrun-modal-mono {
+  font-family: var(--ar-mono);
+  font-size: 11.5px;
+  color: var(--ar-muted);
+  overflow-wrap: anywhere;
+}
+
+.agentrun-modal-body ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ar-text);
+}
+
+/* =========================================================================
+   6. REPLAY CONTROLS — play / replay buttons
+   ========================================================================= */
+
+.agentrun-play,
+.agentrun-replay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 16px;
+  border: 1px solid var(--ar-accent);
+  border-radius: 999px;
+  color: #07142a;
+  background: var(--ar-accent);
+  cursor: pointer;
+  font-family: var(--ar-font);
+  font-size: 12.5px;
+  font-weight: 800;
+  transition: filter 140ms ease, transform 80ms ease, box-shadow 140ms ease;
+}
+
+.agentrun-play:hover,
+.agentrun-replay-btn:hover,
+.agentrun-play:focus-visible,
+.agentrun-replay-btn:focus-visible {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 3px rgba(90, 169, 255, 0.25);
+  outline: none;
+}
+
+.agentrun-play:active,
+.agentrun-replay-btn:active {
+  transform: translateY(1px);
+}
+
+.agentrun-play:disabled,
+.agentrun-replay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* replay = secondary / ghost styling to distinguish from primary play */
+.agentrun-replay-btn {
+  color: var(--ar-text);
+  background: var(--ar-raised);
+  border-color: var(--ar-line-strong);
+}
+
+.agentrun-replay-btn:hover,
+.agentrun-replay-btn:focus-visible {
+  border-color: var(--ar-accent);
+  background: rgba(90, 169, 255, 0.16);
+}
+
+/* =========================================================================
+   7. DECISION QUEUE — human-in-the-loop cards
+   ========================================================================= */
+
+.decision-queue {
+  display: grid;
+  gap: 10px;
+  font-family: var(--ar-font);
+  color: var(--ar-text);
+}
+
+.decision-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--ar-line);
+  border-left: 4px solid var(--ar-accent); /* recolors by state below */
+  border-radius: var(--ar-radius-sm);
+  padding: 12px 14px;
+  background: var(--ar-raised);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+/* left accent recolors by decision state */
+.decision-card.is-pending {
+  border-left-color: var(--ar-accent);
+}
+
+.decision-card.is-approved {
+  border-left-color: var(--ar-green);
+  box-shadow: inset 0 0 0 1px rgba(57, 217, 138, 0.18);
+}
+
+.decision-card.is-rejected {
+  border-left-color: var(--ar-red);
+  box-shadow: inset 0 0 0 1px rgba(255, 90, 90, 0.18);
+}
+
+.decision-card.is-hold {
+  border-left-color: var(--ar-amber);
+  box-shadow: inset 0 0 0 1px rgba(255, 174, 77, 0.18);
+}
+
+.decision-card.is-auto {
+  border-left-color: var(--ar-grey);
+  background: rgba(99, 112, 131, 0.12);
+}
+
+/* main row — title + approver */
+.decision-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.decision-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ar-text);
+}
+
+.decision-approver {
+  color: var(--ar-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ai_recommendation / rationale copy */
+.decision-why {
+  margin: 0;
+  color: var(--ar-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* action button row */
+.decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* base button — outline pill, fills when active. Min touch target ~34px. */
+.decision-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  min-width: 76px;
+  padding: 6px 16px;
+  border: 1px solid var(--ar-line-strong);
+  border-radius: 999px;
+  color: var(--ar-text);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--ar-font);
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: background 140ms ease, border-color 140ms ease,
+    color 140ms ease, box-shadow 140ms ease;
+}
+
+.decision-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(90, 169, 255, 0.28);
+}
+
+/* approve = green outline that fills when active */
+.decision-btn-approve {
+  border-color: rgba(57, 217, 138, 0.55);
+  color: var(--ar-green);
+}
+
+.decision-btn-approve:hover {
+  background: rgba(57, 217, 138, 0.14);
+}
+
+.decision-btn-approve.is-active {
+  color: #07140d;
+  background: var(--ar-green);
+  border-color: var(--ar-green);
+}
+
+/* reject = red outline that fills when active */
+.decision-btn-reject {
+  border-color: rgba(255, 90, 90, 0.55);
+  color: var(--ar-red);
+}
+
+.decision-btn-reject:hover {
+  background: rgba(255, 90, 90, 0.14);
+}
+
+.decision-btn-reject.is-active {
+  color: #1a0707;
+  background: var(--ar-red);
+  border-color: var(--ar-red);
+}
+
+/* hold = amber outline that fills when active */
+.decision-btn-hold {
+  border-color: rgba(255, 174, 77, 0.55);
+  color: var(--ar-amber);
+}
+
+.decision-btn-hold:hover {
+  background: rgba(255, 174, 77, 0.14);
+}
+
+.decision-btn-hold.is-active {
+  color: #1c1304;
+  background: var(--ar-amber);
+  border-color: var(--ar-amber);
+}
+
+/* small status text reflecting persisted decision state */
+.decision-state {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ar-muted);
+}
+
+.decision-card.is-approved .decision-state {
+  color: var(--ar-green);
+}
+
+.decision-card.is-rejected .decision-state {
+  color: var(--ar-red);
+}
+
+.decision-card.is-hold .decision-state {
+  color: var(--ar-amber);
+}
+
+/* AI-auto informational pill — "AI実行済み(ドラフト)" */
+.decision-auto {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 3px 12px;
+  border: 1px solid var(--ar-line-strong);
+  border-radius: 999px;
+  color: var(--ar-muted);
+  background: rgba(99, 112, 131, 0.16);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* =========================================================================
+   8. THEATRICAL REPLAY — active-panel glow
+   A .panel gets .is-agent-active while its agent step is running.
+   ========================================================================= */
+
+.panel.is-agent-active,
+.is-agent-active {
+  border-color: var(--ar-accent) !important;
+  box-shadow: 0 0 0 2px rgba(90, 169, 255, 0.55),
+    0 18px 44px rgba(90, 169, 255, 0.22) !important;
+  transform: scale(1.012);
+  transition: box-shadow 260ms ease, transform 260ms ease,
+    border-color 260ms ease;
+}
+
+/* =========================================================================
+   9. LIVE MONITORING BADGE — corner "AI Agent 監視中" indicator
+   ========================================================================= */
+
+.agent-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  padding: 4px 12px;
+  border: 1px solid rgba(57, 217, 138, 0.4);
+  border-radius: 999px;
+  color: var(--ar-green);
+  background: rgba(57, 217, 138, 0.12);
+  font-family: var(--ar-font);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.agent-live-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ar-green);
+  box-shadow: 0 0 0 0 rgba(57, 217, 138, 0.6);
+  animation: agent-live-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes agent-live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(57, 217, 138, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(57, 217, 138, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(57, 217, 138, 0);
+  }
+}
+
+/* =========================================================================
+   10. RESPONSIVE — stack io vertically + shrink paddings on narrow screens
+   ========================================================================= */
+
+@media (max-width: 900px) {
+  .agentrun {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .agentrun-agent {
+    grid-template-columns: 22px minmax(0, 1fr);
+    padding: 10px 8px 10px 4px;
+  }
+
+  /* time drops below the head instead of a right-aligned third column */
+  .agentrun-agent-time {
+    grid-column: 2;
+    grid-row: auto;
+    text-align: left;
+    margin-top: 2px;
+  }
+
+  /* io stacks vertically: input, arrow, output each on their own line */
+  .agentrun-agent-io {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .agentrun-agent::before {
+    left: 16px;
+  }
+
+  .agentrun-tool {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  /* result wraps under the ts+name on its own full-width line */
+  .agentrun-tool-result {
+    grid-column: 1 / -1;
+  }
+
+  .agentrun-modal {
+    padding: 12px;
+  }
+
+  .agentrun-modal-card {
+    padding: 16px 16px 18px;
+  }
+
+  .decision-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+
+  .decision-actions {
+    gap: 6px;
+  }
+
+  .decision-btn {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}

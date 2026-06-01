@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runSupplySentinel } from "./supply_sentinel/workflow.mjs";
 import { createStateStore } from "./supply_sentinel/stateStore.mjs";
+import { agentAdvice } from "./function_app/httpAgentAdvice.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -75,6 +76,9 @@ function route(pathname) {
   if (pathname === "/styles.css") {
     return path.join(webDir, "styles.css");
   }
+  if (pathname === "/styles.agents.css") {
+    return path.join(webDir, "styles.agents.css");
+  }
   if (pathname === "/config.js") {
     return path.join(webDir, "config.js");
   }
@@ -94,16 +98,44 @@ function route(pathname) {
 }
 
 const server = http.createServer(async (req, res) => {
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    sendStatus(res, 405, "Method Not Allowed");
-    return;
-  }
-
   let pathname;
   try {
     pathname = decodeURIComponent(new URL(req.url, `http://${req.headers.host || HOST}`).pathname);
   } catch {
     sendStatus(res, 400, "Bad Request");
+    return;
+  }
+
+  if (pathname === "/api/agent-advice") {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST,OPTIONS",
+        "Access-Control-Allow-Headers": "content-type",
+      });
+      res.end();
+      return;
+    }
+    if (req.method !== "POST") {
+      sendStatus(res, 405, "Method Not Allowed");
+      return;
+    }
+    try {
+      const body = await readRequestJson(req, 12_000);
+      const advice = await agentAdvice(body);
+      sendJson(res, 200, advice);
+    } catch (err) {
+      const status = err && err.statusCode === 400 ? 400 : 500;
+      sendJson(res, status, {
+        error: status === 400 ? "validation_error" : "agent_advice_failed",
+        message: err && err.message ? err.message : String(err),
+      });
+    }
+    return;
+  }
+
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    sendStatus(res, 405, "Method Not Allowed");
     return;
   }
 
@@ -138,6 +170,31 @@ const server = http.createServer(async (req, res) => {
 
   await sendFile(res, filePath);
 });
+
+function readRequestJson(req, maxBytes) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(Object.assign(new Error("Request body is too large."), { statusCode: 400 }));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      try {
+        const raw = Buffer.concat(chunks).toString("utf8") || "{}";
+        resolve(JSON.parse(raw));
+      } catch {
+        reject(Object.assign(new Error("Invalid JSON body."), { statusCode: 400 }));
+      }
+    });
+    req.on("error", reject);
+  });
+}
 
 function logSummary(result) {
   if (!result || typeof result !== "object") return;

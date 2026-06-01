@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Supply Sentinel - 供給リスク早期警戒</title>
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.agents.css">
 </head>
 <body>
   <div class="boot-loader" id="boot-loader" role="status" aria-live="polite">
@@ -57,6 +58,7 @@
           <div class="scenario-switch" id="scenario-switch" aria-label="デモシナリオ"></div>
           <span id="scenario"></span>
           <span id="generated-at"></span>
+          <span class="agent-live-badge" id="agent-live-badge"><span class="agent-live-dot" aria-hidden="true"></span>AI Agent 監視中</span>
         </div>
       </header>
 
@@ -199,6 +201,17 @@
 
       <section class="view" id="view-response" data-view-panel="response">
         <div class="response-grid">
+          <section class="panel agent-run-panel">
+            <div class="panel-head">
+              <div>
+                <h3>Agent Run Console</h3>
+                <span class="panel-note">7エージェントの巡回・ツール実行・判断ゲート</span>
+              </div>
+              <button type="button" class="agentrun-play" id="agent-run-play">巡回を再生</button>
+            </div>
+            <div id="agent-run-console"></div>
+          </section>
+
           <section class="panel agent-panel">
             <div class="panel-head">
               <div>
@@ -240,8 +253,8 @@
                 <div id="task-board"></div>
               </section>
               <section class="response-brief-cell">
-                <h4>人が判断する事項</h4>
-                <ul id="approval-list"></ul>
+                <h4>承認ゲート <span id="decision-summary"></span></h4>
+                <div id="approval-list"></div>
               </section>
               <section class="response-brief-cell">
                 <h4>管理職レポート</h4>

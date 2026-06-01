@@ -8,6 +8,7 @@ import { writeManagementReport } from "./reportWriter.mjs";
 import { writeDashboardHtml } from "./dashboardWriter.mjs";
 import { createStateStore } from "./stateStore.mjs";
 import { resolveRunMode, azureOpenAiConfig, azureOpenAiConfigured } from "./config.mjs";
+import { buildAgentRun } from "./agentTrace.mjs";
 
 export async function runSupplySentinel({
   rootDir = process.cwd(),
@@ -49,7 +50,7 @@ export async function runSupplySentinel({
 // `data` (loadSampleData() の戻り値) を受け取り、AIへの入力テキスト(meta.ai.inputs)を
 // 構築する。後方互換: data 省略時は meta.ai.inputs が空配列になるだけで既存挙動は不変。
 export function buildDashboardModel({ riskEvent, assessment, routeIntel, materials = [], data = {} }) {
-  return {
+  const model = {
     meta: {
       app: "Supply Sentinel",
       scenario: `${riskEvent.material} supply risk`,
@@ -64,6 +65,10 @@ export function buildDashboardModel({ riskEvent, assessment, routeIntel, materia
     assessment,
     route_intel: routeIntel,
   };
+  // 多段エージェント実行トレース(orchestrator+6エージェント / tool_calls / decisions /
+  // injection除外)。決定論で model から導出されるため数値は assessment と必ず一致する。
+  model.agent_run = buildAgentRun(model);
+  return model;
 }
 
 // AIが読んだ生テキスト(入力)と実行モードを meta.ai として組み立てる。

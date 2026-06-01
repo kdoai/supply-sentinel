@@ -2,6 +2,9 @@ import { createMap } from "./map.js";
 import { renderPanels } from "./panels.js";
 import { createNetwork, networkLegendHtml } from "./network.js";
 import { computeMetrics } from "./propagation.js";
+import { buildAgentRun, detectInjection } from "./agentTrace.js";
+import { createAgentConsole } from "./agentConsole.js";
+import { renderDecisionQueue } from "./decisions.js";
 
 const VIEW_TITLES = {
   dashboard: "監視ダッシュボード",
@@ -64,6 +67,8 @@ let activeMonthIndex = -1;
 let agentMessages = [];
 let agentContextKey = "";
 let agentChatBound = false;
+let agentConsoleInstance = null;
+let agentConsoleBound = false;
 
 function setLoaderText(message) {
   const el = document.getElementById("boot-loader-text");
@@ -96,6 +101,11 @@ async function fetchJson(url) {
 function apiBaseUrl() {
   const config = window.SUPPLY_SENTINEL_CONFIG || {};
   return String(config.apiBase || "").replace(/\/$/, "");
+}
+
+function agentAdviceUrl() {
+  const base = apiBaseUrl();
+  return base ? `${base}/api/agent-advice` : "/api/agent-advice";
 }
 
 async function fetchDashboardData() {
@@ -357,6 +367,47 @@ function makeAgentAnswer(question, model) {
     <p class="agent-footnote">実行判断が必要なもの: ${esc(approvalText)}</p>`;
 }
 
+function buildAdviceContext(model) {
+  const assessment = model?.assessment || {};
+  const metrics = model?.propagation?.metrics || {};
+  const kpis = model?.route_intel?.kpis || {};
+  return {
+    material: assessment.material || activeMaterial,
+    risk_score: metrics.risk_score ?? assessment.risk_score,
+    affected_supply_ratio: metrics.affected_supply_ratio ?? kpis.affected_share_percent,
+    spend_at_risk_usd: metrics.spend_at_risk_usd ?? kpis.monthly_spend_at_risk,
+    inventory_days_min: metrics.inventory_days_min ?? assessment.inventory_days_min,
+    impacted_products: asArray(metrics.impacted_products ?? assessment.impacted_products).slice(0, 6),
+    impacted_customers: asArray(metrics.impacted_customers ?? assessment.impacted_customers).slice(0, 6),
+    recommended_actions: asArray(assessment.recommended_actions).slice(0, 6),
+    approval_required: asArray(assessment.approval_required).slice(0, 6),
+    evidence: asArray(assessment.evidence).slice(0, 5),
+    run_id: model?.agent_run?.run_id || null,
+  };
+}
+
+function renderAdviceAnswer(advice) {
+  const steps = asArray(advice?.reasoning_steps);
+  const evidence = asArray(advice?.evidence).slice(0, 4);
+  const actions = asArray(advice?.recommended_actions).slice(0, 4);
+  const decisions = asArray(advice?.human_decision_required).slice(0, 4);
+  const meta = advice?.meta || {};
+  const badge = meta.fallback
+    ? `${meta.model || "gpt-5.4-mini"} / fallback`
+    : `${meta.model || "gpt-5.4-mini"} / cloud`;
+  return `
+    <div class="agent-answer-title">AI相談結果 <span class="agent-answer-badge">${esc(badge)}</span></div>
+    <p>${esc(advice?.answer || "現在のコンテキストから初動案を整理しました。")}</p>
+    ${
+      steps.length
+        ? `<div class="agent-trace">${steps.map((step) => `<span>${esc(step.agent)}: ${esc(step.result)}</span>`).join("")}</div>`
+        : ""
+    }
+    ${evidence.length ? `<h5>根拠</h5><ul>${evidence.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
+    ${actions.length ? `<h5>推奨初動</h5><ul>${actions.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
+    ${decisions.length ? `<p class="agent-footnote">人の承認が必要: ${esc(decisions.join("、"))}</p>` : ""}`;
+}
+
 function addAgentMessage(role, html) {
   agentMessages.push({ role, html });
   renderAgentPanel(currentDashboardData);
@@ -390,13 +441,37 @@ function renderAgentPanel(model) {
   thread.scrollTop = thread.scrollHeight;
 }
 
-function askAgent(question) {
+async function fetchAgentAdvice(question, model) {
+  const response = await fetch(agentAdviceUrl(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      question,
+      context: buildAdviceContext(model),
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`agent-advice HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+async function askAgent(question) {
   const trimmed = String(question || "").trim();
   if (!trimmed || !currentDashboardData) return;
   addAgentMessage("user", `<p>${esc(trimmed)}</p>`);
-  window.setTimeout(() => {
-    addAgentMessage("assistant", makeAgentAnswer(trimmed, currentDashboardData));
-  }, 180);
+  addAgentMessage("assistant", `<p class="agent-thinking">Azure OpenAI 相談APIへ問い合わせています...</p>`);
+  try {
+    const advice = await fetchAgentAdvice(trimmed, currentDashboardData);
+    agentMessages.pop();
+    agentMessages.push({ role: "assistant", html: renderAdviceAnswer(advice) });
+    renderAgentPanel(currentDashboardData);
+  } catch (error) {
+    console.warn("agent-advice unavailable; using local fallback.", error);
+    agentMessages.pop();
+    agentMessages.push({ role: "assistant", html: makeAgentAnswer(trimmed, currentDashboardData) });
+    renderAgentPanel(currentDashboardData);
+  }
 }
 
 function bindAgentChat() {
@@ -413,6 +488,74 @@ function bindAgentChat() {
     const button = event.target.closest?.("[data-agent-question]");
     if (!button) return;
     askAgent(button.getAttribute("data-agent-question"));
+  });
+}
+
+function ensureAgentConsole() {
+  const el = document.getElementById("agent-run-console");
+  if (!el) return null;
+  if (!agentConsoleInstance) {
+    agentConsoleInstance = createAgentConsole(el);
+  }
+  if (!agentConsoleBound) {
+    agentConsoleBound = true;
+    el.addEventListener("agent-console-step", (event) => highlightAgentStep(event.detail?.agentKey));
+    el.addEventListener("agent-console-done", () => clearAgentStepHighlight());
+  }
+  return agentConsoleInstance;
+}
+
+function updateDecisionSummary(summary) {
+  const el = document.getElementById("decision-summary");
+  if (!el || !summary) return;
+  el.textContent = summary.human
+    ? `承認済 ${summary.approved}/${summary.human}・保留 ${summary.hold}・差戻し ${summary.rejected}`
+    : "承認不要";
+}
+
+function renderAgentRuntime(model) {
+  const console = ensureAgentConsole();
+  console?.render(model);
+  renderDecisionQueue(document.getElementById("approval-list"), model?.agent_run, {
+    onChange: updateDecisionSummary,
+  });
+  const live = document.getElementById("agent-live-badge");
+  if (live) {
+    const run = model?.agent_run || {};
+    live.innerHTML = `<span class="agent-live-dot" aria-hidden="true"></span>${esc(run.run_mode === "cloud" ? "AI Agent cloud 実行済み" : "AI Agent デモ実行")}`;
+  }
+}
+
+function agentHighlightSelectors(agentKey) {
+  const map = {
+    orchestrator: [".agent-run-panel", ".summary-panel"],
+    risk_scout: [".ai-panel", ".summary-panel"],
+    evidence_verifier: [".ai-panel", ".provenance-panel"],
+    impact_mapper: [".network-panel", ".inventory-panel", ".orders-panel", ".kpi-panel"],
+    response_planner: [".agent-panel", ".response-brief-panel"],
+    decision_gate: [".response-brief-panel"],
+    reporter: [".response-brief-panel"],
+  };
+  return map[agentKey] || [];
+}
+
+function clearAgentStepHighlight() {
+  document.querySelectorAll(".is-agent-active").forEach((el) => el.classList.remove("is-agent-active"));
+}
+
+function highlightAgentStep(agentKey) {
+  clearAgentStepHighlight();
+  for (const selector of agentHighlightSelectors(agentKey)) {
+    document.querySelector(selector)?.classList.add("is-agent-active");
+  }
+}
+
+function bindAgentRuntimeControls() {
+  document.getElementById("agent-run-play")?.addEventListener("click", () => {
+    setActiveView("response");
+    const console = ensureAgentConsole();
+    console?.render(currentDashboardData);
+    console?.play({ stepMs: 760 });
   });
 }
 
@@ -919,6 +1062,11 @@ function activeSourcesForMonth(scenario, month) {
   return filtered.length ? filtered : all;
 }
 
+// True when a provenance source carries an injected command in its claim/excerpt.
+function isInjectedSource(source) {
+  return Boolean(detectInjection(source?.claim) || detectInjection(source?.raw_excerpt));
+}
+
 function buildRecommendedActions(scenario, metrics) {
   const material = materialLabel(scenario.material);
   if (!metrics || Number(metrics.risk_score || 0) < 45) return [];
@@ -945,7 +1093,12 @@ function buildScenarioOverlayModel(baseModel) {
   });
   const metrics = propagation.metrics || {};
   const sources = activeSourcesForMonth(scenario, month);
-  const evidence = sources.map((source) => `${sourceKindLabel(source.kind)}: ${source.claim}`);
+  // Evidence Verifier: external text is observation, not instruction. Any source
+  // whose claim/excerpt reads like an injected command is dropped from the
+  // *verified* evidence used for scoring/display (it still rides on
+  // overlay.provenance so the Agent Run Console can show it was caught).
+  const trustedSources = sources.filter((source) => !isInjectedSource(source));
+  const evidence = trustedSources.map((source) => `${sourceKindLabel(source.kind)}: ${source.claim}`);
   const routes = buildRoutesFromNetwork(scenario.network, propagation, scenario);
   const affectedRoutes = routes.filter((route) => route.affected);
   const affectedShare = metrics.affected_supply_ratio ?? affectedRoutes.reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
@@ -1052,6 +1205,10 @@ function buildScenarioOverlayModel(baseModel) {
   overlay.propagation = propagation;
   overlay.provenance = sources;
   overlay.month = month;
+  // Deterministic multi-agent run trace (orchestrator + 6 workers / tool_calls /
+  // decisions / injection-blocked evidence). Derived from the assembled overlay
+  // so every headline number matches the engine output (82 / 65% / $7.8M / 5d).
+  overlay.agent_run = buildAgentRun(overlay);
   overlay.timeline = months;
   overlay.story = scenario.layperson_story;
   overlay.demo = {
@@ -1324,6 +1481,7 @@ function renderCurrentDashboard() {
   renderPanels(currentDashboardData);
   renderNetworkPanel(currentDashboardData);
   renderAgentPanel(currentDashboardData);
+  renderAgentRuntime(currentDashboardData);
   updateDemoControls();
   renderMapInsight(null);
   mapInstance?.highlightRoute(null);
@@ -1335,6 +1493,8 @@ function stopDemo() {
     clearInterval(demoTimer);
     demoTimer = null;
   }
+  agentConsoleInstance?.stop({ silent: true });
+  clearAgentStepHighlight();
   demoPlaying = false;
   updateDemoControls();
 }
@@ -1344,6 +1504,8 @@ function startDemo() {
   demoPlaying = true;
   demoStep = 0;
   renderCurrentDashboard();
+  setActiveView("response");
+  ensureAgentConsole()?.play({ stepMs: 760 });
   demoTimer = setInterval(() => {
     if (demoStep >= (demoConfig.stages || []).length - 1) {
       stopDemo();
@@ -1455,6 +1617,7 @@ async function init() {
   bindMaterialSwitch();
   bindScenarioSwitch();
   bindAgentChat();
+  bindAgentRuntimeControls();
   setLoaderText("AI判断ログと初動対応ボードを描画しています");
   renderCurrentDashboard();
 

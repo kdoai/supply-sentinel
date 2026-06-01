@@ -2,7 +2,7 @@
   "meta": {
     "app": "Supply Sentinel",
     "scenario": "naphtha supply risk",
-    "generated_at": "2026-05-31T10:51:23.592Z",
+    "generated_at": "2026-06-01T00:41:26.147Z",
     "materials": [
       {
         "material_id": "naphtha",
@@ -111,7 +111,7 @@
     }
   },
   "assessment": {
-    "alert_id": "alert-20260531-naphtha",
+    "alert_id": "alert-20260601-naphtha",
     "material": "naphtha",
     "risk_type": "allocation",
     "risk_score": 82,
@@ -235,7 +235,7 @@
       "Formal customer notification",
       "Major production plan changes"
     ],
-    "generated_at": "2026-05-31T10:51:23.592Z"
+    "generated_at": "2026-06-01T00:41:26.147Z"
   },
   "route_intel": {
     "focal_material": "naphtha",
@@ -1059,6 +1059,405 @@
       "monthly_spend_at_risk": 7800000,
       "total_monthly_spend": 12000000,
       "lead_time_max_days": 24
+    }
+  },
+  "agent_run": {
+    "run_id": "run-naphtha-supply-risk-current",
+    "status": "completed",
+    "current_step": null,
+    "run_mode": "demo",
+    "model": "gpt-5.4-mini",
+    "provider": "Azure OpenAI",
+    "persisted": false,
+    "started_at": "2026-06-01T00:41:26.147Z",
+    "completed_at": "2026-06-01T00:41:50.147Z",
+    "headline": {
+      "risk_score": 82,
+      "severity": "high",
+      "affected_supply_ratio": 65,
+      "spend_at_risk_usd": 7800000,
+      "inventory_days_min": 5
+    },
+    "agents": [
+      {
+        "key": "orchestrator",
+        "name": "Sentinel Orchestrator",
+        "role": "巡回の親エージェント。各エージェントへ順にタスクを割り当て、状態と失敗時fallbackを管理する。",
+        "status": "completed",
+        "processor": "orchestrator",
+        "processor_label": "オーケストレータ",
+        "started_at": "2026-06-01T00:41:26.147Z",
+        "completed_at": "2026-06-01T00:41:50.147Z",
+        "started_hms": "00:41:26",
+        "completed_hms": "00:41:50",
+        "input": "シナリオ「naphtha supply risk」/ current / 外部シグナル 0件",
+        "output": "7エージェントの巡回を実行 (run_id run-naphtha-supply-risk-current)",
+        "tools": [
+          "start_run"
+        ]
+      },
+      {
+        "key": "risk_scout",
+        "name": "Risk Scout",
+        "role": "ニュース・サプライヤ通知・物流・価格を読み、供給リスク候補を構造化する。",
+        "status": "completed",
+        "processor": "deterministic-mock",
+        "processor_label": "決定論モック(gpt-5.4-mini相当)",
+        "started_at": "2026-06-01T00:41:27.147Z",
+        "completed_at": "2026-06-01T00:41:31.147Z",
+        "started_hms": "00:41:27",
+        "completed_hms": "00:41:31",
+        "input": "ニュース・通知・物流・価格 0件",
+        "output": "割当制限を抽出: naphtha / 深刻度 high / 確度 high / 割当 70%",
+        "tools": [
+          "fetch_signals",
+          "azure_openai.extract"
+        ],
+        "evidence": []
+      },
+      {
+        "key": "evidence_verifier",
+        "name": "Evidence Verifier",
+        "role": "根拠の確度を検証し、外部文書に紛れた命令文(プロンプトインジェクション)を除外する。",
+        "status": "completed",
+        "processor": "rule-engine",
+        "processor_label": "ルールエンジン",
+        "started_at": "2026-06-01T00:41:31.147Z",
+        "completed_at": "2026-06-01T00:41:35.147Z",
+        "started_hms": "00:41:31",
+        "completed_hms": "00:41:35",
+        "input": "抽出根拠 0件 + 生テキスト走査",
+        "output": "確度 high。命令文なし、有効根拠 0件",
+        "tools": [
+          "verify_evidence",
+          "detect_injection"
+        ],
+        "blocked_evidence": []
+      },
+      {
+        "key": "impact_mapper",
+        "name": "Impact Mapper",
+        "role": "BOM・在庫・受注と多段サプライヤネットワークを照合し、波及を決定論で計算する。",
+        "status": "completed",
+        "processor": "deterministic",
+        "processor_label": "決定論エンジン(propagationEngine)",
+        "started_at": "2026-06-01T00:41:35.147Z",
+        "completed_at": "2026-06-01T00:41:41.147Z",
+        "started_hms": "00:41:35",
+        "completed_hms": "00:41:41",
+        "input": "在庫 / BOM / 受注 / 多段ネットワーク",
+        "output": "製品 3件・顧客 3社・最短在庫 5日・調達影響 65% (7.8百万ドル)",
+        "tools": [
+          "query_inventory",
+          "map_bom_orders",
+          "propagate_network"
+        ],
+        "impacted_products": [
+          "樹脂A",
+          "溶剤B",
+          "コーティングC"
+        ],
+        "impacted_customers": [
+          "自動車部品A社",
+          "包装材B社",
+          "化学品C社"
+        ],
+        "impacted_plants": [
+          "千葉工場",
+          "大阪工場"
+        ]
+      },
+      {
+        "key": "response_planner",
+        "name": "Response Planner",
+        "role": "初動対応案・担当・期限・承認要否を起案する。",
+        "status": "completed",
+        "processor": "rule-engine",
+        "processor_label": "ルールエンジン",
+        "started_at": "2026-06-01T00:41:41.147Z",
+        "completed_at": "2026-06-01T00:41:45.147Z",
+        "started_hms": "00:41:41",
+        "completed_hms": "00:41:45",
+        "input": "影響範囲(製品3/顧客3)",
+        "output": "初動 5件・要承認 4件を起案",
+        "tools": [
+          "draft_actions"
+        ],
+        "recommended_actions": [
+          "Confirm latest allocation volume and shipment schedule with the supplier.",
+          "Reserve available inventory for high-priority orders and plants.",
+          "Check applicability of approved alternative material: NAP-ALT-01.",
+          "Prepare customer communication draft for high-priority customers.",
+          "Assess production schedule exposure against the 5-7 day delay window."
+        ]
+      },
+      {
+        "key": "decision_gate",
+        "name": "Decision Gate",
+        "role": "AIが実行してよい事項と、人間承認が必須の事項を分離する。",
+        "status": "completed",
+        "processor": "rule-engine",
+        "processor_label": "ルールエンジン",
+        "started_at": "2026-06-01T00:41:41.147Z",
+        "completed_at": "2026-06-01T00:41:45.147Z",
+        "started_hms": "00:41:41",
+        "completed_hms": "00:41:45",
+        "input": "起案 5件",
+        "output": "AI実行可 2件 / 人間承認必須 4件に振り分け",
+        "tools": [
+          "split_authority"
+        ],
+        "decisions": [
+          {
+            "id": "run-naphtha-supply-risk-current__procurement__purchase-order-changes",
+            "title": "発注内容の変更",
+            "category": "procurement",
+            "approver": "調達部長",
+            "requires_human": true,
+            "default_state": "pending",
+            "ai_recommendation": "起案済み。人の承認後に実務アクションへ進みます。",
+            "raw": "Purchase order changes"
+          },
+          {
+            "id": "run-naphtha-supply-risk-current__sourcing__supplier-switching",
+            "title": "サプライヤ切替",
+            "category": "sourcing",
+            "approver": "調達部長 / 品質保証",
+            "requires_human": true,
+            "default_state": "pending",
+            "ai_recommendation": "起案済み。人の承認後に実務アクションへ進みます。",
+            "raw": "Supplier switching"
+          },
+          {
+            "id": "run-naphtha-supply-risk-current__customer__formal-customer-notification",
+            "title": "顧客への正式通知",
+            "category": "customer",
+            "approver": "営業部長",
+            "requires_human": true,
+            "default_state": "pending",
+            "ai_recommendation": "起案済み。人の承認後に実務アクションへ進みます。",
+            "raw": "Formal customer notification"
+          },
+          {
+            "id": "run-naphtha-supply-risk-current__production__major-production-plan-changes",
+            "title": "生産計画の大幅変更",
+            "category": "production",
+            "approver": "生産管理責任者",
+            "requires_human": true,
+            "default_state": "pending",
+            "ai_recommendation": "起案済み。人の承認後に実務アクションへ進みます。",
+            "raw": "Major production plan changes"
+          },
+          {
+            "id": "run-naphtha-supply-risk-current__auto__inventory-hold",
+            "title": "高優先度受注向けに在庫引当ドラフトを作成",
+            "category": "inventory",
+            "approver": "—",
+            "requires_human": false,
+            "default_state": "auto",
+            "ai_recommendation": "AIがドラフトを自動作成。確定はしません。",
+            "raw": null
+          },
+          {
+            "id": "run-naphtha-supply-risk-current__auto__customer-draft",
+            "title": "影響顧客向けの説明文案を作成",
+            "category": "customer",
+            "approver": "—",
+            "requires_human": false,
+            "default_state": "auto",
+            "ai_recommendation": "AIが文案を自動作成。送信は営業承認後。",
+            "raw": null
+          }
+        ]
+      },
+      {
+        "key": "reporter",
+        "name": "Reporter",
+        "role": "管理職向けレポートを生成し、実行記録を保存する。",
+        "status": "completed",
+        "processor": "deterministic-mock",
+        "processor_label": "決定論モック(gpt-5.4-mini相当)",
+        "started_at": "2026-06-01T00:41:45.147Z",
+        "completed_at": "2026-06-01T00:41:50.147Z",
+        "started_hms": "00:41:45",
+        "completed_hms": "00:41:50",
+        "input": "確定影響 + 起案",
+        "output": "管理職レポートを生成(ローカル保存)",
+        "tools": [
+          "generate_report",
+          "save_state"
+        ]
+      }
+    ],
+    "tool_calls": [
+      {
+        "ts": "00:41:26",
+        "iso": "2026-06-01T00:41:26.147Z",
+        "agent": "orchestrator",
+        "tool": "start_run",
+        "result": "run_id run-naphtha-supply-risk-current を開始 / 7エージェントを巡回",
+        "ok": true
+      },
+      {
+        "ts": "00:41:28",
+        "iso": "2026-06-01T00:41:28.147Z",
+        "agent": "risk_scout",
+        "tool": "fetch_signals",
+        "result": "0件の外部シグナルを取得",
+        "ok": true
+      },
+      {
+        "ts": "00:41:30",
+        "iso": "2026-06-01T00:41:30.147Z",
+        "agent": "risk_scout",
+        "tool": "azure_openai.extract",
+        "result": "naphtha / 割当制限 / 深刻度 high",
+        "ok": true
+      },
+      {
+        "ts": "00:41:32",
+        "iso": "2026-06-01T00:41:32.147Z",
+        "agent": "evidence_verifier",
+        "tool": "verify_evidence",
+        "result": "確度 high / 検証 0件",
+        "ok": true
+      },
+      {
+        "ts": "00:41:34",
+        "iso": "2026-06-01T00:41:34.147Z",
+        "agent": "evidence_verifier",
+        "tool": "detect_injection",
+        "result": "命令文なし(injection検知=0)",
+        "ok": true
+      },
+      {
+        "ts": "00:41:36",
+        "iso": "2026-06-01T00:41:36.147Z",
+        "agent": "impact_mapper",
+        "tool": "query_inventory",
+        "result": "最短在庫 5日",
+        "ok": true
+      },
+      {
+        "ts": "00:41:38",
+        "iso": "2026-06-01T00:41:38.147Z",
+        "agent": "impact_mapper",
+        "tool": "map_bom_orders",
+        "result": "製品 3件・顧客 3社・受注 3件",
+        "ok": true
+      },
+      {
+        "ts": "00:41:40",
+        "iso": "2026-06-01T00:41:40.147Z",
+        "agent": "impact_mapper",
+        "tool": "propagate_network",
+        "result": "波及 65% / 7.8百万ドル",
+        "ok": true
+      },
+      {
+        "ts": "00:41:42",
+        "iso": "2026-06-01T00:41:42.147Z",
+        "agent": "response_planner",
+        "tool": "draft_actions",
+        "result": "初動 5件を起案",
+        "ok": true
+      },
+      {
+        "ts": "00:41:44",
+        "iso": "2026-06-01T00:41:44.147Z",
+        "agent": "decision_gate",
+        "tool": "split_authority",
+        "result": "人間承認 4件 / AI実行 2件",
+        "ok": true
+      },
+      {
+        "ts": "00:41:46",
+        "iso": "2026-06-01T00:41:46.147Z",
+        "agent": "reporter",
+        "tool": "generate_report",
+        "result": "管理職レポートを生成",
+        "ok": true
+      },
+      {
+        "ts": "00:41:48",
+        "iso": "2026-06-01T00:41:48.147Z",
+        "agent": "reporter",
+        "tool": "save_state",
+        "result": "ローカル保存 (run-naphtha-supply-risk-current)",
+        "ok": true
+      }
+    ],
+    "decisions": [
+      {
+        "id": "run-naphtha-supply-risk-current__procurement__purchase-order-changes",
+        "title": "発注内容の変更",
+        "category": "procurement",
+        "approver": "調達部長",
+        "requires_human": true,
+        "default_state": "pending",
+        "ai_recommendation": "起案済み。人の承認後に実務アクションへ進みます。",
+        "raw": "Purchase order changes"
+      },
+      {
+        "id": "run-naphtha-supply-risk-current__sourcing__supplier-switching",
+        "title": "サプライヤ切替",
+        "category": "sourcing",
+        "approver": "調達部長 / 品質保証",
+        "requires_human": true,
+        "default_state": "pending",
+        "ai_recommendation": "起案済み。人の承認後に実務アクションへ進みます。",
+        "raw": "Supplier switching"
+      },
+      {
+        "id": "run-naphtha-supply-risk-current__customer__formal-customer-notification",
+        "title": "顧客への正式通知",
+        "category": "customer",
+        "approver": "営業部長",
+        "requires_human": true,
+        "default_state": "pending",
+        "ai_recommendation": "起案済み。人の承認後に実務アクションへ進みます。",
+        "raw": "Formal customer notification"
+      },
+      {
+        "id": "run-naphtha-supply-risk-current__production__major-production-plan-changes",
+        "title": "生産計画の大幅変更",
+        "category": "production",
+        "approver": "生産管理責任者",
+        "requires_human": true,
+        "default_state": "pending",
+        "ai_recommendation": "起案済み。人の承認後に実務アクションへ進みます。",
+        "raw": "Major production plan changes"
+      },
+      {
+        "id": "run-naphtha-supply-risk-current__auto__inventory-hold",
+        "title": "高優先度受注向けに在庫引当ドラフトを作成",
+        "category": "inventory",
+        "approver": "—",
+        "requires_human": false,
+        "default_state": "auto",
+        "ai_recommendation": "AIがドラフトを自動作成。確定はしません。",
+        "raw": null
+      },
+      {
+        "id": "run-naphtha-supply-risk-current__auto__customer-draft",
+        "title": "影響顧客向けの説明文案を作成",
+        "category": "customer",
+        "approver": "—",
+        "requires_human": false,
+        "default_state": "auto",
+        "ai_recommendation": "AIが文案を自動作成。送信は営業承認後。",
+        "raw": null
+      }
+    ],
+    "blocked_evidence": [],
+    "stats": {
+      "agent_count": 7,
+      "tool_call_count": 12,
+      "evidence_scanned": 0,
+      "evidence_verified": 0,
+      "evidence_blocked": 0,
+      "human_approvals": 4,
+      "ai_auto_actions": 2
     }
   }
 }

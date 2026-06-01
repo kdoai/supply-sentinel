@@ -44,14 +44,19 @@ jobs:
           node --check web/js/flow.js
           node --check web/js/network.js
           node --check web/js/propagation.js
+          node --check web/js/agentTrace.js
+          node --check web/js/agentConsole.js
+          node --check web/js/decisions.js
           node --check src/serve.mjs
           node --check src/build-web.mjs
           node --check src/function_app/app.mjs
           node --check src/function_app/timerTrigger.mjs
           node --check src/function_app/httpLatestDashboard.mjs
+          node --check src/function_app/httpAgentAdvice.mjs
           node --check src/supply_sentinel/config.mjs
           node --check src/supply_sentinel/stateStore.mjs
           node --check src/supply_sentinel/aiClient.mjs
+          node --check src/supply_sentinel/agentTrace.mjs
           node --check src/supply_sentinel/networkSchema.mjs
           node --check src/supply_sentinel/propagationEngine.mjs
           node --check scripts/validate-scenario.mjs
@@ -97,7 +102,9 @@ jobs:
                 azureOpenAiAccountName="${{ vars.AZURE_OPENAI_ACCOUNT_NAME || '' }}" \
                 azureOpenAiDeployment="${{ vars.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4-mini' }}" \
                 azureOpenAiSubagentDeployment="${{ vars.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || 'gpt-5.4-mini' }}" \
-                azureOpenAiApiVersion="${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}"
+                azureOpenAiApiVersion="${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}" \
+                agentAdviceRateLimitPerMinute="${{ vars.AGENT_ADVICE_RATE_LIMIT_PER_MINUTE || '20' }}" \
+                agentAdviceAllowOrigin="${{ vars.AGENT_ADVICE_ALLOW_ORIGIN || '*' }}"
             acr_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrName.value -o tsv)"
             acr_login_server="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrLoginServer.value -o tsv)"
             container_app_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.containerAppName.value -o tsv)"
@@ -147,7 +154,9 @@ jobs:
                 azureOpenAiAccountName="${{ vars.AZURE_OPENAI_ACCOUNT_NAME || '' }}" \
                 azureOpenAiDeployment="${{ vars.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4-mini' }}" \
                 azureOpenAiSubagentDeployment="${{ vars.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || 'gpt-5.4-mini' }}" \
-                azureOpenAiApiVersion="${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}"
+                azureOpenAiApiVersion="${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}" \
+                agentAdviceRateLimitPerMinute="${{ vars.AGENT_ADVICE_RATE_LIMIT_PER_MINUTE || '20' }}" \
+                agentAdviceAllowOrigin="${{ vars.AGENT_ADVICE_ALLOW_ORIGIN || '*' }}"
             api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"
             echo "api_base=$api_base" >> "$GITHUB_OUTPUT"
             az containerapp job start \

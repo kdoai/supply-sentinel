@@ -34,6 +34,12 @@ param azureOpenAiSubagentDeployment string = 'gpt-5.4-mini'
 @description('Azure OpenAI API version for the runtime client.')
 param azureOpenAiApiVersion string = '2025-04-01-preview'
 
+@description('Per-minute anonymous rate limit for the AI advice endpoint. Set to 0 to disable.')
+param agentAdviceRateLimitPerMinute int = 20
+
+@description('Allowed browser origin for the AI advice endpoint CORS response.')
+param agentAdviceAllowOrigin string = '*'
+
 var suffix = toLower(uniqueString(resourceGroup().id, appName))
 var webStorageName = take('${appName}web${suffix}', 24)
 var acrName = take('${appName}acr${suffix}', 50)
@@ -150,6 +156,7 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
   properties: {
     resource: {
       id: containerName
+      defaultTtl: 2592000
       partitionKey: {
         paths: [
           '/pk'
@@ -256,6 +263,14 @@ var appEnv = [
   {
     name: 'AZURE_OPENAI_USE_AAD'
     value: 'true'
+  }
+  {
+    name: 'AGENT_ADVICE_RATE_LIMIT_PER_MINUTE'
+    value: string(agentAdviceRateLimitPerMinute)
+  }
+  {
+    name: 'AGENT_ADVICE_ALLOW_ORIGIN'
+    value: agentAdviceAllowOrigin
   }
   {
     name: 'HOST'
