@@ -1,5 +1,14 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  buildSearchError,
+  canonicalizeGoogleNewsUrl,
+  evidenceToNewsEvent,
+  normalizeEvidenceRecord,
+  shortHash,
+  slug,
+  sourceDomain,
+} from "./evidenceSchema.mjs";
 
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_MAX_ITEMS = 3;
@@ -16,6 +25,7 @@ export async function collectLiveEvidence({
   fetchImpl = globalThis.fetch,
   now = new Date(),
   enabled,
+  provider = "auto",
 } = {}) {
   if (!liveEvidenceEnabled({ enabled })) {
     return { enabled: false, fetched_at: now.toISOString(), newsEvents: [], provenance: [], errors: [] };
@@ -32,28 +42,40 @@ export async function collectLiveEvidence({
 
   const fetchedAt = now.toISOString();
   const sources = await loadExternalSources(rootDir);
-  const results = await Promise.allSettled(
-    sources.filter((source) => source.enabled !== false).map((source) => collectFromSource(source, { fetchImpl, fetchedAt })),
+  const enabledSources = sources.filter((source) => source.enabled !== false && sourceMatchesProvider(source, provider));
+  const results = await Promise.all(
+    enabledSources.map(async (source) => {
+      const started = Date.now();
+      try {
+        return { ok: true, source, durationMs: Date.now() - started, value: await collectFromSource(source, { fetchImpl, fetchedAt }) };
+      } catch (error) {
+        return { ok: false, source, durationMs: Date.now() - started, error };
+      }
+    }),
   );
 
   const newsEvents = [];
   const provenance = [];
   const errors = [];
   for (const result of results) {
-    if (result.status === "fulfilled") {
+    if (result.ok) {
       newsEvents.push(...result.value.newsEvents);
       provenance.push(...result.value.provenance);
     } else {
-      errors.push({ source: "unknown", message: result.reason?.message || String(result.reason) });
+      errors.push(normalizeSearchError(result.error, result.source, result.durationMs));
     }
   }
+
+  const dedupedNewsEvents = dedupeByUrl(newsEvents).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 18));
+  const dedupedProvenance = dedupeByUrl(provenance).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 18));
 
   return {
     enabled: true,
     fetched_at: fetchedAt,
-    newsEvents: dedupeByUrl(newsEvents).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 12)),
-    provenance: dedupeByUrl(provenance).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 12)),
+    newsEvents: dedupedNewsEvents,
+    provenance: dedupedProvenance,
     errors,
+    search_health: buildSearchHealth({ provider: provider === "auto" ? "rss_gdelt" : provider, fetchedAt, provenance: dedupedProvenance, newsEvents: dedupedNewsEvents, errors, sources: enabledSources }),
   };
 }
 
@@ -86,7 +108,7 @@ export async function searchNewsQuery(query, {
 
   const response = await fetchWithTimeout(fetchImpl, url, Number(timeoutMs) || DEFAULT_TIMEOUT_MS, "text/xml,application/rss+xml");
   if (!response.ok) {
-    throw new Error(`news search HTTP ${response.status}`);
+    throw httpError({ source, provider: "google_news", url, response });
   }
 
   const xml = await response.text();
@@ -94,6 +116,7 @@ export async function searchNewsQuery(query, {
   const source = {
     id: `agent-search-${slug(trimmed)}`,
     label,
+    provider: "google_news",
     material,
     region,
     confidence: "medium",
@@ -142,7 +165,7 @@ async function collectFromSource(source, { fetchImpl, fetchedAt }) {
 
   const response = await fetchWithTimeout(fetchImpl, url, Number(source.timeout_ms) || DEFAULT_TIMEOUT_MS);
   if (!response.ok) {
-    throw new Error(`${source.id || source.label || "gdelt"} HTTP ${response.status}`);
+    throw httpError({ source, provider: "gdelt", url, response });
   }
 
   const payload = await response.json();
@@ -168,7 +191,7 @@ async function collectFromRss(source, { fetchImpl, fetchedAt }) {
 
   const response = await fetchWithTimeout(fetchImpl, url, Number(source.timeout_ms) || DEFAULT_TIMEOUT_MS, "text/xml,application/rss+xml");
   if (!response.ok) {
-    throw new Error(`${source.id || source.label || "rss"} HTTP ${response.status}`);
+    throw httpError({ source, provider: "google_news", url, response });
   }
 
   const xml = await response.text();
@@ -211,76 +234,64 @@ function normalizeGdeltArticle(article, source, fetchedAt) {
     domain ? `配信元: ${domain}` : "",
     source.query ? `検索条件: ${source.query}` : "",
   ].filter(Boolean).join(" / ");
+  const evidence = normalizeEvidenceRecord({
+    id,
+    provider: "gdelt",
+    sourceId: source.id || null,
+    label: source.label || "GDELT公開ニュース検索",
+    source: sourceName,
+    title,
+    snippet: summary,
+    url,
+    canonicalUrl: url,
+    publishedAt,
+    fetchedAt,
+    material: source.material || "unknown",
+    region: source.region || null,
+    query: source.query || null,
+    confidence: source.confidence || "medium",
+    raw: article,
+  });
 
   return {
-    newsEvent: {
-      id,
-      source: sourceName,
-      published_at: publishedAt,
-      material: source.material || "unknown",
-      region: source.region || null,
-      event_type: "live_web_signal",
-      severity_hint: source.severity_hint || "medium",
-      headline: title,
-      summary,
-      url,
-      live: true,
-      fetched_at: fetchedAt,
-    },
-    provenance: {
-      id,
-      kind: "news",
-      label: source.label || "Live Web News",
-      source: sourceName,
-      claim: title,
-      raw_excerpt: summary,
-      confidence: source.confidence || "medium",
-      url,
-      published_at: publishedAt,
-      fetched_at: fetchedAt,
-      origin: "live_web",
-    },
+    newsEvent: evidenceToNewsEvent(evidence, source.severity_hint || "medium"),
+    provenance: evidence,
   };
 }
 
 function normalizeRssArticle(article, source, fetchedAt) {
-  const url = stringOr(article.link, "");
+  const links = canonicalizeGoogleNewsUrl(article.link);
+  const url = links.url;
   const title = stringOr(article.title, "");
   if (!url || !title) return null;
 
   const sourceName = extractSourceFromTitle(title) || safeHostname(url) || source.label || "RSS";
   const publishedAt = parseRssDate(article.pubDate) || fetchedAt;
-  const id = `live-${slug(source.id || source.label || "rss")}-${shortHash(url)}`;
+  const id = `live-${slug(source.id || source.label || "rss")}-${shortHash(links.canonical_url || url)}`;
   const summary = stripHtml(stringOr(article.description, title));
+  const evidence = normalizeEvidenceRecord({
+    id,
+    provider: "google_news",
+    sourceId: source.id || null,
+    label: source.label || "Google News RSS検索",
+    source: sourceName,
+    title,
+    snippet: summary,
+    url,
+    canonicalUrl: links.canonical_url,
+    feedUrl: links.feed_url,
+    publishedAt,
+    fetchedAt,
+    material: source.material || "unknown",
+    region: source.region || null,
+    query: source.query || null,
+    confidence: source.confidence || "medium",
+    raw: article,
+  });
 
   return {
-    newsEvent: {
-      id,
-      source: sourceName,
-      published_at: publishedAt,
-      material: source.material || "unknown",
-      region: source.region || null,
-      event_type: "live_web_signal",
-      severity_hint: source.severity_hint || "medium",
-      headline: title,
-      summary,
-      url,
-      live: true,
-      fetched_at: fetchedAt,
-    },
-    provenance: {
-      id,
-      kind: "news",
-      label: source.label || "Live RSS Search",
-      source: sourceName,
-      claim: title,
-      raw_excerpt: summary,
-      confidence: source.confidence || "medium",
-      url,
-      published_at: publishedAt,
-      fetched_at: fetchedAt,
-      origin: "live_web",
-    },
+    newsEvent: evidenceToNewsEvent(evidence, source.severity_hint || "medium"),
+    provenance: evidence,
   };
 }
 
@@ -359,31 +370,55 @@ function sourceLimit(envName, fallback) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+function httpError({ source, provider, url, response }) {
+  const error = new Error(`${source.id || source.label || provider || "search"} HTTP ${response.status}`);
+  error.sourceId = source.id || null;
+  error.provider = provider || source.provider || null;
+  error.status = response.status;
+  error.url = String(url);
+  error.retryAfter = response.headers?.get?.("retry-after") || null;
+  return error;
+}
+
+function normalizeSearchError(error, source, durationMs) {
+  return buildSearchError({
+    source: source?.label || source?.id || error?.source,
+    sourceId: error?.sourceId || source?.id || null,
+    provider: error?.provider || source?.provider || source?.type || null,
+    status: error?.status || null,
+    url: error?.url || source?.url || null,
+    retryAfter: error?.retryAfter || null,
+    durationMs,
+    message: error?.message || String(error),
+  });
+}
+
+function sourceMatchesProvider(source, provider) {
+  if (!provider || provider === "auto") return true;
+  if (provider === "google_news") return source.type === "rss";
+  if (provider === "gdelt") return source.type === "gdelt_doc";
+  return true;
+}
+
+function buildSearchHealth({ provider, fetchedAt, provenance, newsEvents, errors, sources }) {
+  const accepted = provenance.filter((item) => item.status !== "rejected").length;
+  const rejected = provenance.filter((item) => item.status === "rejected").length;
+  return {
+    provider,
+    retrieved_count: newsEvents.length,
+    accepted_count: accepted,
+    rejected_count: rejected,
+    error_count: errors.length,
+    errors,
+    last_success_at: accepted > 0 ? fetchedAt : null,
+    source_count: sources.length,
+  };
+}
+
 function safeHostname(value) {
-  try {
-    return new URL(value).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
+  return sourceDomain(value);
 }
 
 function stringOr(value, fallback) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
-}
-
-function slug(value) {
-  return String(value ?? "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40) || "source";
-}
-
-function shortHash(value) {
-  let hash = 0;
-  const text = String(value);
-  for (let i = 0; i < text.length; i += 1) {
-    hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
-  }
-  return hash.toString(36);
 }

@@ -38,4 +38,30 @@ test("collects source-backed public web evidence from the RSS search adapter", a
   assert.equal(result.newsEvents[0].url, "https://example.org/naphtha-refinery-disruption");
   assert.equal(result.provenance[0].origin, "live_web");
   assert.equal(result.provenance[0].url, "https://example.org/naphtha-refinery-disruption");
+  assert.equal(result.provenance[0].provider, "google_news");
+  assert.equal(result.provenance[0].canonical_url, "https://example.org/naphtha-refinery-disruption");
+  assert.equal(result.provenance[0].status, "accepted");
+  assert.equal(result.search_health.accepted_count, 1);
+});
+
+test("structures provider errors with status and retry metadata", async () => {
+  const fetchImpl = async () => new Response("too many requests", {
+    status: 429,
+    headers: { "retry-after": "30" },
+  });
+
+  const result = await collectLiveEvidence({
+    enabled: true,
+    provider: "gdelt",
+    fetchImpl,
+    now: new Date("2026-06-01T01:00:00Z"),
+  });
+
+  assert.equal(result.newsEvents.length, 0);
+  assert.ok(result.errors.length >= 1);
+  assert.equal(result.errors[0].provider, "gdelt");
+  assert.equal(result.errors[0].status, 429);
+  assert.equal(result.errors[0].retry_after, "30");
+  assert.match(result.errors[0].url, /gdeltproject/);
+  assert.equal(result.search_health.error_count, result.errors.length);
 });

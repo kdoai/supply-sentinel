@@ -1,9 +1,3 @@
-// Tests for the LLM-driven research agent (the scheduled 情報収集エージェント).
-//
-// No real network and no real Azure: a mock fetchImpl routes Azure-OpenAI calls
-// vs Google-News RSS calls by URL, so the full tool-calling loop is exercised
-// deterministically and offline.
-
 import test from "node:test";
 import assert from "node:assert/strict";
 import { runResearchAgent } from "../src/supply_sentinel/researchAgent.mjs";
@@ -13,8 +7,8 @@ const CLOUD_CONFIG = {
   apiKey: "test-key",
   deployment: "gpt-5.4-mini",
   subagentDeployment: "gpt-5.4-mini",
-  apiVersion: "2025-04-01-preview",
-  useAad: false, // api-key path -> no @azure/identity / network for auth
+  apiVersion: "preview",
+  useAad: false,
 };
 
 function rssResponse(items) {
@@ -28,55 +22,48 @@ function rssResponse(items) {
   return new Response(body, { status: 200, headers: { "content-type": "application/rss+xml" } });
 }
 
-function azureMessageResponse(message) {
-  return new Response(JSON.stringify({ choices: [{ message }] }), {
-    status: 200,
-    headers: { "content-type": "application/json" },
-  });
-}
-
-test("agent path: model drives a search via tool-calling and grounds the curated evidence", async () => {
-  const azureBodies = [];
-  let azureCall = 0;
-
-  const fetchImpl = async (url, init) => {
-    const href = String(url);
-    if (href.includes("openai.azure.com")) {
-      azureBodies.push(JSON.parse(init.body));
-      azureCall += 1;
-      if (azureCall === 1) {
-        // Turn 1: the model decides to call the search tool.
-        return azureMessageResponse({
-          role: "assistant",
-          content: null,
-          tool_calls: [
+function responsesPayload() {
+  return new Response(JSON.stringify({
+    output: [
+      {
+        id: "ws_1",
+        type: "web_search_call",
+        action: {
+          type: "search",
+          queries: ["naphtha refinery outage Asia"],
+          sources: [
             {
-              id: "call_1",
-              type: "function",
-              function: { name: "search_news", arguments: JSON.stringify({ query: "naphtha refinery outage Asia", material: "naphtha" }) },
+              url: "https://example.org/naphtha-outage",
+              title: "Asian refinery cuts naphtha runs",
+              snippet: "Buyers face tighter naphtha cargo availability.",
+              source: "Example Energy",
             },
           ],
-        });
-      }
-      // Turn 2: the model returns curated JSON. The 2nd URL is hallucinated and
-      // must be dropped; the 1st is real and must be kept + annotated.
-      return azureMessageResponse({
-        role: "assistant",
-        content: JSON.stringify({
-          evidence: [
-            { url: "https://example.org/naphtha-outage", why_relevant: "Asian refinery cut runs", material: "naphtha", confidence: "high" },
-            { url: "https://hallucinated.example/not-real", why_relevant: "made up", material: "naphtha", confidence: "low" },
-          ],
-          summary: "Asian naphtha supply tightening.",
-        }),
-      });
-    }
-    // Google News RSS search.
-    assert.match(href, /news\.google\.com\/rss\/search/);
-    assert.match(href, /naphtha/);
-    return rssResponse([
-      { title: "Asian refinery cuts naphtha runs - Reuters", link: "https://example.org/naphtha-outage" },
-    ]);
+        },
+      },
+      {
+        type: "message",
+        content: [
+          {
+            type: "output_text",
+            text: "Asian naphtha supply tightened.",
+            annotations: [
+              { type: "url_citation", url: "https://example.org/naphtha-outage", title: "Asian refinery cuts naphtha runs" },
+            ],
+          },
+        ],
+      },
+    ],
+  }), { status: 200, headers: { "content-type": "application/json" } });
+}
+
+test("hosted web search path requires Responses web_search and preserves returned citations", async () => {
+  const bodies = [];
+  const fetchImpl = async (url, init) => {
+    const href = String(url);
+    assert.match(href, /\/openai\/v1\/responses/);
+    bodies.push(JSON.parse(init.body));
+    return responsesPayload();
   };
 
   const result = await runResearchAgent({
@@ -86,33 +73,30 @@ test("agent path: model drives a search via tool-calling and grounds the curated
     fetchImpl,
     now: new Date("2026-06-01T01:00:00Z"),
     materials: ["naphtha"],
+    provider: "azure_web_search",
   });
 
   assert.equal(result.enabled, true);
   assert.equal(result.mode, "agent");
+  assert.equal(result.provider, "azure_web_search");
+  assert.equal(bodies[0].tools[0].type, "web_search");
+  assert.equal(bodies[0].tool_choice, "required");
   assert.deepEqual(result.queries, ["naphtha refinery outage Asia"]);
-
-  // The first Azure request must advertise the search_news tool and force it.
-  assert.equal(azureBodies[0].tools[0].function.name, "search_news");
-  assert.equal(azureBodies[0].tool_choice.function.name, "search_news");
-  // The second request must include the tool result message we fed back.
-  assert.ok(azureBodies[1].messages.some((m) => m.role === "tool"));
-
-  // Only the REAL url survives (anti-hallucination); it carries the agent note.
   assert.equal(result.provenance.length, 1);
   assert.equal(result.provenance[0].url, "https://example.org/naphtha-outage");
-  assert.equal(result.provenance[0].agent_curated, true);
-  assert.equal(result.provenance[0].agent_note, "Asian refinery cut runs");
-  assert.equal(result.newsEvents[0].url, "https://example.org/naphtha-outage");
+  assert.equal(result.provenance[0].provider, "azure_web_search");
+  assert.equal(result.newsEvents[0].evidence_id, result.provenance[0].id);
+  assert.equal(result.search_health.accepted_count, 1);
 });
 
-test("falls back to deterministic RSS collection when the cloud model errors", async () => {
+test("falls back to deterministic RSS/GDELT when hosted web search is unsupported", async () => {
+  const seen = [];
   const fetchImpl = async (url) => {
     const href = String(url);
-    if (href.includes("openai.azure.com")) {
-      return new Response("rate limited", { status: 429 });
+    seen.push(href);
+    if (href.includes("/openai/v1/responses")) {
+      return new Response("web_search unsupported", { status: 400 });
     }
-    // The deterministic collectLiveEvidence path uses the configured RSS source.
     return rssResponse([
       { title: "Naphtha allocation tightens - Example Energy", link: "https://example.org/fallback-rss" },
     ]);
@@ -125,15 +109,42 @@ test("falls back to deterministic RSS collection when the cloud model errors", a
     fetchImpl,
     now: new Date("2026-06-01T01:00:00Z"),
     materials: ["naphtha"],
+    provider: "auto",
   });
 
   assert.equal(result.mode, "rss");
-  assert.equal(result.enabled, true);
+  assert.ok(seen.some((url) => url.includes("/openai/v1/responses")));
   assert.ok(result.provenance.length >= 1);
   assert.equal(result.provenance[0].url, "https://example.org/fallback-rss");
-  // The agent failure reason is carried out for prod observability.
-  assert.match(result.agent_error || "", /429/);
-  assert.ok(result.errors.some((e) => e.source === "research_agent"));
+  assert.match(result.agent_error || "", /unsupported|400/);
+  assert.equal(result.search_health.fallback_from, "azure_web_search");
+});
+
+test("fails hosted path when required web_search was not executed, then falls back", async () => {
+  const fetchImpl = async (url) => {
+    const href = String(url);
+    if (href.includes("/openai/v1/responses")) {
+      return new Response(JSON.stringify({ output: [{ type: "message", content: [{ type: "output_text", text: "No search." }] }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return rssResponse([{ title: "RSS only - Example", link: "https://example.org/no-search-fallback" }]);
+  };
+
+  const result = await runResearchAgent({
+    enabled: true,
+    mode: "cloud",
+    config: CLOUD_CONFIG,
+    fetchImpl,
+    now: new Date("2026-06-01T01:00:00Z"),
+    materials: ["naphtha"],
+    provider: "auto",
+  });
+
+  assert.equal(result.mode, "rss");
+  assert.match(result.agent_error || "", /did not execute web_search/);
+  assert.equal(result.provenance[0].url, "https://example.org/no-search-fallback");
 });
 
 test("returns disabled/empty when live evidence is turned off", async () => {
@@ -152,7 +163,7 @@ test("returns disabled/empty when live evidence is turned off", async () => {
   assert.equal(fetched, false, "must not hit the network when disabled");
 });
 
-test("demo mode never calls the cloud model even when configured", async () => {
+test("demo mode never calls hosted web search even when configured", async () => {
   const seen = [];
   const fetchImpl = async (url) => {
     seen.push(String(url));
@@ -161,7 +172,7 @@ test("demo mode never calls the cloud model even when configured", async () => {
 
   const result = await runResearchAgent({
     enabled: true,
-    mode: "demo", // demo must skip the LLM path entirely
+    mode: "demo",
     config: CLOUD_CONFIG,
     fetchImpl,
     now: new Date("2026-06-01T01:00:00Z"),
@@ -169,5 +180,5 @@ test("demo mode never calls the cloud model even when configured", async () => {
   });
 
   assert.equal(result.mode, "rss");
-  assert.ok(!seen.some((u) => u.includes("openai.azure.com")), "demo mode must not call Azure OpenAI");
+  assert.ok(!seen.some((u) => u.includes("/openai/v1/responses")), "demo mode must not call hosted web search");
 });

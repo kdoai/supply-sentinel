@@ -108,8 +108,11 @@ function buildRiskExtractionPrompt({ newsEvents = [], supplierNotices = [] }) {
     '  "confidence": "low | medium | high",',
     '  "evidence": ["short evidence strings"],',
     '  "summary": "one concise sentence",',
-    '  "sources": { "news_id": "string or null", "supplier_notice_id": "string or null" }',
+    '  "sources": { "news_id": "string or null", "supplier_notice_id": "string or null" },',
+    '  "evidence_ids": ["only ids that exist in the provided sources"],',
+    '  "claim_ids": ["only ids that exist in the provided sources"]',
     "}",
+    "Do not cite evidence that has no id in the source bundle. If web evidence did not include a URL, lower confidence.",
     "Sources:",
     JSON.stringify(sourceBundle),
   ].join("\n");
@@ -118,6 +121,9 @@ function buildRiskExtractionPrompt({ newsEvents = [], supplierNotices = [] }) {
 function normalizeRiskEvent(event, data) {
   const fallback = extractDeterministic(data);
   const next = event && typeof event === "object" ? event : {};
+  const validEvidenceIds = validSourceIds(data);
+  const evidenceIds = filterValidIds(next.evidence_ids, validEvidenceIds);
+  const claimIds = filterValidIds(next.claim_ids, validEvidenceIds);
   return {
     material: stringOr(next.material, fallback.material),
     risk_type: stringOr(next.risk_type, fallback.risk_type),
@@ -134,7 +140,27 @@ function normalizeRiskEvent(event, data) {
       news_id: next.sources?.news_id ?? fallback.sources?.news_id ?? null,
       supplier_notice_id: next.sources?.supplier_notice_id ?? fallback.sources?.supplier_notice_id ?? null,
     },
+    evidence_ids: evidenceIds.length ? evidenceIds : fallback.evidence_ids ?? [],
+    claim_ids: claimIds.length ? claimIds : fallback.claim_ids ?? [],
   };
+}
+
+function validSourceIds(data) {
+  const ids = new Set();
+  for (const item of Array.isArray(data?.newsEvents) ? data.newsEvents : []) {
+    if (item?.id) ids.add(item.id);
+    if (item?.evidence_id) ids.add(item.evidence_id);
+  }
+  for (const item of Array.isArray(data?.supplierNotices) ? data.supplierNotices : []) {
+    if (item?.id) ids.add(item.id);
+  }
+  return ids;
+}
+
+function filterValidIds(values, validIds) {
+  return (Array.isArray(values) ? values : [])
+    .map(String)
+    .filter((id) => validIds.has(id));
 }
 
 function stringOr(value, fallback) {

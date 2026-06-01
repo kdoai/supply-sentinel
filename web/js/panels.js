@@ -422,12 +422,144 @@ function truncateText(value, max = 130) {
   return `${text.slice(0, max).trimEnd()}…`;
 }
 
+function topPublicEvidence(data, limit = 3) {
+  const live = publicEvidenceSources(data);
+  if (live.length) return live.slice(0, limit);
+  return asArray(data?.provenance)
+    .filter((source) => hasPublicUrl(source))
+    .sort((a, b) => Date.parse(b.published_at || b.fetched_at || 0) - Date.parse(a.published_at || a.fetched_at || 0))
+    .slice(0, limit);
+}
+
+function renderSignalDecisionFlow(data) {
+  const evidence = topPublicEvidence(data, 1)[0];
+  const assessment = data.assessment || {};
+  const risk = data.risk_event || {};
+  const meta = data.meta || {};
+  const collection = meta.evidence_collection || {};
+  const health = collection.search_health || {};
+  const kpis = data.route_intel?.kpis || {};
+  const products = asArray(assessment.impacted_products);
+  const actions = asArray(assessment.recommended_actions).map(translateText);
+  const score = Number(assessment.risk_score);
+  const scoreLabel = Number.isFinite(score) ? `${score}/100` : "判定中";
+  const material = materialLabel(assessment.material || risk.material);
+  const sourceLabel = evidence?.source_domain || evidence?.source || health.provider || collection.live_mode || "Web検索";
+  const provider = health.provider || collection.live_mode || "search";
+  const accepted = health.accepted_count ?? collection.live_count ?? 0;
+  const runMode = meta.ai?.run_mode || "cloud";
+  const model = meta.ai?.model || "gpt-5.4-mini";
+
+  setHtml(
+    "signal-decision-flow",
+    `
+      <div class="signal-flow-grid">
+        <article class="signal-flow-card">
+          <span>1. 市場シグナル</span>
+          <strong>${esc(evidence?.title || evidence?.claim || `${material} 関連情報を監視中`)}</strong>
+          <p>${esc(truncateText(evidence?.claim || "公開Web、ニュース、GDELT、内部通知を横断して供給制約の兆候を探索しています。", 120))}</p>
+          ${evidence?.url ? `<a href="${esc(evidence.url)}" target="_blank" rel="noreferrer">${esc(sourceLabel)}を開く</a>` : `<em>${esc(sourceLabel)}</em>`}
+        </article>
+        <article class="signal-flow-card">
+          <span>2. AI構造化</span>
+          <strong>${esc(material)} / ${esc(riskTypeLabel(risk.risk_type))}</strong>
+          <p>対象期間: ${esc(affectedPeriodLabel(risk.affected_period))}、確度: ${esc(risk.confidence || "判定中")}。検索採用 ${esc(accepted)}件。</p>
+          <em>${esc(provider)} / ${esc(model)} / ${esc(runMode)}</em>
+        </article>
+        <article class="signal-flow-card">
+          <span>3. 自社影響</span>
+          <strong>リスク ${esc(scoreLabel)}</strong>
+          <p>影響製品 ${products.length}件、最短在庫 ${esc(assessment.inventory_days_min ?? "-")}日、影響調達比率 ${esc(kpis.affected_share_percent ?? 0)}%。</p>
+          <em>供給網・BOM・在庫を照合</em>
+        </article>
+        <article class="signal-flow-card signal-flow-next">
+          <span>4. Next Action</span>
+          <strong>${esc(actions[0] || "継続監視")}</strong>
+          <p>${esc(actions[1] || "AIが起案し、発注変更・顧客通知・生産計画変更は人が承認します。")}</p>
+          <em>Human-in-the-loop</em>
+        </article>
+      </div>
+    `,
+  );
+}
+
 // 初動対応の最初のパネル。AIが読んだ外部テキスト(meta.ai.inputs)と、
 // そこから抽出した構造化結果(risk_event)を左右で対比し、下段に検知根拠を置く。
 // meta.ai が無い段やナフサ以外の通常監視段では従来どおりの表示に縮退する。
 function renderAiExtraction(data) {
   const container = $("ai-extraction");
   if (!container) return;
+
+  const executiveAssessment = data.assessment || {};
+  const executiveRisk = data.risk_event || {};
+  const executiveMeta = data.meta || {};
+  const executiveAi = executiveMeta.ai || {};
+  const executiveCloud = executiveMeta.cloud || {};
+  const executiveCollection = executiveMeta.evidence_collection || {};
+  const executiveHealth = executiveCollection.search_health || {};
+  const executiveSources = topPublicEvidence(data, 4);
+  const executiveActions = asArray(executiveAssessment.recommended_actions).map(translateText);
+  const executiveProducts = asArray(executiveAssessment.impacted_products);
+  const executiveCustomers = asArray(executiveAssessment.impacted_customers);
+  const executiveScore = Number(executiveAssessment.risk_score);
+  const executiveSevere = Number.isFinite(executiveScore) && executiveScore >= 70;
+  const executiveHeadline = executiveSevere
+    ? "要注意: 外部シグナルが自社供給影響に接続しています"
+    : "通常監視: 重大な初動判断はまだ不要です";
+  const executiveRunMode = executiveAi.run_mode === "cloud" ? "cloud" : "demo";
+  const executiveSearchLabel = executiveCollection.live_enabled === false
+    ? "検索OFF"
+    : `${executiveHealth.provider || executiveCollection.live_mode || "search"} / 採用 ${executiveHealth.accepted_count ?? executiveCollection.live_count ?? 0}件`;
+
+  container.innerHTML = `
+    <section class="executive-report ${executiveSevere ? "is-alert" : "is-watch"}">
+      <div class="executive-report-head">
+        <span>${esc(executiveAi.model_label || `Azure OpenAI · ${executiveAi.model || "gpt-5.4-mini"}`)} / ${esc(executiveRunMode)}</span>
+        <strong>${esc(executiveHeadline)}</strong>
+        <p>${esc(executiveRisk.summary || `${materialLabel(executiveRisk.material || executiveAssessment.material)}の公開情報と社内供給網を照合しました。`)}</p>
+      </div>
+      <div class="executive-report-kpis">
+        <div><span>リスク</span><strong>${Number.isFinite(executiveScore) ? esc(executiveScore) : "-"}</strong><em>/100</em></div>
+        <div><span>対象材料</span><strong>${esc(materialLabel(executiveRisk.material || executiveAssessment.material))}</strong><em>${esc(regionLabel(executiveRisk.region))}</em></div>
+        <div><span>影響製品</span><strong>${esc(executiveProducts.length)}</strong><em>${esc(executiveProducts.slice(0, 2).join(" / ") || "なし")}</em></div>
+        <div><span>最短在庫</span><strong>${esc(executiveAssessment.inventory_days_min ?? "-")}</strong><em>日</em></div>
+      </div>
+      <div class="executive-report-grid">
+        <article>
+          <h4>何が起きているか</h4>
+          <p>${esc(`${materialLabel(executiveRisk.material || executiveAssessment.material)}について、${riskTypeLabel(executiveRisk.risk_type)}の兆候を検知。対象期間は${affectedPeriodLabel(executiveRisk.affected_period)}です。`)}</p>
+        </article>
+        <article>
+          <h4>自社への意味</h4>
+          <p>${esc(`影響顧客 ${executiveCustomers.length}社、影響製品 ${executiveProducts.length}件。AIは公開根拠と供給網の接続から、初動確認の必要性を判定しています。`)}</p>
+        </article>
+        <article>
+          <h4>次に動くこと</h4>
+          <ul>${(executiveActions.length ? executiveActions.slice(0, 3) : ["該当材料の公開根拠を継続監視", "サプライヤ通知が出た場合のみ初動確認"]).map((item) => `<li>${esc(item)}</li>`).join("")}</ul>
+        </article>
+        <article>
+          <h4>実行証跡</h4>
+          <dl>
+            <div><dt>検索</dt><dd>${esc(executiveSearchLabel)}</dd></div>
+            <div><dt>保存</dt><dd>${esc(cloudStoreLabel(executiveCloud.state_store))}${executiveCloud.persisted ? " 保存済み" : ""}</dd></div>
+            <div><dt>実行ID</dt><dd>${esc(executiveAssessment.alert_id || data.agent_run?.run_id || "latest-dashboard")}</dd></div>
+            <div><dt>実行時刻</dt><dd>${esc(formatDateTime(executiveCloud.served_at || executiveMeta.generated_at))}</dd></div>
+          </dl>
+        </article>
+      </div>
+      <div class="executive-evidence-strip">
+        <span>判断根拠</span>
+        ${
+          executiveSources.length
+            ? executiveSources
+                .map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noreferrer">${esc(truncateText(source.title || source.claim || source.source, 52))}</a>`)
+                .join("")
+            : `<em>公開URL付き根拠を取得中です。検索OFFの場合はAI判断を採用しません。</em>`
+        }
+      </div>
+    </section>
+    <ul id="evidence-list" hidden></ul>`;
+  return;
 
   const assessment = data.assessment || {};
   const risk = data.risk_event || {};
@@ -695,8 +827,11 @@ function renderAlternatives(data) {
 
 function renderLiveEvidenceList(data) {
   const sources = publicEvidenceSources(data).slice(0, 5);
+  const collection = data?.meta?.evidence_collection || {};
+  const health = collection.search_health || {};
+  const healthHtml = renderSearchHealth(collection, health);
   const html = sources.length
-    ? sources
+    ? healthHtml + sources
         .map((source) => `
           <article class="live-evidence-card">
             <div>
@@ -708,12 +843,33 @@ function renderLiveEvidenceList(data) {
             <a href="${esc(source.url)}" target="_blank" rel="noreferrer">根拠URL</a>
           </article>`)
         .join("")
-    : `
+    : healthHtml + `
       <div class="live-evidence-empty">
-        <strong>公開URL付き根拠を取得中</strong>
-        <p>デモでは架空ソースを根拠にしません。Cloud巡回で取得した公開記事だけを表示します。</p>
+        <strong>${collection.live_enabled === false ? "ライブ検索はOFFです" : "公開URL付き根拠を取得中"}</strong>
+        <p>${collection.live_enabled === false ? "この実行ではWeb検索を行っていません。Cloud環境で SUPPLY_SENTINEL_LIVE_EVIDENCE=true にすると、検索結果だけを根拠として保存します。" : "架空ソースは根拠にしません。Hosted Web Search / Google News / GDELT から取得した公開記事だけを表示します。"}</p>
       </div>`;
   setHtml("live-evidence-list", html);
+}
+
+function renderSearchHealth(collection, health) {
+  const provider = health.provider || collection.live_mode || "unknown";
+  const errors = asArray(health.errors || collection.live_errors);
+  const queries = asArray(collection.live_queries || health.queries).slice(0, 3);
+  return `
+    <div class="search-health-card">
+      <div>
+        <span>検索ヘルス</span>
+        <strong>${esc(provider)}</strong>
+      </div>
+      <dl>
+        <div><dt>取得</dt><dd>${esc(health.retrieved_count ?? collection.live_count ?? 0)}</dd></div>
+        <div><dt>採用</dt><dd>${esc(health.accepted_count ?? collection.live_count ?? 0)}</dd></div>
+        <div><dt>除外</dt><dd>${esc(health.rejected_count ?? 0)}</dd></div>
+        <div><dt>エラー</dt><dd>${esc(health.error_count ?? errors.length)}</dd></div>
+      </dl>
+      ${queries.length ? `<p>${queries.map((q) => `<code>${esc(q)}</code>`).join("")}</p>` : ""}
+      ${errors.length ? `<em>${esc(errors[0].source || errors[0].provider || "search")}: ${esc(errors[0].message || "検索エラー")}</em>` : ""}
+    </div>`;
 }
 
 function renderAgentActivityLog(data) {
@@ -1008,6 +1164,7 @@ export function renderPanels(data) {
 
   renderScenario(model);
   renderGeneratedAt(model);
+  renderSignalDecisionFlow(model);
   renderRiskGauge(model);
   renderKpiGrid(model);
   renderSourcingMix(model);

@@ -13,12 +13,12 @@
       <span class="boot-orbit" aria-hidden="true"></span>
       <div>
         <strong>Supply Sentinel 起動中</strong>
-        <p id="boot-loader-text">Cloud API と供給網データを読み込んでいます</p>
+        <p id="boot-loader-text">Cloud API と供給網データを読み込んでいます。</p>
       </div>
-      <ol class="boot-steps" aria-label="読み込み状況">
+      <ol class="boot-steps" aria-label="読み込み状態">
         <li>Cloud API</li>
-        <li>多段供給網</li>
-        <li>AI判断</li>
+        <li>供給網</li>
+        <li>AI分析</li>
       </ol>
     </div>
   </div>
@@ -37,14 +37,12 @@
 
       <nav class="side-nav">
         <button class="nav-item is-active" type="button" data-view="dashboard"><span>概況マップ</span></button>
-        <button class="nav-item" type="button" data-view="analysis"><span>影響分析</span></button>
-        <button class="nav-item" type="button" data-view="response"><span>初動・AI相談</span></button>
-        <button class="nav-item" type="button" data-view="scenario"><span>シナリオ設定</span></button>
+        <button class="nav-item" type="button" data-view="ai"><span>AI分析</span></button>
       </nav>
 
       <div class="sidebar-footer">
         <span class="status-dot" aria-hidden="true"></span>
-        <span>定期監視中</span>
+        <span>定期巡回中</span>
       </div>
     </aside>
 
@@ -52,7 +50,7 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">供給リスク監視</p>
-          <h2 id="view-title">監視ダッシュボード</h2>
+          <h2 id="view-title">概況マップ</h2>
         </div>
         <div class="topbar-meta">
           <div class="material-switch" id="material-switch" aria-label="監視対象"></div>
@@ -64,12 +62,29 @@
       </header>
 
       <section class="view is-active" id="view-dashboard" data-view-panel="dashboard">
-        <div class="dashboard-grid">
-          <section class="panel map-panel">
+        <div class="overview-stack">
+          <div class="dashboard-action-bar" aria-label="詳細情報">
+            <button type="button" class="quick-action-button" data-expand-target="live-evidence-list" data-expand-title="情報源と根拠">情報源と根拠</button>
+            <button type="button" class="quick-action-button" data-expand-target="agent-activity-log" data-expand-title="AIエージェント行動ログ">AI行動ログ</button>
+            <button type="button" class="quick-action-button" data-expand-target="event-log" data-expand-title="監視イベント">監視イベント</button>
+            <button type="button" class="quick-action-button accent" data-expand-target="product-impact-ranking" data-expand-title="製品別影響ランキング">製品別影響</button>
+          </div>
+
+          <section class="panel signal-flow-panel dashboard-hero-panel">
+            <div class="panel-head compact-head">
+              <div>
+                <h3>AI市場監視サマリ</h3>
+                <span class="panel-note">外部Web検索、内部通知、供給網をAIが照合した現在判断</span>
+              </div>
+            </div>
+            <div id="signal-decision-flow"></div>
+          </section>
+
+          <section class="panel map-panel map-panel-wide">
             <div class="panel-head map-head">
               <div>
-                <h3>グローバル供給網</h3>
-                <p>外部リスクを自社の調達・工場・顧客影響に接続</p>
+                <h3>Global供給網の地図</h3>
+                <p>外部リスクを自社の工場・物流ルート・供給元に重ねて表示します。</p>
               </div>
               <div id="map-legend"></div>
             </div>
@@ -87,8 +102,8 @@
             <canvas id="world-map"></canvas>
             <aside class="map-insight" id="map-insight" aria-live="polite">
               <span class="map-insight-kicker">マップ分析</span>
-              <strong>要対応ルートを選択</strong>
-              <p>地図上の供給元・工場・輸送ルートをクリックすると、調達比率、リードタイム、業務影響を確認できます。</p>
+              <strong>供給元・工場・物流ルートを選択</strong>
+              <p>地図上のノードやルートを選ぶと、AIが検知した外部シグナルとの関係を確認できます。</p>
             </aside>
             <div class="demo-console" aria-label="デモ操作">
               <div>
@@ -105,53 +120,11 @@
             <div id="map-tooltip" hidden></div>
           </section>
 
-          <aside class="dashboard-side">
-            <section class="panel evidence-panel">
-              <div class="panel-head compact-head">
-                <h3>情報源と根拠</h3>
-                <span class="panel-note">公開URL付きの根拠のみ表示</span>
-                <button type="button" class="panel-expand" data-expand-target="live-evidence-list" data-expand-title="情報源と根拠" aria-label="情報源と根拠を拡大表示">拡大</button>
-              </div>
-              <div id="live-evidence-list"></div>
-            </section>
-
-            <section class="panel agent-activity-panel">
-              <div class="panel-head compact-head">
-                <h3>AIエージェント行動ログ</h3>
-                <span class="panel-note">検索・検証・照合・起案</span>
-                <button type="button" class="panel-expand" data-expand-target="agent-activity-log" data-expand-title="AIエージェント行動ログ" aria-label="AIエージェント行動ログを拡大表示">拡大</button>
-              </div>
-              <div id="agent-activity-log"></div>
-            </section>
-          </aside>
-
-          <section class="panel mix-panel">
+          <section class="panel network-panel compact-network-panel">
             <div class="panel-head compact-head">
-              <h3>調達構成</h3>
-              <span class="panel-note">影響を受ける供給ルート</span>
-              <button type="button" class="panel-expand" data-expand-target="sourcing-mix" data-expand-title="調達構成" aria-label="調達構成を拡大表示">拡大</button>
-            </div>
-            <div id="sourcing-mix"></div>
-          </section>
-
-          <section class="panel summary-panel">
-            <div class="panel-head compact-head">
-              <h3>監視イベント</h3>
-              <span class="panel-note">データが流れる順序</span>
-              <button type="button" class="panel-expand" data-expand-target="event-log" data-expand-title="監視イベント" aria-label="監視イベントを拡大表示">拡大</button>
-            </div>
-            <div id="event-log"></div>
-          </section>
-        </div>
-      </section>
-
-      <section class="view" id="view-analysis" data-view-panel="analysis">
-        <div class="analysis-grid">
-          <section class="panel network-panel">
-            <div class="panel-head">
               <div>
                 <h3>多段サプライヤネットワーク</h3>
-                <span class="panel-note">自社だけでなく、1次・2次サプライヤまで波及を追跡</span>
+                <span class="panel-note">1次・2次サプライヤから自社工場までの波及経路</span>
               </div>
               <div id="network-legend"></div>
             </div>
@@ -162,75 +135,49 @@
             </div>
           </section>
 
-          <section class="panel timeline-panel evidence-timeline-panel">
-            <div class="panel-head">
-              <h3>変動タイムライン</h3>
-              <span class="panel-note">どの時点の記事で影響判断が変わったか</span>
-            </div>
-            <div id="scenario-timeline"></div>
-          </section>
-
-          <section class="panel orders-panel product-ranking-panel">
-            <div class="panel-head">
-              <h3>製品別影響ランキング</h3>
-              <span class="panel-note">BOM・在庫・受注・根拠記事から優先順位化</span>
-            </div>
+          <div class="modal-source-dock" hidden>
+            <div id="live-evidence-list"></div>
+            <div id="agent-activity-log"></div>
+            <div id="event-log"></div>
             <div id="product-impact-ranking"></div>
-          </section>
-
-          <section class="panel provenance-panel">
-            <div class="panel-head">
-              <h3>情報源と根拠</h3>
-              <span class="panel-note">どの情報がどのノードを裏付けたか</span>
-            </div>
-            <div id="provenance-list"></div>
-          </section>
-
-          <section class="panel inventory-panel">
-            <div class="panel-head">
-              <h3>BOM・在庫照合</h3>
-              <span class="panel-note">残日在庫順</span>
-            </div>
-            <div id="inventory-ranking"></div>
-          </section>
-
-          <section class="panel alternatives-panel">
-            <div class="panel-head">
-              <h3>代替材候補</h3>
-              <span class="panel-note">承認状態と制約</span>
-            </div>
-            <div id="alternatives-table"></div>
-          </section>
+          </div>
         </div>
       </section>
 
-      <section class="view" id="view-response" data-view-panel="response">
-        <div class="response-grid">
-          <section class="panel response-brief-panel">
+      <section class="view" id="view-ai" data-view-panel="ai">
+        <div class="ai-analysis-layout">
+          <div class="ai-action-bar" aria-label="AI分析メニュー">
+            <button type="button" class="quick-action-button" data-expand-target="action-decision-board" data-expand-title="初動対応ボード">初動対応</button>
+            <button type="button" class="quick-action-button" data-expand-target="scenario-timeline" data-expand-title="変動タイムライン">変動タイムライン</button>
+            <button type="button" class="quick-action-button" data-expand-target="provenance-list" data-expand-title="情報源と根拠">根拠一覧</button>
+          </div>
+
+          <section class="panel ai-executive-panel">
             <div class="panel-head">
-              <h3>初動対応ボード</h3>
-              <span class="panel-note">AIが起案し、人が承認・保留・差戻し</span>
-              <button type="button" class="panel-expand" data-expand-target="action-decision-board" data-expand-title="初動対応ボード" aria-label="初動対応ボードを拡大表示">拡大</button>
+              <div>
+                <h3>AI判断レポート</h3>
+                <span class="panel-note">重要な異常だけを経営・現場判断向けに要約</span>
+              </div>
             </div>
-            <div id="action-decision-board"></div>
+            <div id="ai-extraction"></div>
           </section>
 
-          <section class="panel agent-run-panel">
+          <section class="panel agent-run-panel ai-run-panel">
             <div class="panel-head">
               <div>
                 <h3>Agent Run Console</h3>
-                <span class="panel-note">7エージェントの巡回・ツール実行・判断ゲート</span>
+                <span class="panel-note">検索・検証・影響判定・対策起案の実行状態</span>
               </div>
               <button type="button" class="agentrun-play" id="agent-run-play">巡回を再生</button>
             </div>
             <div id="agent-run-console"></div>
           </section>
 
-          <section class="panel agent-panel">
+          <section class="panel agent-chat-panel-live" id="agent-chat-panel">
             <div class="panel-head">
               <div>
-                <h3>Supply Sentinel AI</h3>
-                <span class="panel-note">対策相談・根拠確認</span>
+                <h3>初動AI相談</h3>
+                <span class="panel-note">根拠と供給網を見ながら、次の一手をAIに確認できます。</span>
               </div>
               <span class="agent-status" id="agent-status">AI待機中</span>
             </div>
@@ -238,43 +185,17 @@
               <div class="agent-thread" id="agent-thread" aria-live="polite"></div>
               <div class="agent-suggestions" id="agent-suggestions"></div>
               <form class="agent-form" id="agent-form">
-                <input id="agent-input" type="text" autocomplete="off" placeholder="例: まず誰に何を確認する？">
+                <input id="agent-input" type="text" autocomplete="off" placeholder="例: まず誰に何を確認すべき？">
                 <button type="submit">相談</button>
               </form>
             </div>
           </section>
 
-          <section class="panel ai-panel">
-            <div class="panel-head">
-              <h3>AI判断ログ</h3>
-              <span class="panel-note">原文 → 構造化 → 業務影響</span>
-              <button type="button" class="panel-expand" data-expand-target="ai-extraction" data-expand-title="AI判断ログ" aria-label="AI判断ログを拡大表示">拡大</button>
-            </div>
-            <div id="ai-extraction"></div>
-          </section>
-        </div>
-      </section>
-
-      <section class="view" id="view-scenario" data-view-panel="scenario">
-        <div class="scenario-settings-grid">
-          <section class="panel scenario-settings-panel">
-            <div class="panel-head">
-              <div>
-                <h3>AI巡回シナリオ設定</h3>
-                <span class="panel-note">監視対象・検索範囲・自動起動スパンを調整</span>
-              </div>
-              <button class="primary-action" type="button" id="scenario-run-now">この条件で巡回</button>
-            </div>
-            <div id="scenario-settings"></div>
-          </section>
-
-          <section class="panel evidence-rule-panel">
-            <div class="panel-head">
-              <h3>根拠採用ルール</h3>
-              <span class="panel-note">架空データやURLなし根拠は採用しない</span>
-            </div>
-            <div id="evidence-rules"></div>
-          </section>
+          <div class="modal-source-dock" hidden>
+            <div id="action-decision-board"></div>
+            <div id="scenario-timeline"></div>
+            <div id="provenance-list"></div>
+          </div>
         </div>
       </section>
     </main>

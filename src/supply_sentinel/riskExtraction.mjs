@@ -7,11 +7,11 @@ const RISK_TYPE_PATTERNS = [
 ];
 
 export function extractRiskEvent({ newsEvents, supplierNotices }) {
-  const news = newsEvents[0] ?? {};
+  const candidateNews = selectRelevantNews(newsEvents);
+  const news = candidateNews[0] ?? {};
   const notice = supplierNotices[0] ?? {};
   const combinedText = [
-    news.headline,
-    news.summary,
+    ...candidateNews.flatMap((item) => [item.headline, item.summary]),
     notice.subject,
     notice.body,
   ]
@@ -40,7 +40,16 @@ export function extractRiskEvent({ newsEvents, supplierNotices }) {
       news_id: news.id ?? null,
       supplier_notice_id: notice.id ?? null,
     },
+    evidence_ids: buildEvidenceIds({ newsItems: candidateNews, notice }),
+    claim_ids: buildEvidenceIds({ newsItems: candidateNews, notice }),
   };
+}
+
+function selectRelevantNews(newsEvents = []) {
+  const list = Array.isArray(newsEvents) ? newsEvents.filter(Boolean) : [];
+  const accepted = list.filter((item) => item.status !== "rejected");
+  const live = accepted.filter((item) => item.live);
+  return [...live, ...accepted.filter((item) => !item.live)].slice(0, 5);
 }
 
 function normalizeMaterial(text = "") {
@@ -123,6 +132,13 @@ function buildEvidence({ news, notice, delay, allocationRate }) {
     evidence.push(`Supplier notice subject: ${notice.subject}`);
   }
   return evidence;
+}
+
+function buildEvidenceIds({ newsItems, notice }) {
+  return [
+    ...newsItems.map((item) => item.evidence_id || item.id).filter(Boolean),
+    notice?.id,
+  ].filter(Boolean);
 }
 
 function buildSummary({ material, delay, allocationRate }) {

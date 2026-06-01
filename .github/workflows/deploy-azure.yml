@@ -57,6 +57,7 @@ jobs:
           node --check src/supply_sentinel/stateStore.mjs
           node --check src/supply_sentinel/aiClient.mjs
           node --check src/supply_sentinel/liveEvidence.mjs
+          node --check src/supply_sentinel/evidenceSchema.mjs
           node --check src/supply_sentinel/evidenceTimeline.mjs
           node --check src/supply_sentinel/researchAgent.mjs
           node --check src/supply_sentinel/ingestion.mjs
@@ -110,7 +111,8 @@ jobs:
                 azureOpenAiApiVersion="${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}" \
                 agentAdviceRateLimitPerMinute="${{ vars.AGENT_ADVICE_RATE_LIMIT_PER_MINUTE || '20' }}" \
                 agentAdviceAllowOrigin="${{ vars.AGENT_ADVICE_ALLOW_ORIGIN || '*' }}" \
-                liveEvidenceEnabled="${{ vars.SUPPLY_SENTINEL_LIVE_EVIDENCE || 'true' }}"
+                liveEvidenceEnabled="${{ vars.SUPPLY_SENTINEL_LIVE_EVIDENCE || 'true' }}" \
+                searchProvider="${{ vars.SUPPLY_SENTINEL_SEARCH_PROVIDER || 'auto' }}"
             acr_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrName.value -o tsv)"
             acr_login_server="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrLoginServer.value -o tsv)"
             container_app_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.containerAppName.value -o tsv)"
@@ -163,7 +165,8 @@ jobs:
                 azureOpenAiApiVersion="${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}" \
                 agentAdviceRateLimitPerMinute="${{ vars.AGENT_ADVICE_RATE_LIMIT_PER_MINUTE || '20' }}" \
                 agentAdviceAllowOrigin="${{ vars.AGENT_ADVICE_ALLOW_ORIGIN || '*' }}" \
-                liveEvidenceEnabled="${{ vars.SUPPLY_SENTINEL_LIVE_EVIDENCE || 'true' }}"
+                liveEvidenceEnabled="${{ vars.SUPPLY_SENTINEL_LIVE_EVIDENCE || 'true' }}" \
+                searchProvider="${{ vars.SUPPLY_SENTINEL_SEARCH_PROVIDER || 'auto' }}"
             api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"
             echo "api_base=$api_base" >> "$GITHUB_OUTPUT"
             az containerapp job start \

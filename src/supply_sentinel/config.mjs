@@ -25,6 +25,15 @@ export function azureOpenAiConfig() {
   };
 }
 
+export function searchProvider(options = {}) {
+  const value = options.searchProvider || process.env.SUPPLY_SENTINEL_SEARCH_PROVIDER || "auto";
+  const provider = String(value).toLowerCase();
+  if (["azure_web_search", "openai_web_search", "google_news", "gdelt", "auto"].includes(provider)) {
+    return provider;
+  }
+  return "auto";
+}
+
 // True only when enough Azure OpenAI settings exist to attempt a real call.
 export function azureOpenAiConfigured() {
   const config = azureOpenAiConfig();

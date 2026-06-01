@@ -26,6 +26,7 @@ export function assessImpact(riskEvent, data) {
     impactedOrders,
     approvedAlternatives,
   });
+  const factorEvidence = scoringEvidence({ riskEvent, inventoryAssessments, impactedOrders, approvedAlternatives });
 
   return {
     alert_id: buildAlertId(riskEvent),
@@ -36,6 +37,8 @@ export function assessImpact(riskEvent, data) {
     source_severity: riskEvent.severity,
     confidence: riskEvent.confidence,
     scoring_factors: scoring.factors,
+    scoring_supporting_evidence: factorEvidence,
+    score_evidence_complete: Object.values(factorEvidence).every((ids) => Array.isArray(ids) && ids.length > 0),
     affected_period: riskEvent.affected_period,
     delay_days_min: riskEvent.delay_days_min,
     delay_days_max: riskEvent.delay_days_max,
@@ -62,6 +65,22 @@ export function assessImpact(riskEvent, data) {
       "Major production plan changes",
     ],
     generated_at: new Date().toISOString(),
+  };
+}
+
+function scoringEvidence({ riskEvent, inventoryAssessments, impactedOrders, approvedAlternatives }) {
+  const externalIds = Array.isArray(riskEvent.evidence_ids) ? riskEvent.evidence_ids : [];
+  const internalIds = [
+    ...inventoryAssessments.map((row) => `inventory:${row.material}:${row.plant}`),
+    ...impactedOrders.map((order) => `order:${order.order_id}`),
+    ...approvedAlternatives.map((alternative) => `alternative:${alternative.material}:${alternative.alternative_material}`),
+  ];
+  return {
+    external_event_severity: externalIds,
+    supplier_notice_confidence: externalIds.filter((id) => String(id).startsWith("notice") || String(id).includes("supplier")),
+    inventory_days_risk: internalIds.filter((id) => id.startsWith("inventory:")),
+    customer_order_priority: internalIds.filter((id) => id.startsWith("order:")),
+    alternative_availability_risk: internalIds.filter((id) => id.startsWith("alternative:")),
   };
 }
 
