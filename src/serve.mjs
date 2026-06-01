@@ -63,7 +63,7 @@ function sendJson(res, code, body) {
   res.writeHead(code, {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": process.env.AGENT_ADVICE_ALLOW_ORIGIN || "*",
   });
   res.end(JSON.stringify(body));
 }
@@ -109,7 +109,7 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/api/agent-advice") {
     if (req.method === "OPTIONS") {
       res.writeHead(204, {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": process.env.AGENT_ADVICE_ALLOW_ORIGIN || "*",
         "Access-Control-Allow-Methods": "POST,OPTIONS",
         "Access-Control-Allow-Headers": "content-type",
       });
