@@ -66,8 +66,8 @@ export async function collectLiveEvidence({
     }
   }
 
-  const dedupedNewsEvents = dedupeByUrl(newsEvents).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 12));
-  const dedupedProvenance = dedupeByUrl(provenance).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 12));
+  const dedupedNewsEvents = dedupeByUrl(newsEvents).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 18));
+  const dedupedProvenance = dedupeByUrl(provenance).slice(0, sourceLimit("SUPPLY_SENTINEL_LIVE_EVIDENCE_MAX_ITEMS", 18));
 
   return {
     enabled: true,

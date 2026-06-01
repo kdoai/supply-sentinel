@@ -1523,6 +1523,364 @@ body.modal-open {
   text-decoration: none;
 }
 
+/* 2026 hackathon demo shell: reduce the app to an overview map and an AI analysis sheet. */
+.overview-stack,
+.ai-analysis-layout {
+  display: grid;
+  gap: 16px;
+}
+
+.dashboard-action-bar,
+.ai-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  padding: 6px 0 2px;
+  background: linear-gradient(180deg, rgba(246, 248, 251, 0.98), rgba(246, 248, 251, 0.72));
+  backdrop-filter: blur(8px);
+}
+
+.quick-action-button {
+  appearance: none;
+  border: 1px solid rgba(36, 65, 105, 0.16);
+  background: #fff;
+  color: #20304a;
+  border-radius: 999px;
+  padding: 8px 13px;
+  font: 700 12px/1 system-ui, sans-serif;
+  box-shadow: 0 7px 18px rgba(36, 65, 105, 0.08);
+  cursor: pointer;
+}
+
+.quick-action-button:hover,
+.quick-action-button:focus-visible {
+  border-color: rgba(20, 71, 138, 0.35);
+  color: #0b4a8b;
+  transform: translateY(-1px);
+}
+
+.quick-action-button.accent {
+  background: #123d72;
+  color: #fff;
+  border-color: #123d72;
+}
+
+.dashboard-hero-panel {
+  overflow: hidden;
+}
+
+.signal-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.signal-flow-card {
+  position: relative;
+  min-height: 152px;
+  padding: 14px;
+  border: 1px solid rgba(41, 68, 105, 0.12);
+  border-radius: 8px;
+  background: #f9fbfd;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signal-flow-card::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -13px;
+  width: 14px;
+  height: 1px;
+  background: rgba(18, 61, 114, 0.35);
+}
+
+.signal-flow-card:last-child::after {
+  display: none;
+}
+
+.signal-flow-card span {
+  color: #5b6f8c;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.signal-flow-card strong {
+  color: #13243a;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.signal-flow-card p {
+  color: #495b73;
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.signal-flow-card a,
+.signal-flow-card em {
+  margin-top: auto;
+  color: #0b63b6;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.signal-flow-next {
+  background: #f2f8f5;
+  border-color: rgba(24, 121, 78, 0.2);
+}
+
+.map-panel-wide {
+  min-height: 600px;
+}
+
+.map-panel-wide #world-map {
+  min-height: 520px;
+}
+
+.compact-network-panel .network-body {
+  min-height: 330px;
+}
+
+.compact-network-panel .network-canvas {
+  min-height: 280px;
+}
+
+.compact-network-story {
+  padding: 10px 12px;
+}
+
+.compact-network-story p {
+  margin-bottom: 0;
+}
+
+.network-selection:empty {
+  display: none;
+}
+
+.modal-source-dock {
+  display: none;
+}
+
+.ai-analysis-layout {
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  align-items: start;
+}
+
+.ai-action-bar {
+  grid-column: 1 / -1;
+}
+
+.ai-executive-panel {
+  min-height: 520px;
+}
+
+.ai-run-panel {
+  min-height: 520px;
+}
+
+.executive-report {
+  display: grid;
+  gap: 16px;
+}
+
+.executive-report-head {
+  padding: 18px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f7fbff, #eef5fb);
+  border: 1px solid rgba(36, 65, 105, 0.12);
+}
+
+.executive-report.is-alert .executive-report-head {
+  background: linear-gradient(135deg, #fff7f4, #f8eef0);
+  border-color: rgba(201, 54, 47, 0.2);
+}
+
+.executive-report-head span {
+  display: block;
+  color: #667991;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.executive-report-head strong {
+  display: block;
+  color: #12233a;
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.executive-report-head p {
+  max-width: 780px;
+  margin: 10px 0 0;
+  color: #465a72;
+  line-height: 1.65;
+}
+
+.executive-report-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.executive-report-kpis div,
+.executive-report-grid article {
+  border: 1px solid rgba(36, 65, 105, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.executive-report-kpis span,
+.executive-report-kpis em {
+  display: block;
+  color: #667991;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.executive-report-kpis strong {
+  display: block;
+  color: #123d72;
+  font-size: 24px;
+  margin: 4px 0;
+}
+
+.executive-report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.executive-report-grid h4 {
+  margin: 0 0 8px;
+  color: #17263c;
+  font-size: 14px;
+}
+
+.executive-report-grid p,
+.executive-report-grid li,
+.executive-report-grid dd {
+  color: #495b73;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.executive-report-grid ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.executive-report-grid dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.executive-report-grid dl div {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 8px;
+}
+
+.executive-report-grid dt {
+  color: #667991;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.executive-evidence-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f6f8fb;
+}
+
+.executive-evidence-strip span {
+  color: #667991;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.executive-evidence-strip a {
+  border: 1px solid rgba(11, 99, 182, 0.2);
+  border-radius: 999px;
+  background: #fff;
+  color: #0b63b6;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.agent-chat-popup {
+  display: grid;
+  gap: 12px;
+}
+
+.panel-modal-card #agent-chat-panel {
+  min-height: min(720px, 76vh);
+}
+
+.panel-modal-card #agent-chat-panel .agent-thread {
+  min-height: 430px;
+}
+
+@media (max-width: 1100px) {
+  .signal-flow-grid,
+  .executive-report-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .signal-flow-card:nth-child(2)::after {
+    display: none;
+  }
+
+  .ai-analysis-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard-action-bar,
+  .ai-action-bar {
+    position: static;
+  }
+
+  .signal-flow-grid,
+  .executive-report-kpis,
+  .executive-report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .signal-flow-card::after {
+    display: none;
+  }
+
+  .map-panel-wide {
+    min-height: 500px;
+  }
+
+  .map-panel-wide #world-map {
+    min-height: 420px;
+  }
+}
+
 .timeline-score-move {
   display: inline-flex;
   align-items: center;
@@ -3675,4 +4033,56 @@ li {
     overflow-wrap: anywhere;
     word-break: normal;
   }
+}
+
+/* Final two-tab layout overrides. Keep these at the end so legacy grids do not re-expand. */
+#view-dashboard .overview-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.view.is-active {
+  height: calc(100vh - 72px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#view-dashboard .dashboard-action-bar,
+#view-dashboard .dashboard-hero-panel,
+#view-dashboard .map-panel,
+#view-dashboard .network-panel {
+  grid-area: auto;
+  width: 100%;
+}
+
+#view-dashboard .map-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.quick-action-button {
+  white-space: nowrap;
+}
+
+#view-ai .ai-analysis-layout {
+  width: 100%;
+  grid-template-columns: 1fr;
+}
+
+#view-ai .ai-action-bar,
+#view-ai .ai-executive-panel,
+#view-ai .agent-run-panel {
+  grid-area: auto;
+  width: 100%;
+}
+
+.compact-network-panel.network-panel {
+  min-height: 0;
+}
+
+.compact-network-panel .network-canvas {
+  min-height: 280px;
+}
+
+.app-shell.sidebar-collapsed .nav-item[data-view="ai"]::before {
+  content: "A";
 }

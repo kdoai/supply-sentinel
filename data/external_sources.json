@@ -76,5 +76,57 @@
     "severity_hint": "medium",
     "max_items": 3,
     "timeout_ms": 5000
+  },
+  {
+    "id": "google-news-naphtha-price-asia",
+    "enabled": true,
+    "type": "rss",
+    "label": "Google News RSS broad scan",
+    "material": "naphtha",
+    "region": "Asia",
+    "url": "https://news.google.com/rss/search?q=naphtha%20price%20Asia%20petrochemical%20feedstock%20refinery&hl=en-US&gl=US&ceid=US:en",
+    "confidence": "medium",
+    "severity_hint": "medium",
+    "max_items": 3,
+    "timeout_ms": 5000
+  },
+  {
+    "id": "gdelt-refinery-logistics-asia",
+    "enabled": true,
+    "type": "gdelt_doc",
+    "label": "GDELT refinery and logistics scan",
+    "material": "naphtha",
+    "region": "Asia",
+    "query": "(refinery OR petrochemical OR naphtha) (outage OR maintenance OR shortage OR port OR shipment OR logistics) Asia",
+    "confidence": "medium",
+    "severity_hint": "medium",
+    "max_items": 3,
+    "timeout_ms": 5000
+  },
+  {
+    "id": "google-news-resin-film-supply",
+    "enabled": true,
+    "type": "rss",
+    "label": "Google News resin and film scan",
+    "material": "packaging-film",
+    "region": "East Asia",
+    "url": "https://news.google.com/rss/search?q=polyethylene%20polypropylene%20packaging%20film%20supply%20shortage%20Asia&hl=en-US&gl=US&ceid=US:en",
+    "confidence": "medium",
+    "severity_hint": "medium",
+    "max_items": 3,
+    "timeout_ms": 5000
+  },
+  {
+    "id": "gdelt-semiconductor-materials",
+    "enabled": true,
+    "type": "gdelt_doc",
+    "label": "GDELT semiconductor materials scan",
+    "material": "semiconductor-adhesive",
+    "region": "Global",
+    "query": "(semiconductor materials OR electronic chemicals OR adhesive OR epoxy) (shortage OR allocation OR disruption OR supply chain)",
+    "confidence": "medium",
+    "severity_hint": "medium",
+    "max_items": 3,
+    "timeout_ms": 5000
   }
 ]

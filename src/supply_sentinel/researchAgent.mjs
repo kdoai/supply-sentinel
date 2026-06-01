@@ -24,8 +24,8 @@ import { parseJsonObject } from "./jsonOutput.mjs";
 
 // Tight budgets keep the scheduled run cheap (a few searches, one small model).
 const MAX_TOOL_ROUNDS = 3;
-const MAX_SEARCHES = 6;
-const MAX_RESULTS_PER_SEARCH = 4;
+const MAX_SEARCHES = 9;
+const MAX_RESULTS_PER_SEARCH = 5;
 const RESEARCH_TOKEN_BUDGET = 1200;
 const HOSTED_WEB_SEARCH_TOKEN_BUDGET = 1200;
 

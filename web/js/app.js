@@ -8,9 +8,7 @@ import { renderDecisionQueue } from "./decisions.js";
 
 const VIEW_TITLES = {
   dashboard: "概況マップ",
-  analysis: "影響分析",
-  response: "初動・AI相談",
-  scenario: "シナリオ設定",
+  ai: "AI分析",
 };
 
 const MATERIAL_PROFILES = {
@@ -692,7 +690,7 @@ function clearLinkHighlight() {
 }
 
 // Connect a map selection to the business panels: highlight the matching
-// 調達構成 row(s) and, for an affected route, the KPI cards it feeds into.
+// Route row(s) and, for an affected route, the KPI cards it feeds into.
 function applyLinkHighlight(detail) {
   clearLinkHighlight();
   if (!detail) return;
@@ -1436,6 +1434,8 @@ function renderNetworkSelection(detail) {
   const el = document.getElementById("network-selection");
   if (!el) return;
   if (!detail || !detail.node) {
+    el.innerHTML = "";
+    return;
     el.innerHTML = `
       <span class="network-selection-kicker">選択すると波及を追跡</span>
       <strong>上流ノードをクリックしてください</strong>
@@ -1456,6 +1456,16 @@ function renderNetworkSelection(detail) {
 function renderNetworkStory(model) {
   const el = document.getElementById("network-story");
   if (!el) return;
+  const compactMonth = model.month || {};
+  const compactScenario = activeScenario || {};
+  const compactMaterial = materialLabel(compactScenario.material || model.assessment?.material || activeMaterial);
+  el.innerHTML = `
+    <div class="network-story-main compact-network-story">
+      <span>${esc(compactMonth.label || "現在")} / ${esc(compactMaterial)}</span>
+      <strong>${esc(compactScenario.headline || model.risk_event?.summary || "供給網の波及経路を監視中")}</strong>
+      <p>${esc(compactScenario.layperson_story || "外部シグナルを多段サプライヤ、物流、自社工場のつながりに重ねて確認します。")}</p>
+    </div>`;
+  return;
   const metrics = model.propagation?.metrics || {};
   const month = model.month || {};
   const scenario = activeScenario || {};
@@ -1638,7 +1648,7 @@ function startDemo() {
   demoPlaying = true;
   demoStep = 0;
   renderCurrentDashboard();
-  setActiveView("response");
+  setActiveView("ai");
   ensureAgentConsole()?.play({ stepMs: 760 });
   demoTimer = setInterval(() => {
     if (demoStep >= (demoConfig.stages || []).length - 1) {
@@ -1720,6 +1730,9 @@ function bindPanelModal() {
 }
 
 function setActiveView(viewName) {
+  if (viewName === "analysis" || viewName === "response" || viewName === "scenario") {
+    viewName = "ai";
+  }
   if (!VIEW_TITLES[viewName]) {
     viewName = "dashboard";
   }
