@@ -4039,6 +4039,10 @@ li {
 #view-dashboard .overview-stack {
   display: grid;
   grid-template-columns: 1fr;
+  grid-template-rows: auto 166px minmax(220px, 1fr) 285px;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
 }
 
 .view.is-active {
@@ -4059,13 +4063,110 @@ li {
   grid-column: 1 / -1;
 }
 
+#view-dashboard.view.is-active {
+  overflow: hidden;
+}
+
+#view-dashboard .dashboard-action-bar {
+  position: static;
+  padding: 0;
+}
+
+#view-dashboard .dashboard-hero-panel {
+  min-height: 0;
+}
+
+#view-dashboard .dashboard-hero-panel .panel-head {
+  padding: 10px 14px;
+}
+
+#view-dashboard .dashboard-hero-panel #signal-decision-flow {
+  min-height: 0;
+}
+
+#view-dashboard .signal-flow-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+#view-dashboard .signal-flow-card {
+  min-height: 82px;
+  padding: 8px 12px;
+  gap: 5px;
+}
+
+#view-dashboard .signal-flow-card strong {
+  font-size: 12px;
+}
+
+#view-dashboard .signal-flow-card p {
+  font-size: 10.5px;
+  line-height: 1.28;
+}
+
+#view-dashboard .map-panel-wide {
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+#view-dashboard .map-panel-wide .panel-head {
+  padding: 10px 16px;
+}
+
+#view-dashboard .map-panel-wide .map-toolbar {
+  top: 72px;
+}
+
+#view-dashboard .map-panel-wide #world-map {
+  min-height: 0;
+  height: 100%;
+}
+
+#view-dashboard .map-insight {
+  right: 14px;
+  bottom: 86px;
+  width: min(330px, 34vw);
+}
+
+#view-dashboard .demo-console {
+  left: 16px;
+  right: auto;
+  bottom: 14px;
+  width: min(430px, 45vw);
+}
+
+#view-dashboard .compact-network-panel .panel-head {
+  padding: 9px 14px;
+}
+
+#view-dashboard .compact-network-panel .network-body {
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+#view-dashboard .compact-network-panel .network-story {
+  display: none;
+}
+
+#view-dashboard .compact-network-panel .network-canvas {
+  min-height: 0;
+}
+
 .quick-action-button {
   white-space: nowrap;
 }
 
 #view-ai .ai-analysis-layout {
   width: 100%;
-  grid-template-columns: 1fr;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) 230px;
+  grid-template-areas:
+    "actions actions"
+    "report chat"
+    "run chat";
+  gap: 14px;
 }
 
 #view-ai .ai-action-bar,
@@ -4073,6 +4174,70 @@ li {
 #view-ai .agent-run-panel {
   grid-area: auto;
   width: 100%;
+}
+
+#view-ai .ai-action-bar {
+  grid-area: actions;
+  position: static;
+  padding: 0;
+}
+
+#view-ai .ai-executive-panel {
+  grid-area: report;
+  min-height: 0;
+}
+
+#view-ai .agent-run-panel {
+  grid-area: run;
+  min-height: 0;
+}
+
+#view-ai .agent-chat-panel-live {
+  grid-area: chat;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+#view-ai .agent-chat-panel-live .agent-chat {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  min-height: 0;
+}
+
+#view-ai .agent-chat-panel-live .agent-thread {
+  min-height: 0;
+  height: auto;
+}
+
+#view-ai .executive-report {
+  gap: 10px;
+}
+
+#view-ai .executive-report-head {
+  padding: 14px 16px;
+}
+
+#view-ai .executive-report-head strong {
+  font-size: clamp(22px, 2.4vw, 30px);
+}
+
+#view-ai .executive-report-head p {
+  margin-top: 6px;
+}
+
+#view-ai .executive-report-kpis,
+#view-ai .executive-report-grid {
+  gap: 8px;
+}
+
+#view-ai .executive-report-kpis div,
+#view-ai .executive-report-grid article {
+  padding: 10px 12px;
+}
+
+#view-ai .executive-report-kpis strong {
+  font-size: 21px;
 }
 
 .compact-network-panel.network-panel {
@@ -4085,4 +4250,30 @@ li {
 
 .app-shell.sidebar-collapsed .nav-item[data-view="ai"]::before {
   content: "A";
+}
+
+@media (max-width: 1100px) {
+  #view-dashboard.view.is-active {
+    overflow-y: auto;
+  }
+
+  #view-dashboard .overview-stack {
+    height: auto;
+    grid-template-rows: auto;
+  }
+
+  #view-ai .ai-analysis-layout {
+    height: auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "actions"
+      "chat"
+      "report"
+      "run";
+  }
+
+  #view-ai .agent-chat-panel-live .agent-thread {
+    min-height: 360px;
+  }
 }

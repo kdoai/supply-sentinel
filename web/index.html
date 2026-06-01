@@ -147,7 +147,6 @@
       <section class="view" id="view-ai" data-view-panel="ai">
         <div class="ai-analysis-layout">
           <div class="ai-action-bar" aria-label="AI分析メニュー">
-            <button type="button" class="quick-action-button accent" data-expand-target="agent-chat-panel" data-expand-title="初動AI相談">初動AI相談</button>
             <button type="button" class="quick-action-button" data-expand-target="action-decision-board" data-expand-title="初動対応ボード">初動対応</button>
             <button type="button" class="quick-action-button" data-expand-target="scenario-timeline" data-expand-title="変動タイムライン">変動タイムライン</button>
             <button type="button" class="quick-action-button" data-expand-target="provenance-list" data-expand-title="情報源と根拠">根拠一覧</button>
@@ -174,27 +173,28 @@
             <div id="agent-run-console"></div>
           </section>
 
+          <section class="panel agent-chat-panel-live" id="agent-chat-panel">
+            <div class="panel-head">
+              <div>
+                <h3>初動AI相談</h3>
+                <span class="panel-note">根拠と供給網を見ながら、次の一手をAIに確認できます。</span>
+              </div>
+              <span class="agent-status" id="agent-status">AI待機中</span>
+            </div>
+            <div class="agent-chat">
+              <div class="agent-thread" id="agent-thread" aria-live="polite"></div>
+              <div class="agent-suggestions" id="agent-suggestions"></div>
+              <form class="agent-form" id="agent-form">
+                <input id="agent-input" type="text" autocomplete="off" placeholder="例: まず誰に何を確認すべき？">
+                <button type="submit">相談</button>
+              </form>
+            </div>
+          </section>
+
           <div class="modal-source-dock" hidden>
             <div id="action-decision-board"></div>
             <div id="scenario-timeline"></div>
             <div id="provenance-list"></div>
-            <section class="agent-chat-popup" id="agent-chat-panel">
-              <div class="panel-head">
-                <div>
-                  <h3>Supply Sentinel AI</h3>
-                  <span class="panel-note">根拠を確認しながら初動対応を相談できます。</span>
-                </div>
-                <span class="agent-status" id="agent-status">AI待機中</span>
-              </div>
-              <div class="agent-chat">
-                <div class="agent-thread" id="agent-thread" aria-live="polite"></div>
-                <div class="agent-suggestions" id="agent-suggestions"></div>
-                <form class="agent-form" id="agent-form">
-                  <input id="agent-input" type="text" autocomplete="off" placeholder="例: まず誰に何を確認すべき？">
-                  <button type="submit">相談</button>
-                </form>
-              </div>
-            </section>
           </div>
         </div>
       </section>
