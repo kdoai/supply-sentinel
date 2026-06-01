@@ -68,25 +68,6 @@
           <div id="guided-workflow-dashboard"></div>
         </section>
 
-        <section class="panel decision-home-panel">
-          <div class="panel-head compact-head">
-            <div>
-              <h3>今日の判断キュー</h3>
-              <span class="panel-note">サインイン後に見るべき判断、考えるべき論点、次アクション、得られる成果</span>
-            </div>
-          </div>
-          <div id="decision-home"></div>
-        </section>
-
-        <section class="panel signal-flow-panel">
-          <div class="panel-head compact-head">
-            <div>
-              <h3>市場予兆から製品判断まで</h3>
-              <span class="panel-note">AI市場監視で検知した予兆を、供給減少シナリオとSCM判断へ接続</span>
-            </div>
-          </div>
-          <div id="signal-decision-flow"></div>
-        </section>
         <div class="dashboard-grid">
           <section class="panel map-panel">
             <div class="panel-head map-head">
@@ -146,12 +127,27 @@
             </section>
           </aside>
 
-          <section class="panel mix-panel">
+          <section class="panel decision-lane-panel">
             <div class="panel-head compact-head">
-              <h3>調達構成</h3>
-              <span class="panel-note">影響を受ける供給ルート</span>
+              <h3>判断キューと製品判断フロー</h3>
+              <span class="panel-note">市場予兆から、シナリオ・業務影響・承認判断までを一箇所で確認</span>
             </div>
-            <div id="sourcing-mix"></div>
+            <div class="decision-lane-body">
+              <section class="decision-lane-block">
+                <div class="decision-lane-block-head">
+                  <strong>今日の判断キュー</strong>
+                  <span>最初に見るべき判断と次アクション</span>
+                </div>
+                <div id="decision-home"></div>
+              </section>
+              <section class="decision-lane-block">
+                <div class="decision-lane-block-head">
+                  <strong>市場予兆から製品判断まで</strong>
+                  <span>AI市場監視で検知した予兆をSCM判断へ接続</span>
+                </div>
+                <div id="signal-decision-flow"></div>
+              </section>
+            </div>
           </section>
 
           <section class="panel summary-panel">

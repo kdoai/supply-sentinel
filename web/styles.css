@@ -509,15 +509,15 @@ button {
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
-  grid-template-rows: minmax(0, 1fr) 230px;
+  grid-template-rows: minmax(320px, 1fr) minmax(340px, auto);
   grid-template-areas:
     "map side"
-    "mix summary";
+    "decision summary";
   gap: 16px;
   width: 100%;
   max-width: 100%;
-  height: calc(100vh - 520px);
-  min-height: 660px;
+  height: calc(100vh - 300px);
+  min-height: 700px;
 }
 
 .app-shell.sidebar-collapsed .dashboard-grid {
@@ -714,6 +714,101 @@ button {
 
 .decision-home-panel {
   margin-bottom: 16px;
+}
+
+.decision-lane-panel {
+  grid-area: decision;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+}
+
+.decision-lane-body {
+  display: grid;
+  grid-template-columns: minmax(330px, 0.95fr) minmax(330px, 1.05fr);
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.decision-lane-block {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.decision-lane-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+}
+
+.decision-lane-block-head strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.decision-lane-block-head span {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+}
+
+.decision-lane-panel #decision-home,
+.decision-lane-panel #signal-decision-flow {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+}
+
+.decision-lane-panel .decision-home-layout {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.decision-lane-panel .decision-home-hero {
+  min-height: auto;
+  padding: 12px;
+}
+
+.decision-lane-panel .decision-home-hero h4 {
+  font-size: 17px;
+}
+
+.decision-lane-panel .decision-home-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.decision-lane-panel .decision-home-summary div {
+  min-height: 80px;
+}
+
+.decision-lane-panel .decision-home-summary strong {
+  font-size: 15px;
+}
+
+.decision-lane-panel .decision-home-journey {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.decision-lane-panel .decision-home-journey article {
+  min-height: 96px;
+}
+
+.decision-lane-panel .signal-flow-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.decision-lane-panel .signal-flow-card {
+  min-height: 132px;
 }
 
 #decision-home {
@@ -1164,6 +1259,7 @@ button {
 .kpi-panel,
 .evidence-panel,
 .agent-activity-panel,
+.decision-lane-panel,
 .mix-panel,
 .summary-panel {
   display: grid;
@@ -1274,10 +1370,6 @@ button {
   margin-top: 5px;
   color: var(--muted);
   font-size: 10px;
-}
-
-.mix-panel {
-  grid-area: mix;
 }
 
 .summary-panel {
@@ -3664,7 +3756,7 @@ li {
     grid-template-areas:
       "map"
       "side"
-      "mix"
+      "decision"
       "summary";
   }
 
@@ -3986,6 +4078,7 @@ li {
   .product-ranking-list,
   .evidence-timeline-summary,
   .signal-flow-grid,
+  .decision-lane-body,
   .workflow-shell,
   .workflow-steps,
   .decision-home-layout,
@@ -3996,6 +4089,15 @@ li {
   .policy-threshold-grid,
   .policy-weight-list {
     grid-template-columns: 1fr;
+  }
+
+  .decision-lane-block-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .decision-lane-block-head span {
+    text-align: left;
   }
 
   .workflow-focus dl div {

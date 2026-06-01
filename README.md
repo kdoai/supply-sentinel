@@ -52,9 +52,9 @@ data on startup and serves a dark "mission-control" dashboard:
   route, with the portion now at risk highlighted.
 - **Early warning to scenario flow** — detected signal, AI-generated scenario,
   business impact, and recommended actions in one top-level chain.
-- **Decision queue home** — after sign-in, the first panel shows the urgent
-  decision, deadline, products to protect or reduce, approval count, and next
-  actions.
+- **Decision lane on the Early Warning screen** — after sign-in, the old
+  procurement-composition area is replaced by the urgent decision queue and the
+  detected signal → scenario → business impact → recommended action chain.
 - **Guided decision workflow** — each screen tells the SCM user what to look at,
   how to think, what action to take next, and what insight they should gain:
   signal confirmation → scenario adoption → product impact review → approval →
