@@ -214,6 +214,8 @@ function esc(value) {
     .replaceAll("'", "&#039;");
 }
 
+const escAttr = esc;
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -371,6 +373,14 @@ function buildAdviceContext(model) {
   const assessment = model?.assessment || {};
   const metrics = model?.propagation?.metrics || {};
   const kpis = model?.route_intel?.kpis || {};
+  const provenance = asArray(model?.provenance).slice(0, 8).map((source) => ({
+    kind: source.kind || "source",
+    source: source.source || source.label || "",
+    claim: source.claim || "",
+    url: source.url || "",
+    published_at: source.published_at || "",
+    origin: source.origin || "",
+  }));
   return {
     material: assessment.material || activeMaterial,
     risk_score: metrics.risk_score ?? assessment.risk_score,
@@ -382,6 +392,7 @@ function buildAdviceContext(model) {
     recommended_actions: asArray(assessment.recommended_actions).slice(0, 6),
     approval_required: asArray(assessment.approval_required).slice(0, 6),
     evidence: asArray(assessment.evidence).slice(0, 5),
+    evidence_sources: provenance,
     run_id: model?.agent_run?.run_id || null,
   };
 }
@@ -1437,7 +1448,7 @@ function renderProvenance(model) {
             </div>
             <p>${esc(source.claim)}</p>
             <footer>
-              <em>${esc(source.source || "デモ情報源")}</em>
+              <em>${source.url ? `<a href="${escAttr(source.url)}" target="_blank" rel="noreferrer">${esc(source.source || "記事を開く")}</a>` : esc(source.source || "デモ情報源")}</em>
               <b>確度 ${esc(source.confidence || "-")}</b>
             </footer>
           </article>`)

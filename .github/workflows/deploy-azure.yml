@@ -104,7 +104,8 @@ jobs:
                 azureOpenAiSubagentDeployment="${{ vars.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || 'gpt-5.4-mini' }}" \
                 azureOpenAiApiVersion="${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}" \
                 agentAdviceRateLimitPerMinute="${{ vars.AGENT_ADVICE_RATE_LIMIT_PER_MINUTE || '20' }}" \
-                agentAdviceAllowOrigin="${{ vars.AGENT_ADVICE_ALLOW_ORIGIN || '*' }}"
+                agentAdviceAllowOrigin="${{ vars.AGENT_ADVICE_ALLOW_ORIGIN || '*' }}" \
+                liveEvidenceEnabled="${{ vars.SUPPLY_SENTINEL_LIVE_EVIDENCE || 'true' }}"
             acr_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrName.value -o tsv)"
             acr_login_server="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrLoginServer.value -o tsv)"
             container_app_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.containerAppName.value -o tsv)"
@@ -156,7 +157,8 @@ jobs:
                 azureOpenAiSubagentDeployment="${{ vars.AZURE_OPENAI_SUBAGENT_DEPLOYMENT || 'gpt-5.4-mini' }}" \
                 azureOpenAiApiVersion="${{ vars.AZURE_OPENAI_API_VERSION || '2025-04-01-preview' }}" \
                 agentAdviceRateLimitPerMinute="${{ vars.AGENT_ADVICE_RATE_LIMIT_PER_MINUTE || '20' }}" \
-                agentAdviceAllowOrigin="${{ vars.AGENT_ADVICE_ALLOW_ORIGIN || '*' }}"
+                agentAdviceAllowOrigin="${{ vars.AGENT_ADVICE_ALLOW_ORIGIN || '*' }}" \
+                liveEvidenceEnabled="${{ vars.SUPPLY_SENTINEL_LIVE_EVIDENCE || 'true' }}"
             api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"
             echo "api_base=$api_base" >> "$GITHUB_OUTPUT"
             az containerapp job start \

@@ -482,10 +482,11 @@ function renderAiExtraction(data) {
       }
       return `
         <div class="ai-extract-card">
-          <span class="ai-extract-kind ai-extract-kind-news">業界ニュース</span>
+          <span class="ai-extract-kind ai-extract-kind-news">${esc(input.live ? "公開Web記事" : "業界ニュース")}</span>
           <strong>${esc(input.source || "ニュースソース")}</strong>
           <p class="ai-extract-card-title">${esc(input.headline || "見出しなし")}</p>
           <p class="ai-extract-card-body">${esc(truncateText(input.summary, 150))}</p>
+          ${input.url ? `<a class="ai-extract-source-link" href="${esc(input.url)}" target="_blank" rel="noreferrer">記事URLを確認</a>` : ""}
         </div>`;
     })
     .join("");

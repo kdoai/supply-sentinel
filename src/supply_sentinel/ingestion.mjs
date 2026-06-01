@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { collectLiveEvidence } from "./liveEvidence.mjs";
 
 export async function loadJson(filePath) {
   const text = await readFile(filePath, "utf8");
@@ -108,8 +109,12 @@ export async function loadSampleData(rootDir = process.cwd()) {
     loadJsonOptional(path.join(samplesDir, "materials.json"), []),
   ]);
 
+  const liveEvidence = await collectLiveEvidence({ rootDir });
+
   return {
-    newsEvents,
+    // Keep deterministic demo sources first so the impact narrative remains
+    // stable, then append live public-web evidence as source-backed context.
+    newsEvents: [...newsEvents, ...liveEvidence.newsEvents],
     supplierNotices,
     inventory,
     bom,
@@ -117,5 +122,7 @@ export async function loadSampleData(rootDir = process.cwd()) {
     alternatives,
     supplyRoutes,
     materials,
+    liveEvidence,
+    externalEvidence: liveEvidence.provenance,
   };
 }

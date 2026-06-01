@@ -12,6 +12,7 @@
 
 import { extractRiskEvent as extractDeterministic } from "./riskExtraction.mjs";
 import { resolveRunMode, azureOpenAiConfig, azureOpenAiConfigured } from "./config.mjs";
+import { parseJsonObject } from "./jsonOutput.mjs";
 
 export async function extractRiskEvent(data, options = {}) {
   const mode = resolveRunMode(options);
@@ -83,7 +84,7 @@ async function extractWithAzureOpenAi(data, config) {
     throw new Error("Azure OpenAI returned no message content.");
   }
 
-  return normalizeRiskEvent(JSON.parse(content), data);
+  return normalizeRiskEvent(parseJsonObject(content), data);
 }
 
 function buildRiskExtractionPrompt({ newsEvents = [], supplierNotices = [] }) {

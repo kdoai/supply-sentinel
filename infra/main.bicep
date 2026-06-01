@@ -40,6 +40,9 @@ param agentAdviceRateLimitPerMinute int = 20
 @description('Allowed browser origin for the AI advice endpoint CORS response.')
 param agentAdviceAllowOrigin string = '*'
 
+@description('Enable low-cost live public-web evidence collection through curated allowlisted sources.')
+param liveEvidenceEnabled bool = true
+
 var suffix = toLower(uniqueString(resourceGroup().id, appName))
 var webStorageName = take('${appName}web${suffix}', 24)
 var acrName = take('${appName}acr${suffix}', 50)
@@ -271,6 +274,10 @@ var appEnv = [
   {
     name: 'AGENT_ADVICE_ALLOW_ORIGIN'
     value: agentAdviceAllowOrigin
+  }
+  {
+    name: 'SUPPLY_SENTINEL_LIVE_EVIDENCE'
+    value: string(liveEvidenceEnabled)
   }
   {
     name: 'HOST'

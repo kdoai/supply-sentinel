@@ -2,7 +2,7 @@
   "meta": {
     "app": "Supply Sentinel",
     "scenario": "naphtha supply risk",
-    "generated_at": "2026-06-01T01:03:35.385Z",
+    "generated_at": "2026-06-01T01:28:22.174Z",
     "materials": [
       {
         "material_id": "naphtha",
@@ -74,7 +74,10 @@
           "source": "Industry News Demo",
           "published_at": "2026-05-16T08:00:00+09:00",
           "headline": "Naphtha supply tightens after refinery disruption in Asia",
-          "summary": "Several downstream chemical producers may face tighter naphtha allocation over the next two to three weeks due to refinery maintenance and logistics congestion."
+          "summary": "Several downstream chemical producers may face tighter naphtha allocation over the next two to three weeks due to refinery maintenance and logistics congestion.",
+          "url": "https://example.com/demo/naphtha-supply-risk",
+          "live": false,
+          "fetched_at": null
         },
         {
           "type": "supplier_notice",
@@ -83,9 +86,16 @@
           "supplier": "Demo Petrochemical Supplier",
           "received_at": "2026-05-16T09:15:00+09:00",
           "subject": "Temporary allocation control for naphtha-derived feedstock",
-          "body": "Due to upstream refinery disruption and vessel delay, we expect temporary allocation control for naphtha-derived feedstock shipments. Current confirmed shipments may be delayed by 5 to 7 days. Allocation volume for the next two weeks may be limited to approximately 70% of normal contracted volume. We will provide an update once logistics conditions stabilize."
+          "body": "Due to upstream refinery disruption and vessel delay, we expect temporary allocation control for naphtha-derived feedstock shipments. Current confirmed shipments may be delayed by 5 to 7 days. Allocation volume for the next two weeks may be limited to approximately 70% of normal contracted volume. We will provide an update once logistics conditions stabilize.",
+          "url": null
         }
       ]
+    },
+    "evidence_collection": {
+      "live_enabled": false,
+      "live_fetched_at": "2026-06-01T01:28:22.169Z",
+      "live_count": 0,
+      "live_errors": []
     }
   },
   "risk_event": {
@@ -235,7 +245,7 @@
       "Formal customer notification",
       "Major production plan changes"
     ],
-    "generated_at": "2026-06-01T01:03:35.385Z"
+    "generated_at": "2026-06-01T01:28:22.174Z"
   },
   "route_intel": {
     "focal_material": "naphtha",
@@ -1061,6 +1071,33 @@
       "lead_time_max_days": 24
     }
   },
+  "provenance": [
+    {
+      "id": "news-2026-001",
+      "kind": "news",
+      "label": "業界ニュース",
+      "source": "Industry News Demo",
+      "claim": "Naphtha supply tightens after refinery disruption in Asia",
+      "raw_excerpt": "Several downstream chemical producers may face tighter naphtha allocation over the next two to three weeks due to refinery maintenance and logistics congestion.",
+      "confidence": "high",
+      "url": "https://example.com/demo/naphtha-supply-risk",
+      "published_at": "2026-05-16T08:00:00+09:00",
+      "fetched_at": null,
+      "origin": "demo_source"
+    },
+    {
+      "id": "notice-2026-001",
+      "kind": "supplier",
+      "label": "サプライヤ通知",
+      "source": "Demo Petrochemical Supplier",
+      "claim": "Temporary allocation control for naphtha-derived feedstock",
+      "raw_excerpt": "Due to upstream refinery disruption and vessel delay, we expect temporary allocation control for naphtha-derived feedstock shipments. Current confirmed shipments may be delayed by 5 to 7 days. Allocation volume for the next two weeks may be limited to approximately 70% of normal contracted volume. We will provide an update once logistics conditions stabilize.",
+      "confidence": "high",
+      "url": null,
+      "published_at": "2026-05-16T09:15:00+09:00",
+      "origin": "internal_supplier_notice"
+    }
+  ],
   "agent_run": {
     "run_id": "run-naphtha-supply-risk-current",
     "status": "completed",
@@ -1069,8 +1106,8 @@
     "model": "gpt-5.4-mini",
     "provider": "Azure OpenAI",
     "persisted": false,
-    "started_at": "2026-06-01T01:03:35.385Z",
-    "completed_at": "2026-06-01T01:03:59.385Z",
+    "started_at": "2026-06-01T01:28:22.174Z",
+    "completed_at": "2026-06-01T01:28:46.174Z",
     "headline": {
       "risk_score": 82,
       "severity": "high",
@@ -1086,11 +1123,11 @@
         "status": "completed",
         "processor": "orchestrator",
         "processor_label": "オーケストレータ",
-        "started_at": "2026-06-01T01:03:35.385Z",
-        "completed_at": "2026-06-01T01:03:59.385Z",
-        "started_hms": "01:03:35",
-        "completed_hms": "01:03:59",
-        "input": "シナリオ「naphtha supply risk」/ current / 外部シグナル 0件",
+        "started_at": "2026-06-01T01:28:22.174Z",
+        "completed_at": "2026-06-01T01:28:46.174Z",
+        "started_hms": "01:28:22",
+        "completed_hms": "01:28:46",
+        "input": "シナリオ「naphtha supply risk」/ current / 外部シグナル 2件",
         "output": "7エージェントの巡回を実行 (run_id run-naphtha-supply-risk-current)",
         "tools": [
           "start_run"
@@ -1103,17 +1140,28 @@
         "status": "completed",
         "processor": "deterministic-mock",
         "processor_label": "決定論モック(gpt-5.4-mini相当)",
-        "started_at": "2026-06-01T01:03:36.385Z",
-        "completed_at": "2026-06-01T01:03:40.385Z",
-        "started_hms": "01:03:36",
-        "completed_hms": "01:03:40",
-        "input": "ニュース・通知・物流・価格 0件",
+        "started_at": "2026-06-01T01:28:23.174Z",
+        "completed_at": "2026-06-01T01:28:27.174Z",
+        "started_hms": "01:28:23",
+        "completed_hms": "01:28:27",
+        "input": "ニュース・通知・物流・価格 2件",
         "output": "割当制限を抽出: naphtha / 深刻度 high / 確度 high / 割当 70%",
         "tools": [
           "fetch_signals",
           "azure_openai.extract"
         ],
-        "evidence": []
+        "evidence": [
+          {
+            "kind": "news",
+            "claim": "Naphtha supply tightens after refinery disruption in Asia",
+            "source": "Industry News Demo"
+          },
+          {
+            "kind": "supplier",
+            "claim": "Temporary allocation control for naphtha-derived feedstock",
+            "source": "Demo Petrochemical Supplier"
+          }
+        ]
       },
       {
         "key": "evidence_verifier",
@@ -1122,12 +1170,12 @@
         "status": "completed",
         "processor": "rule-engine",
         "processor_label": "ルールエンジン",
-        "started_at": "2026-06-01T01:03:40.385Z",
-        "completed_at": "2026-06-01T01:03:44.385Z",
-        "started_hms": "01:03:40",
-        "completed_hms": "01:03:44",
-        "input": "抽出根拠 0件 + 生テキスト走査",
-        "output": "確度 high。命令文なし、有効根拠 0件",
+        "started_at": "2026-06-01T01:28:27.174Z",
+        "completed_at": "2026-06-01T01:28:31.174Z",
+        "started_hms": "01:28:27",
+        "completed_hms": "01:28:31",
+        "input": "抽出根拠 2件 + 生テキスト走査",
+        "output": "確度 high。命令文なし、有効根拠 2件",
         "tools": [
           "verify_evidence",
           "detect_injection"
@@ -1141,10 +1189,10 @@
         "status": "completed",
         "processor": "deterministic",
         "processor_label": "決定論エンジン(propagationEngine)",
-        "started_at": "2026-06-01T01:03:44.385Z",
-        "completed_at": "2026-06-01T01:03:50.385Z",
-        "started_hms": "01:03:44",
-        "completed_hms": "01:03:50",
+        "started_at": "2026-06-01T01:28:31.174Z",
+        "completed_at": "2026-06-01T01:28:37.174Z",
+        "started_hms": "01:28:31",
+        "completed_hms": "01:28:37",
         "input": "在庫 / BOM / 受注 / 多段ネットワーク",
         "output": "製品 3件・顧客 3社・最短在庫 5日・調達影響 65% (7.8百万ドル)",
         "tools": [
@@ -1174,10 +1222,10 @@
         "status": "completed",
         "processor": "rule-engine",
         "processor_label": "ルールエンジン",
-        "started_at": "2026-06-01T01:03:50.385Z",
-        "completed_at": "2026-06-01T01:03:54.385Z",
-        "started_hms": "01:03:50",
-        "completed_hms": "01:03:54",
+        "started_at": "2026-06-01T01:28:37.174Z",
+        "completed_at": "2026-06-01T01:28:41.174Z",
+        "started_hms": "01:28:37",
+        "completed_hms": "01:28:41",
         "input": "影響範囲(製品3/顧客3)",
         "output": "初動 5件・要承認 4件を起案",
         "tools": [
@@ -1198,10 +1246,10 @@
         "status": "completed",
         "processor": "rule-engine",
         "processor_label": "ルールエンジン",
-        "started_at": "2026-06-01T01:03:50.385Z",
-        "completed_at": "2026-06-01T01:03:54.385Z",
-        "started_hms": "01:03:50",
-        "completed_hms": "01:03:54",
+        "started_at": "2026-06-01T01:28:37.174Z",
+        "completed_at": "2026-06-01T01:28:41.174Z",
+        "started_hms": "01:28:37",
+        "completed_hms": "01:28:41",
         "input": "起案 5件",
         "output": "AI実行可 2件 / 人間承認必須 4件に振り分け",
         "tools": [
@@ -1277,10 +1325,10 @@
         "status": "completed",
         "processor": "deterministic-mock",
         "processor_label": "決定論モック(gpt-5.4-mini相当)",
-        "started_at": "2026-06-01T01:03:54.385Z",
-        "completed_at": "2026-06-01T01:03:59.385Z",
-        "started_hms": "01:03:54",
-        "completed_hms": "01:03:59",
+        "started_at": "2026-06-01T01:28:41.174Z",
+        "completed_at": "2026-06-01T01:28:46.174Z",
+        "started_hms": "01:28:41",
+        "completed_hms": "01:28:46",
         "input": "確定影響 + 起案",
         "output": "管理職レポートを生成(ローカル保存)",
         "tools": [
@@ -1291,96 +1339,96 @@
     ],
     "tool_calls": [
       {
-        "ts": "01:03:35",
-        "iso": "2026-06-01T01:03:35.385Z",
+        "ts": "01:28:22",
+        "iso": "2026-06-01T01:28:22.174Z",
         "agent": "orchestrator",
         "tool": "start_run",
         "result": "run_id run-naphtha-supply-risk-current を開始 / 7エージェントを巡回",
         "ok": true
       },
       {
-        "ts": "01:03:37",
-        "iso": "2026-06-01T01:03:37.385Z",
+        "ts": "01:28:24",
+        "iso": "2026-06-01T01:28:24.174Z",
         "agent": "risk_scout",
         "tool": "fetch_signals",
-        "result": "0件の外部シグナルを取得",
+        "result": "2件の外部シグナルを取得",
         "ok": true
       },
       {
-        "ts": "01:03:39",
-        "iso": "2026-06-01T01:03:39.385Z",
+        "ts": "01:28:26",
+        "iso": "2026-06-01T01:28:26.174Z",
         "agent": "risk_scout",
         "tool": "azure_openai.extract",
         "result": "naphtha / 割当制限 / 深刻度 high",
         "ok": true
       },
       {
-        "ts": "01:03:41",
-        "iso": "2026-06-01T01:03:41.385Z",
+        "ts": "01:28:28",
+        "iso": "2026-06-01T01:28:28.174Z",
         "agent": "evidence_verifier",
         "tool": "verify_evidence",
-        "result": "確度 high / 検証 0件",
+        "result": "確度 high / 検証 2件",
         "ok": true
       },
       {
-        "ts": "01:03:43",
-        "iso": "2026-06-01T01:03:43.385Z",
+        "ts": "01:28:30",
+        "iso": "2026-06-01T01:28:30.174Z",
         "agent": "evidence_verifier",
         "tool": "detect_injection",
         "result": "命令文なし(injection検知=0)",
         "ok": true
       },
       {
-        "ts": "01:03:45",
-        "iso": "2026-06-01T01:03:45.385Z",
+        "ts": "01:28:32",
+        "iso": "2026-06-01T01:28:32.174Z",
         "agent": "impact_mapper",
         "tool": "query_inventory",
         "result": "最短在庫 5日",
         "ok": true
       },
       {
-        "ts": "01:03:47",
-        "iso": "2026-06-01T01:03:47.385Z",
+        "ts": "01:28:34",
+        "iso": "2026-06-01T01:28:34.174Z",
         "agent": "impact_mapper",
         "tool": "map_bom_orders",
         "result": "製品 3件・顧客 3社・受注 3件",
         "ok": true
       },
       {
-        "ts": "01:03:49",
-        "iso": "2026-06-01T01:03:49.385Z",
+        "ts": "01:28:36",
+        "iso": "2026-06-01T01:28:36.174Z",
         "agent": "impact_mapper",
         "tool": "propagate_network",
         "result": "波及 65% / 7.8百万ドル",
         "ok": true
       },
       {
-        "ts": "01:03:51",
-        "iso": "2026-06-01T01:03:51.385Z",
+        "ts": "01:28:38",
+        "iso": "2026-06-01T01:28:38.174Z",
         "agent": "response_planner",
         "tool": "draft_actions",
         "result": "初動 5件を起案",
         "ok": true
       },
       {
-        "ts": "01:03:53",
-        "iso": "2026-06-01T01:03:53.385Z",
+        "ts": "01:28:40",
+        "iso": "2026-06-01T01:28:40.174Z",
         "agent": "decision_gate",
         "tool": "split_authority",
         "result": "人間承認 4件 / AI実行 2件",
         "ok": true
       },
       {
-        "ts": "01:03:55",
-        "iso": "2026-06-01T01:03:55.385Z",
+        "ts": "01:28:42",
+        "iso": "2026-06-01T01:28:42.174Z",
         "agent": "reporter",
         "tool": "generate_report",
         "result": "管理職レポートを生成",
         "ok": true
       },
       {
-        "ts": "01:03:57",
-        "iso": "2026-06-01T01:03:57.385Z",
+        "ts": "01:28:44",
+        "iso": "2026-06-01T01:28:44.174Z",
         "agent": "reporter",
         "tool": "save_state",
         "result": "ローカル保存 (run-naphtha-supply-risk-current)",
@@ -1453,8 +1501,8 @@
     "stats": {
       "agent_count": 7,
       "tool_call_count": 12,
-      "evidence_scanned": 0,
-      "evidence_verified": 0,
+      "evidence_scanned": 4,
+      "evidence_verified": 2,
       "evidence_blocked": 0,
       "human_approvals": 4,
       "ai_auto_actions": 2

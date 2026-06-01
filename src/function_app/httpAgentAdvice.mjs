@@ -22,6 +22,7 @@ import {
   azureOpenAiConfig,
   azureOpenAiConfigured,
 } from "../supply_sentinel/config.mjs";
+import { parseJsonObject } from "../supply_sentinel/jsonOutput.mjs";
 
 // Fixed 3-agent reasoning roster surfaced to the caller. These names are part
 // of the response contract and are asserted by tests, so keep them stable.
@@ -32,7 +33,7 @@ const MAX_QUESTION_LENGTH = 1000;
 const MAX_CONTEXT_JSON_LENGTH = 6000;
 
 // Small token budget: this is a focused Q&A, not a long report.
-const CLOUD_TOKEN_BUDGET = 500;
+const CLOUD_TOKEN_BUDGET = 700;
 
 // Anonymous demo endpoint guard. This is intentionally small and in-memory:
 // good enough to protect a hackathon deployment from accidental loops or casual
@@ -159,7 +160,7 @@ async function adviseWithAzureOpenAi(question, context, config) {
     requestBody.max_tokens = CLOUD_TOKEN_BUDGET;
   }
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: "POST",
     headers,
     body: JSON.stringify(requestBody),
@@ -175,11 +176,22 @@ async function adviseWithAzureOpenAi(question, context, config) {
     throw new Error("Azure OpenAI returned no message content.");
   }
 
-  return normalizeAdvice(JSON.parse(content), context, {
+  return normalizeAdvice(parseJsonObject(content), context, {
     run_mode: "cloud",
     model: config.deployment,
     fallback: false,
   });
+}
+
+async function fetchWithRetry(url, init) {
+  const first = await fetch(url, init);
+  if (first.status !== 429) return first;
+  await sleep(1800);
+  return fetch(url, init);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -197,15 +209,15 @@ function buildAdvicePrompt(question, context) {
     JSON.stringify(context),
     "Return JSON with EXACTLY this schema:",
     "{",
-    '  "answer": "one concise paragraph (Japanese)",',
+    '  "answer": "one concise Japanese paragraph, max 180 chars",',
     '  "reasoning_steps": [',
     '    { "agent": "Risk Scout", "result": "string" },',
     '    { "agent": "Impact Mapper", "result": "string" },',
     '    { "agent": "Response Planner", "result": "string" }',
     "  ],",
-    '  "evidence": ["short evidence strings"],',
-    '  "recommended_actions": ["short action strings"],',
-    '  "human_decision_required": ["items that need human approval"]',
+    '  "evidence": ["short evidence strings, include source URL/title if available"],',
+    '  "recommended_actions": ["short action strings, max 4"],',
+    '  "human_decision_required": ["items that need human approval, max 4"]',
     "}",
   ].join("\n");
 }
@@ -303,7 +315,16 @@ function buildFallbackAdvice(question, context) {
   const responsePlannerResult = `初動 ${recommended_actions.length}件を起案、うち ${human_decision_required.length}件は人間承認が必要です。`;
 
   // --- Evidence: surface the concrete numeric context as proof. ----------
-  const evidence = buildEvidence({ material, riskScore, supplyRatio, spend, invDays, products, customers });
+  const evidence = buildEvidence({
+    material,
+    riskScore,
+    supplyRatio,
+    spend,
+    invDays,
+    products,
+    customers,
+    sources: ctx.evidence_sources,
+  });
 
   // --- Answer: one concise paragraph tying it together. ------------------
   const answerParts = [
@@ -371,8 +392,11 @@ function deriveHumanDecisions(ctx) {
 }
 
 /** Build short evidence strings from the numeric context. */
-function buildEvidence({ material, riskScore, supplyRatio, spend, invDays, products, customers }) {
+function buildEvidence({ material, riskScore, supplyRatio, spend, invDays, products, customers, sources }) {
   const evidence = [];
+  for (const source of stringEvidenceSources(sources).slice(0, 3)) {
+    evidence.push(source);
+  }
   if (riskScore !== null) evidence.push(`リスクスコア: ${riskScore}`);
   if (supplyRatio !== null) evidence.push(`調達影響率: ${supplyRatio}%`);
   if (spend !== null) evidence.push(`金額影響: ${formatUsd(spend)}`);
@@ -381,6 +405,20 @@ function buildEvidence({ material, riskScore, supplyRatio, spend, invDays, produ
   if (customers.length) evidence.push(`影響顧客: ${customers.join(" / ")}`);
   if (!evidence.length) evidence.push(`対象原料: ${material}`);
   return evidence;
+}
+
+function stringEvidenceSources(sources) {
+  if (!Array.isArray(sources)) return [];
+  return sources
+    .map((source) => {
+      if (!source || typeof source !== "object") return "";
+      const claim = stringOr(source.claim, "");
+      const label = stringOr(source.source, source.kind || "外部ソース");
+      const url = stringOr(source.url, "");
+      if (!claim) return "";
+      return url ? `${label}: ${claim} (${url})` : `${label}: ${claim}`;
+    })
+    .filter(Boolean);
 }
 
 /**
