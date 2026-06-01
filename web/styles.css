@@ -504,6 +504,128 @@ button {
   font-size: 12px;
 }
 
+/* "拡大" button in panel heads — opens the panel content in a modal. */
+.panel-expand {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--blue-600);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.panel-expand::before {
+  content: "\2922";
+  font-size: 12px;
+  line-height: 1;
+}
+
+.panel-expand:hover {
+  background: #eef4ff;
+  border-color: var(--blue-600);
+}
+
+.panel-expand:focus-visible {
+  outline: 2px solid var(--blue-600);
+  outline-offset: 2px;
+}
+
+/* Panel content modal. */
+.panel-modal[hidden] {
+  display: none;
+}
+
+.panel-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.panel-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 16, 31, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.panel-modal-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(1120px, 94vw);
+  height: min(82vh, 900px);
+  background: var(--panel, #fff);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(8, 16, 31, 0.4);
+  overflow: hidden;
+}
+
+.panel-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-modal-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.panel-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--navy-900, #1b2430);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.panel-modal-close:hover {
+  background: #f3f5f9;
+}
+
+.panel-modal-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  background: #f5f7fb;
+}
+
+/* Moved-in content expands to full size; the modal body is the scroller. */
+.panel-modal-body > .is-in-modal {
+  height: auto !important;
+  min-height: 100%;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -1093,7 +1215,7 @@ button {
 .analysis-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
-  grid-template-rows: minmax(430px, 1fr) 280px 300px 240px;
+  grid-template-rows: minmax(560px, 1fr) 280px 300px 240px;
   grid-template-areas:
     "network network"
     "timeline timeline"
@@ -1232,7 +1354,7 @@ button {
 }
 
 .network-canvas {
-  min-height: 0;
+  min-height: 320px;
   overflow: hidden;
   border: 1px solid rgba(155, 180, 220, 0.18);
   border-radius: 8px;
@@ -1245,7 +1367,7 @@ button {
 .network-svg {
   width: 100%;
   height: 100%;
-  min-height: 360px;
+  min-height: 0;
 }
 
 .net-edge-flow {
@@ -1847,7 +1969,9 @@ tbody td {
 .response-grid {
   display: grid;
   grid-template-columns: minmax(460px, 0.92fr) minmax(520px, 1.08fr);
-  grid-template-rows: minmax(250px, 0.58fr) minmax(320px, 0.75fr) minmax(260px, 0.58fr);
+  /* 初動対応ボード (brief) と AI判断ログ (ai) を同じ高さ(1fr)に揃え、
+     Agent Run Console を少しだけ大きく。固定px下限を外して縦に収める。 */
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1.12fr) minmax(0, 1fr);
   grid-template-areas:
     "brief agent"
     "run agent"
@@ -1856,6 +1980,7 @@ tbody td {
   width: 100%;
   max-width: 100%;
   height: calc(100vh - 114px);
+  overflow: auto;
 }
 
 .response-grid .panel {
@@ -2144,6 +2269,17 @@ tbody td {
 
 .agent-message ul {
   padding-left: 18px;
+}
+
+.agent-message a {
+  color: var(--blue-600);
+  font-weight: 600;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.agent-message-user a {
+  color: #cfe0ff;
 }
 
 .agent-answer-title {
@@ -3375,7 +3511,7 @@ li {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .network-svg {
+  .network-canvas {
     min-height: 420px;
   }
 

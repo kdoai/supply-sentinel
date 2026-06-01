@@ -110,6 +110,7 @@
               <div class="panel-head compact-head">
                 <h3>情報源と根拠</h3>
                 <span class="panel-note">公開URL付きの根拠のみ表示</span>
+                <button type="button" class="panel-expand" data-expand-target="live-evidence-list" data-expand-title="情報源と根拠" aria-label="情報源と根拠を拡大表示">拡大</button>
               </div>
               <div id="live-evidence-list"></div>
             </section>
@@ -118,6 +119,7 @@
               <div class="panel-head compact-head">
                 <h3>AIエージェント行動ログ</h3>
                 <span class="panel-note">検索・検証・照合・起案</span>
+                <button type="button" class="panel-expand" data-expand-target="agent-activity-log" data-expand-title="AIエージェント行動ログ" aria-label="AIエージェント行動ログを拡大表示">拡大</button>
               </div>
               <div id="agent-activity-log"></div>
             </section>
@@ -127,6 +129,7 @@
             <div class="panel-head compact-head">
               <h3>調達構成</h3>
               <span class="panel-note">影響を受ける供給ルート</span>
+              <button type="button" class="panel-expand" data-expand-target="sourcing-mix" data-expand-title="調達構成" aria-label="調達構成を拡大表示">拡大</button>
             </div>
             <div id="sourcing-mix"></div>
           </section>
@@ -135,6 +138,7 @@
             <div class="panel-head compact-head">
               <h3>監視イベント</h3>
               <span class="panel-note">データが流れる順序</span>
+              <button type="button" class="panel-expand" data-expand-target="event-log" data-expand-title="監視イベント" aria-label="監視イベントを拡大表示">拡大</button>
             </div>
             <div id="event-log"></div>
           </section>
@@ -206,6 +210,7 @@
             <div class="panel-head">
               <h3>初動対応ボード</h3>
               <span class="panel-note">AIが起案し、人が承認・保留・差戻し</span>
+              <button type="button" class="panel-expand" data-expand-target="action-decision-board" data-expand-title="初動対応ボード" aria-label="初動対応ボードを拡大表示">拡大</button>
             </div>
             <div id="action-decision-board"></div>
           </section>
@@ -243,6 +248,7 @@
             <div class="panel-head">
               <h3>AI判断ログ</h3>
               <span class="panel-note">原文 → 構造化 → 業務影響</span>
+              <button type="button" class="panel-expand" data-expand-target="ai-extraction" data-expand-title="AI判断ログ" aria-label="AI判断ログを拡大表示">拡大</button>
             </div>
             <div id="ai-extraction"></div>
           </section>
@@ -272,6 +278,17 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div class="panel-modal" id="panel-modal" hidden>
+    <div class="panel-modal-backdrop" data-modal-close></div>
+    <div class="panel-modal-card" role="dialog" aria-modal="true" aria-labelledby="panel-modal-title">
+      <div class="panel-modal-head">
+        <h3 id="panel-modal-title"></h3>
+        <button type="button" class="panel-modal-close" id="panel-modal-close" aria-label="閉じる" data-modal-close>×</button>
+      </div>
+      <div class="panel-modal-body" id="panel-modal-body"></div>
+    </div>
   </div>
 
   <script src="./config.js"></script>
