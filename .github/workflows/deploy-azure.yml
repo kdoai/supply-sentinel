@@ -114,7 +114,8 @@ jobs:
                 agentAdviceAllowOrigin="${{ vars.AGENT_ADVICE_ALLOW_ORIGIN || '*' }}" \
                 liveEvidenceEnabled="${{ vars.SUPPLY_SENTINEL_LIVE_EVIDENCE || 'true' }}" \
                 searchProvider="${{ vars.SUPPLY_SENTINEL_SEARCH_PROVIDER || 'auto' }}" \
-                manualRunToken="${{ secrets.SUPPLY_SENTINEL_RUN_AGENT_TOKEN || '' }}"
+                manualRunPublic="true" \
+                manualRunDailyLimit="20"
             acr_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrName.value -o tsv)"
             acr_login_server="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.acrLoginServer.value -o tsv)"
             container_app_name="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.containerAppName.value -o tsv)"
@@ -169,7 +170,8 @@ jobs:
                 agentAdviceAllowOrigin="${{ vars.AGENT_ADVICE_ALLOW_ORIGIN || '*' }}" \
                 liveEvidenceEnabled="${{ vars.SUPPLY_SENTINEL_LIVE_EVIDENCE || 'true' }}" \
                 searchProvider="${{ vars.SUPPLY_SENTINEL_SEARCH_PROVIDER || 'auto' }}" \
-                manualRunToken="${{ secrets.SUPPLY_SENTINEL_RUN_AGENT_TOKEN || '' }}"
+                manualRunPublic="true" \
+                manualRunDailyLimit="20"
             api_base="$(az deployment group show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name supply-sentinel-cloud --query properties.outputs.functionApiBase.value -o tsv)"
             echo "api_base=$api_base" >> "$GITHUB_OUTPUT"
             az containerapp job start \
