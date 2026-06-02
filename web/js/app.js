@@ -1711,9 +1711,13 @@ function updateDemoControls() {
   if (detail) {
     const accepted = collection.search_health?.accepted_count ?? collection.live_count ?? 0;
     const provider = collection.search_health?.provider || collection.live_mode || "search";
+    const quota = trigger.quota;
+    const quotaText = quota && Number.isFinite(Number(quota.remaining))
+      ? ` / 本日残り${quota.remaining}回`
+      : "";
     detail.textContent = agentRunInFlight
       ? "Web検索、根拠検証、AI構造化、BOM/在庫照合、初動起案をクラウドで実行しています。"
-      : `直近巡回: ${provider} / 採用根拠 ${accepted}件 / 次回は6時間周期で自動実行`;
+      : `直近巡回: ${provider} / 採用根拠 ${accepted}件${quotaText} / 次回は6時間周期で自動実行`;
   }
   if (progress) {
     if (agentRunInFlight) {
@@ -1743,30 +1747,11 @@ function renderCurrentDashboard() {
 
 async function runCloudAgentOnce() {
   const headers = { "content-type": "application/json" };
-  const storedKey = sessionStorage.getItem("supplySentinelRunKey") || "";
-  if (storedKey) headers["x-supply-sentinel-run-key"] = storedKey;
-
-  let response = await fetch(runAgentUrl(), {
+  const response = await fetch(runAgentUrl(), {
     method: "POST",
     headers,
     body: JSON.stringify({ reason: "manual-demo-run" }),
   });
-
-  if (response.status === 401 || response.status === 403) {
-    const key = window.prompt("AI巡回を手動実行するためのオペレーターキーを入力してください。キーはこのブラウザセッションだけに保存されます。");
-    if (!key) {
-      throw new Error("AI巡回の実行キーが入力されていません。");
-    }
-    sessionStorage.setItem("supplySentinelRunKey", key);
-    response = await fetch(runAgentUrl(), {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-supply-sentinel-run-key": key,
-      },
-      body: JSON.stringify({ reason: "manual-demo-run" }),
-    });
-  }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -1783,6 +1768,12 @@ async function runCloudAgentOnce() {
     api_base: apiBaseUrl(),
     persisted: payload.state_store === "cosmos" || Boolean(payload.dashboard.meta.cloud?.persisted),
   };
+  if (payload.quota) {
+    payload.dashboard.meta.agent_trigger = {
+      ...(payload.dashboard.meta.agent_trigger || {}),
+      quota: payload.quota,
+    };
+  }
   return payload.dashboard;
 }
 

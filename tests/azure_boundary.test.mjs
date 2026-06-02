@@ -63,16 +63,13 @@ test("cloud boundary stays explicit without Cosmos credentials", () => {
   assert.equal(cosmosDbConfigured(), Boolean(process.env.COSMOS_DB_ENDPOINT && process.env.COSMOS_DB_KEY));
 });
 
-test("manual AI巡回 endpoint requires an operator token by default", () => {
+test("manual AI巡回 authorization is public by default for hackathon demo", () => {
   const previous = process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN;
   const previousPublic = process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
   delete process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN;
   delete process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
   try {
-    const auth = authorizeManualRun({ headers: {} });
-    assert.equal(auth.ok, false);
-    assert.equal(auth.status, 403);
-    assert.equal(auth.error, "manual_run_not_configured");
+    assert.equal(authorizeManualRun({ headers: {} }).ok, true);
   } finally {
     if (previous === undefined) delete process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN;
     else process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN = previous;
@@ -81,11 +78,11 @@ test("manual AI巡回 endpoint requires an operator token by default", () => {
   }
 });
 
-test("manual AI巡回 authorization accepts only the configured operator token", () => {
+test("manual AI巡回 authorization can be locked down with an operator token", () => {
   const previous = process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN;
   const previousPublic = process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
   process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN = "demo-secret";
-  delete process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
+  process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC = "false";
   try {
     assert.equal(authorizeManualRun({ headers: {} }).status, 401);
     assert.equal(authorizeManualRun({ headers: { "x-supply-sentinel-run-key": "wrong" } }).status, 403);
@@ -97,4 +94,22 @@ test("manual AI巡回 authorization accepts only the configured operator token",
     if (previousPublic === undefined) delete process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
     else process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC = previousPublic;
   }
+});
+
+test("manual AI巡回 local quota allows only the configured daily limit", async () => {
+  const outputDir = await mkdtemp(path.join(tmpdir(), "sentinel-quota-"));
+  const store = createStateStore({ outputDir, mode: "local" });
+  const now = new Date("2026-06-02T02:00:00Z");
+
+  const first = await store.reserveManualRunQuota({ limit: 2, now, timeZone: "Asia/Tokyo" });
+  const second = await store.reserveManualRunQuota({ limit: 2, now, timeZone: "Asia/Tokyo" });
+  const third = await store.reserveManualRunQuota({ limit: 2, now, timeZone: "Asia/Tokyo" });
+
+  assert.equal(first.allowed, true);
+  assert.equal(first.remaining, 1);
+  assert.equal(second.allowed, true);
+  assert.equal(second.remaining, 0);
+  assert.equal(third.allowed, false);
+  assert.equal(third.used, 2);
+  assert.equal(third.limit, 2);
 });

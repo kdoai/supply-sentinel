@@ -35,9 +35,12 @@ export function searchProvider(options = {}) {
 }
 
 export function manualRunConfig() {
+  const dailyLimit = Number(process.env.SUPPLY_SENTINEL_RUN_AGENT_DAILY_LIMIT || 20);
   return {
     token: process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN || "",
-    allowWithoutToken: String(process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC || "false").toLowerCase() === "true",
+    allowWithoutToken: String(process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC || "true").toLowerCase() !== "false",
+    dailyLimit: Number.isFinite(dailyLimit) && dailyLimit > 0 ? Math.floor(dailyLimit) : 20,
+    quotaTimeZone: process.env.SUPPLY_SENTINEL_RUN_AGENT_QUOTA_TZ || "Asia/Tokyo",
   };
 }
 

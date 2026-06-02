@@ -33,6 +33,21 @@ export async function httpRunAgent(context = {}, req = {}) {
   const outputDir = process.env.SUPPLY_SENTINEL_OUTPUT_DIR || DEFAULT_OUTPUT_DIR;
   const store = createStateStore({ outputDir });
   const startedAt = new Date().toISOString();
+  const runConfig = manualRunConfig();
+  const quota = await store.reserveManualRunQuota({
+    limit: runConfig.dailyLimit,
+    now: new Date(startedAt),
+    timeZone: runConfig.quotaTimeZone,
+  });
+  if (!quota.allowed) {
+    const response = jsonResponse(429, {
+      error: "manual_run_daily_limit_exceeded",
+      message: `AI巡回の手動実行は1日${quota.limit}回までです。明日また実行してください。`,
+      quota,
+    });
+    context.res = response;
+    return response;
+  }
 
   try {
     const result = await runSupplySentinel({
@@ -46,12 +61,13 @@ export async function httpRunAgent(context = {}, req = {}) {
       },
     });
     const dashboard = result.dashboardData;
-    enrichManualRunDashboard(dashboard, store.kind, startedAt);
+    enrichManualRunDashboard(dashboard, store.kind, startedAt, quota);
     const response = jsonResponse(200, {
       ok: true,
       run_started_at: startedAt,
       served_at: new Date().toISOString(),
       state_store: store.kind,
+      quota,
       dashboard,
     });
     context.res = response;
@@ -102,7 +118,7 @@ export function authorizeManualRun(req = {}) {
   };
 }
 
-function enrichManualRunDashboard(dashboard, stateStoreKind, startedAt) {
+function enrichManualRunDashboard(dashboard, stateStoreKind, startedAt, quota) {
   if (!dashboard || typeof dashboard !== "object") return dashboard;
   dashboard.meta = dashboard.meta || {};
   dashboard.meta.cloud = {
@@ -114,6 +130,7 @@ function enrichManualRunDashboard(dashboard, stateStoreKind, startedAt) {
     type: "manual",
     requested_at: startedAt,
     schedule: process.env.SUPPLY_SENTINEL_TIMER_CRON || "0 */6 * * *",
+    quota,
   };
   dashboard.agent_run = buildAgentRun(dashboard);
   return dashboard;

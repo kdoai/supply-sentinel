@@ -57,6 +57,13 @@ param searchProvider string = 'auto'
 @description('Optional operator key required to trigger the AI巡回エージェント manually from the dashboard.')
 param manualRunToken string = ''
 
+@description('Allow the dashboard to start a manual AI巡回 without an operator key. Keep true for hackathon demo.')
+param manualRunPublic bool = true
+
+@minValue(1)
+@description('Daily limit for manual AI巡回 executions. Default is 20 runs per Japan day.')
+param manualRunDailyLimit int = 20
+
 var suffix = toLower(uniqueString(resourceGroup().id, appName))
 var webStorageName = take('${appName}web${suffix}', 24)
 var acrName = take('${appName}acr${suffix}', 50)
@@ -308,6 +315,18 @@ var appEnv = [
   {
     name: 'SUPPLY_SENTINEL_TIMER_CRON'
     value: timerCron
+  }
+  {
+    name: 'SUPPLY_SENTINEL_RUN_AGENT_PUBLIC'
+    value: string(manualRunPublic)
+  }
+  {
+    name: 'SUPPLY_SENTINEL_RUN_AGENT_DAILY_LIMIT'
+    value: string(manualRunDailyLimit)
+  }
+  {
+    name: 'SUPPLY_SENTINEL_RUN_AGENT_QUOTA_TZ'
+    value: 'Asia/Tokyo'
   }
   manualRunTokenEnv
   {

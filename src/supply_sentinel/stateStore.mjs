@@ -4,6 +4,7 @@ import { cosmosDbConfig, cosmosDbConfigured, stateStoreMode } from "./config.mjs
 
 const DASHBOARD_FILE = "dashboard_data.json";
 const ALERT_HISTORY_FILE = "alert_history.json";
+const MANUAL_RUN_QUOTA_FILE = "manual_run_quota.json";
 
 export async function saveRunArtifacts({
   outputDir,
@@ -57,6 +58,9 @@ export function createLocalStateStore({ outputDir = path.join(process.cwd(), "ou
     },
     async listAlerts() {
       return loadAlertHistory({ outputDir });
+    },
+    async reserveManualRunQuota(options) {
+      return reserveLocalManualRunQuota({ outputDir, ...options });
     },
   };
 }
@@ -112,7 +116,87 @@ export function createCosmosStateStore() {
       const { resources } = await container.items.query(query).fetchAll();
       return resources.map((item) => item.alert).filter(Boolean);
     },
+    async reserveManualRunQuota(options) {
+      const container = await getCosmosContainer(config);
+      return reserveCosmosManualRunQuota(container, options);
+    },
   };
+}
+
+export async function reserveLocalManualRunQuota({
+  outputDir = path.join(process.cwd(), "outputs", "latest"),
+  limit = 20,
+  now = new Date(),
+  timeZone = "Asia/Tokyo",
+} = {}) {
+  await mkdir(outputDir, { recursive: true });
+  const day = dayKey(now, timeZone);
+  const quotaPath = path.join(outputDir, MANUAL_RUN_QUOTA_FILE);
+  let state = {};
+  try {
+    state = JSON.parse(await readFile(quotaPath, "utf8"));
+  } catch (error) {
+    if (!error || error.code !== "ENOENT") throw error;
+  }
+
+  const used = Number(state[day]?.used || 0);
+  if (used >= limit) {
+    return quotaResult({ allowed: false, day, used, limit });
+  }
+  const next = { ...state, [day]: { day, used: used + 1, updated_at: now.toISOString() } };
+  await writeFile(quotaPath, JSON.stringify(next, null, 2), "utf8");
+  return quotaResult({ allowed: true, day, used: used + 1, limit });
+}
+
+async function reserveCosmosManualRunQuota(container, {
+  limit = 20,
+  now = new Date(),
+  timeZone = "Asia/Tokyo",
+} = {}) {
+  const day = dayKey(now, timeZone);
+  const id = `manual-run-quota-${day}`;
+  let doc = { id, pk: "quota", type: "manual-run-quota", day, used: 0 };
+  try {
+    const { resource } = await container.item(id, "quota").read();
+    if (resource) doc = resource;
+  } catch (error) {
+    if (!error || error.code !== 404) throw error;
+  }
+
+  const used = Number(doc.used || 0);
+  if (used >= limit) {
+    return quotaResult({ allowed: false, day, used, limit });
+  }
+
+  const next = {
+    ...doc,
+    used: used + 1,
+    limit,
+    updated_at: now.toISOString(),
+  };
+  await container.items.upsert(next);
+  return quotaResult({ allowed: true, day, used: used + 1, limit });
+}
+
+function quotaResult({ allowed, day, used, limit }) {
+  return {
+    allowed,
+    day,
+    used,
+    limit,
+    remaining: Math.max(0, limit - used),
+  };
+}
+
+function dayKey(now, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now instanceof Date ? now : new Date(now));
+  const get = (type) => parts.find((part) => part.type === type)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 async function getCosmosContainer(config) {
