@@ -58,6 +58,7 @@ export async function httpRunAgent(context = {}, req = {}) {
         type: "manual",
         requested_at: startedAt,
         requested_by: "demo-operator",
+        quota,
       },
     });
     const dashboard = result.dashboardData;
