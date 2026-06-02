@@ -2,7 +2,7 @@
   "meta": {
     "app": "Supply Sentinel",
     "scenario": "naphtha supply risk",
-    "generated_at": "2026-06-02T02:07:50.374Z",
+    "generated_at": "2026-06-02T02:15:54.298Z",
     "materials": [
       {
         "material_id": "naphtha",
@@ -94,7 +94,7 @@
     "evidence_collection": {
       "live_enabled": false,
       "live_mode": "disabled",
-      "live_fetched_at": "2026-06-02T02:07:50.369Z",
+      "live_fetched_at": "2026-06-02T02:15:54.293Z",
       "live_count": 0,
       "live_queries": [],
       "live_agent_error": null,
@@ -326,7 +326,7 @@
       "Formal customer notification",
       "Major production plan changes"
     ],
-    "generated_at": "2026-06-02T02:07:50.374Z"
+    "generated_at": "2026-06-02T02:15:54.298Z"
   },
   "route_intel": {
     "focal_material": "naphtha",
@@ -1201,8 +1201,8 @@
     "model": "gpt-5.4-mini",
     "provider": "Azure OpenAI",
     "persisted": false,
-    "started_at": "2026-06-02T02:07:50.374Z",
-    "completed_at": "2026-06-02T02:08:14.374Z",
+    "started_at": "2026-06-02T02:15:54.298Z",
+    "completed_at": "2026-06-02T02:16:18.298Z",
     "headline": {
       "risk_score": 82,
       "severity": "high",
@@ -1218,10 +1218,10 @@
         "status": "completed",
         "processor": "orchestrator",
         "processor_label": "オーケストレータ",
-        "started_at": "2026-06-02T02:07:50.374Z",
-        "completed_at": "2026-06-02T02:08:14.374Z",
-        "started_hms": "02:07:50",
-        "completed_hms": "02:08:14",
+        "started_at": "2026-06-02T02:15:54.298Z",
+        "completed_at": "2026-06-02T02:16:18.298Z",
+        "started_hms": "02:15:54",
+        "completed_hms": "02:16:18",
         "input": "シナリオ「naphtha supply risk」/ current / 外部シグナル 2件",
         "output": "7エージェントの巡回を実行 (run_id run-naphtha-supply-risk-current)",
         "tools": [
@@ -1235,10 +1235,10 @@
         "status": "completed",
         "processor": "deterministic-mock",
         "processor_label": "決定論モック(gpt-5.4-mini相当)",
-        "started_at": "2026-06-02T02:07:51.374Z",
-        "completed_at": "2026-06-02T02:07:55.374Z",
-        "started_hms": "02:07:51",
-        "completed_hms": "02:07:55",
+        "started_at": "2026-06-02T02:15:55.298Z",
+        "completed_at": "2026-06-02T02:15:59.298Z",
+        "started_hms": "02:15:55",
+        "completed_hms": "02:15:59",
         "input": "ニュース・通知・物流・価格 2件",
         "output": "割当制限を抽出: naphtha / 深刻度 high / 確度 high / 割当 70%",
         "tools": [
@@ -1265,10 +1265,10 @@
         "status": "completed",
         "processor": "rule-engine",
         "processor_label": "ルールエンジン",
-        "started_at": "2026-06-02T02:07:55.374Z",
-        "completed_at": "2026-06-02T02:07:59.374Z",
-        "started_hms": "02:07:55",
-        "completed_hms": "02:07:59",
+        "started_at": "2026-06-02T02:15:59.298Z",
+        "completed_at": "2026-06-02T02:16:03.298Z",
+        "started_hms": "02:15:59",
+        "completed_hms": "02:16:03",
         "input": "抽出根拠 2件 + 生テキスト走査",
         "output": "確度 high。命令文なし、有効根拠 2件",
         "tools": [
@@ -1284,10 +1284,10 @@
         "status": "completed",
         "processor": "deterministic",
         "processor_label": "決定論エンジン(propagationEngine)",
-        "started_at": "2026-06-02T02:07:59.374Z",
-        "completed_at": "2026-06-02T02:08:05.374Z",
-        "started_hms": "02:07:59",
-        "completed_hms": "02:08:05",
+        "started_at": "2026-06-02T02:16:03.298Z",
+        "completed_at": "2026-06-02T02:16:09.298Z",
+        "started_hms": "02:16:03",
+        "completed_hms": "02:16:09",
         "input": "在庫 / BOM / 受注 / 多段ネットワーク",
         "output": "製品 3件・顧客 3社・最短在庫 5日・調達影響 65% (7.8百万ドル)",
         "tools": [
@@ -1317,10 +1317,10 @@
         "status": "completed",
         "processor": "rule-engine",
         "processor_label": "ルールエンジン",
-        "started_at": "2026-06-02T02:08:05.374Z",
-        "completed_at": "2026-06-02T02:08:09.374Z",
-        "started_hms": "02:08:05",
-        "completed_hms": "02:08:09",
+        "started_at": "2026-06-02T02:16:09.298Z",
+        "completed_at": "2026-06-02T02:16:13.298Z",
+        "started_hms": "02:16:09",
+        "completed_hms": "02:16:13",
         "input": "影響範囲(製品3/顧客3)",
         "output": "初動 5件・要承認 4件を起案",
         "tools": [
@@ -1341,10 +1341,10 @@
         "status": "completed",
         "processor": "rule-engine",
         "processor_label": "ルールエンジン",
-        "started_at": "2026-06-02T02:08:05.374Z",
-        "completed_at": "2026-06-02T02:08:09.374Z",
-        "started_hms": "02:08:05",
-        "completed_hms": "02:08:09",
+        "started_at": "2026-06-02T02:16:09.298Z",
+        "completed_at": "2026-06-02T02:16:13.298Z",
+        "started_hms": "02:16:09",
+        "completed_hms": "02:16:13",
         "input": "起案 5件",
         "output": "AI実行可 2件 / 人間承認必須 4件に振り分け",
         "tools": [
@@ -1420,10 +1420,10 @@
         "status": "completed",
         "processor": "deterministic-mock",
         "processor_label": "決定論モック(gpt-5.4-mini相当)",
-        "started_at": "2026-06-02T02:08:09.374Z",
-        "completed_at": "2026-06-02T02:08:14.374Z",
-        "started_hms": "02:08:09",
-        "completed_hms": "02:08:14",
+        "started_at": "2026-06-02T02:16:13.298Z",
+        "completed_at": "2026-06-02T02:16:18.298Z",
+        "started_hms": "02:16:13",
+        "completed_hms": "02:16:18",
         "input": "確定影響 + 起案",
         "output": "管理職レポートを生成(ローカル保存)",
         "tools": [
@@ -1434,96 +1434,96 @@
     ],
     "tool_calls": [
       {
-        "ts": "02:07:50",
-        "iso": "2026-06-02T02:07:50.374Z",
+        "ts": "02:15:54",
+        "iso": "2026-06-02T02:15:54.298Z",
         "agent": "orchestrator",
         "tool": "start_run",
         "result": "run_id run-naphtha-supply-risk-current を開始 / 7エージェントを巡回",
         "ok": true
       },
       {
-        "ts": "02:07:52",
-        "iso": "2026-06-02T02:07:52.374Z",
+        "ts": "02:15:56",
+        "iso": "2026-06-02T02:15:56.298Z",
         "agent": "risk_scout",
         "tool": "fetch_signals",
         "result": "2件の外部シグナルを取得",
         "ok": true
       },
       {
-        "ts": "02:07:54",
-        "iso": "2026-06-02T02:07:54.374Z",
+        "ts": "02:15:58",
+        "iso": "2026-06-02T02:15:58.298Z",
         "agent": "risk_scout",
         "tool": "azure_openai.extract",
         "result": "naphtha / 割当制限 / 深刻度 high",
         "ok": true
       },
       {
-        "ts": "02:07:56",
-        "iso": "2026-06-02T02:07:56.374Z",
+        "ts": "02:16:00",
+        "iso": "2026-06-02T02:16:00.298Z",
         "agent": "evidence_verifier",
         "tool": "verify_evidence",
         "result": "確度 high / 検証 2件",
         "ok": true
       },
       {
-        "ts": "02:07:58",
-        "iso": "2026-06-02T02:07:58.374Z",
+        "ts": "02:16:02",
+        "iso": "2026-06-02T02:16:02.298Z",
         "agent": "evidence_verifier",
         "tool": "detect_injection",
         "result": "命令文なし(injection検知=0)",
         "ok": true
       },
       {
-        "ts": "02:08:00",
-        "iso": "2026-06-02T02:08:00.374Z",
+        "ts": "02:16:04",
+        "iso": "2026-06-02T02:16:04.298Z",
         "agent": "impact_mapper",
         "tool": "query_inventory",
         "result": "最短在庫 5日",
         "ok": true
       },
       {
-        "ts": "02:08:02",
-        "iso": "2026-06-02T02:08:02.374Z",
+        "ts": "02:16:06",
+        "iso": "2026-06-02T02:16:06.298Z",
         "agent": "impact_mapper",
         "tool": "map_bom_orders",
         "result": "製品 3件・顧客 3社・受注 3件",
         "ok": true
       },
       {
-        "ts": "02:08:04",
-        "iso": "2026-06-02T02:08:04.374Z",
+        "ts": "02:16:08",
+        "iso": "2026-06-02T02:16:08.298Z",
         "agent": "impact_mapper",
         "tool": "propagate_network",
         "result": "波及 65% / 7.8百万ドル",
         "ok": true
       },
       {
-        "ts": "02:08:06",
-        "iso": "2026-06-02T02:08:06.374Z",
+        "ts": "02:16:10",
+        "iso": "2026-06-02T02:16:10.298Z",
         "agent": "response_planner",
         "tool": "draft_actions",
         "result": "初動 5件を起案",
         "ok": true
       },
       {
-        "ts": "02:08:08",
-        "iso": "2026-06-02T02:08:08.374Z",
+        "ts": "02:16:12",
+        "iso": "2026-06-02T02:16:12.298Z",
         "agent": "decision_gate",
         "tool": "split_authority",
         "result": "人間承認 4件 / AI実行 2件",
         "ok": true
       },
       {
-        "ts": "02:08:10",
-        "iso": "2026-06-02T02:08:10.374Z",
+        "ts": "02:16:14",
+        "iso": "2026-06-02T02:16:14.298Z",
         "agent": "reporter",
         "tool": "generate_report",
         "result": "管理職レポートを生成",
         "ok": true
       },
       {
-        "ts": "02:08:12",
-        "iso": "2026-06-02T02:08:12.374Z",
+        "ts": "02:16:16",
+        "iso": "2026-06-02T02:16:16.298Z",
         "agent": "reporter",
         "tool": "save_state",
         "result": "ローカル保存 (run-naphtha-supply-risk-current)",

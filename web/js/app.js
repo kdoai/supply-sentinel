@@ -639,11 +639,13 @@ function renderMapInsight(detail) {
   if (!el) return;
 
   if (!detail) {
-    const routes = (((currentDashboardData || {}).route_intel || {}).routes || [])
+    const routeIntel = ((currentDashboardData || {}).route_intel || {});
+    const routes = (routeIntel.routes || [])
       .filter((route) => route.material === activeMaterial);
-    const affectedShare = routes
+    const calculatedShare = routes
       .filter((route) => route.affected)
       .reduce((sum, route) => sum + (Number(route.share_percent) || 0), 0);
+    const affectedShare = routeIntel.kpis?.affected_share_percent ?? Math.min(100, calculatedShare);
     el.innerHTML = `
       <span class="map-insight-kicker">マップ分析</span>
       <strong>${esc(materialLabel(activeMaterial))}供給網の要注意地点</strong>
