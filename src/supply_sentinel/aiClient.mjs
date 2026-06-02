@@ -88,8 +88,9 @@ async function extractWithAzureOpenAi(data, config) {
 }
 
 function buildRiskExtractionPrompt({ newsEvents = [], supplierNotices = [] }) {
+  const orderedNews = prioritizeLiveNews(newsEvents);
   const sourceBundle = {
-    news_events: newsEvents.slice(0, 5),
+    news_events: orderedNews.slice(0, 8),
     supplier_notices: supplierNotices.slice(0, 5),
   };
 
@@ -116,6 +117,13 @@ function buildRiskExtractionPrompt({ newsEvents = [], supplierNotices = [] }) {
     "Sources:",
     JSON.stringify(sourceBundle),
   ].join("\n");
+}
+
+function prioritizeLiveNews(newsEvents = []) {
+  const list = Array.isArray(newsEvents) ? newsEvents.filter(Boolean) : [];
+  const live = list.filter((item) => item.live && item.status !== "rejected");
+  const rest = list.filter((item) => !item.live && item.status !== "rejected");
+  return [...live, ...rest];
 }
 
 function normalizeRiskEvent(event, data) {

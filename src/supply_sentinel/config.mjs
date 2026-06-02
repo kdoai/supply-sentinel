@@ -34,6 +34,13 @@ export function searchProvider(options = {}) {
   return "auto";
 }
 
+export function manualRunConfig() {
+  return {
+    token: process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN || "",
+    allowWithoutToken: String(process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC || "false").toLowerCase() === "true",
+  };
+}
+
 // True only when enough Azure OpenAI settings exist to attempt a real call.
 export function azureOpenAiConfigured() {
   const config = azureOpenAiConfig();

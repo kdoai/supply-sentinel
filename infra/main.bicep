@@ -53,6 +53,10 @@ param liveEvidenceEnabled bool = true
 ])
 param searchProvider string = 'auto'
 
+@secure()
+@description('Optional operator key required to trigger the AI巡回エージェント manually from the dashboard.')
+param manualRunToken string = ''
+
 var suffix = toLower(uniqueString(resourceGroup().id, appName))
 var webStorageName = take('${appName}web${suffix}', 24)
 var acrName = take('${appName}acr${suffix}', 50)
@@ -66,6 +70,14 @@ var databaseName = 'supply-sentinel'
 var containerName = 'runs'
 var isAcrImage = startsWith(containerImage, '${acrName}.azurecr.io/')
 var hasAzureOpenAiAccount = !empty(azureOpenAiAccountName)
+var manualRunSecretName = 'manual-run-token'
+var manualRunTokenEnv = empty(manualRunToken) ? {
+  name: 'SUPPLY_SENTINEL_RUN_AGENT_TOKEN'
+  value: ''
+} : {
+  name: 'SUPPLY_SENTINEL_RUN_AGENT_TOKEN'
+  secretRef: manualRunSecretName
+}
 
 resource webStorage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: webStorageName
@@ -294,6 +306,11 @@ var appEnv = [
     value: searchProvider
   }
   {
+    name: 'SUPPLY_SENTINEL_TIMER_CRON'
+    value: timerCron
+  }
+  manualRunTokenEnv
+  {
     name: 'HOST'
     value: '0.0.0.0'
   }
@@ -322,6 +339,12 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
         allowInsecure: false
         transport: 'auto'
       }
+      secrets: empty(manualRunToken) ? [] : [
+        {
+          name: manualRunSecretName
+          value: manualRunToken
+        }
+      ]
       registries: isAcrImage ? [
         {
           server: acr.properties.loginServer
@@ -368,6 +391,12 @@ resource agentJob 'Microsoft.App/jobs@2024-03-01' = {
       triggerType: 'Schedule'
       replicaTimeout: 600
       replicaRetryLimit: 1
+      secrets: empty(manualRunToken) ? [] : [
+        {
+          name: manualRunSecretName
+          value: manualRunToken
+        }
+      ]
       scheduleTriggerConfig: {
         cronExpression: timerCron
         parallelism: 1

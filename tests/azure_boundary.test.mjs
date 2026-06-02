@@ -6,6 +6,7 @@ import path from "node:path";
 import { createStateStore, loadAlertHistory } from "../src/supply_sentinel/stateStore.mjs";
 import { cosmosDbConfigured, stateStoreMode } from "../src/supply_sentinel/config.mjs";
 import { httpLatestDashboard } from "../src/function_app/httpLatestDashboard.mjs";
+import { authorizeManualRun } from "../src/function_app/httpRunAgent.mjs";
 
 test("local state store reads latest dashboard and alert history", async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), "sentinel-store-"));
@@ -60,4 +61,40 @@ test("HTTP latest dashboard trigger returns API-shaped JSON from local store", a
 test("cloud boundary stays explicit without Cosmos credentials", () => {
   assert.equal(stateStoreMode({ stateStore: "cosmos" }), "cosmos");
   assert.equal(cosmosDbConfigured(), Boolean(process.env.COSMOS_DB_ENDPOINT && process.env.COSMOS_DB_KEY));
+});
+
+test("manual AI巡回 endpoint requires an operator token by default", () => {
+  const previous = process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN;
+  const previousPublic = process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
+  delete process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN;
+  delete process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
+  try {
+    const auth = authorizeManualRun({ headers: {} });
+    assert.equal(auth.ok, false);
+    assert.equal(auth.status, 403);
+    assert.equal(auth.error, "manual_run_not_configured");
+  } finally {
+    if (previous === undefined) delete process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN;
+    else process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN = previous;
+    if (previousPublic === undefined) delete process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
+    else process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC = previousPublic;
+  }
+});
+
+test("manual AI巡回 authorization accepts only the configured operator token", () => {
+  const previous = process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN;
+  const previousPublic = process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
+  process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN = "demo-secret";
+  delete process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
+  try {
+    assert.equal(authorizeManualRun({ headers: {} }).status, 401);
+    assert.equal(authorizeManualRun({ headers: { "x-supply-sentinel-run-key": "wrong" } }).status, 403);
+    assert.equal(authorizeManualRun({ headers: { "x-supply-sentinel-run-key": "demo-secret" } }).ok, true);
+    assert.equal(authorizeManualRun({ headers: { authorization: "Bearer demo-secret" } }).ok, true);
+  } finally {
+    if (previous === undefined) delete process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN;
+    else process.env.SUPPLY_SENTINEL_RUN_AGENT_TOKEN = previous;
+    if (previousPublic === undefined) delete process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC;
+    else process.env.SUPPLY_SENTINEL_RUN_AGENT_PUBLIC = previousPublic;
+  }
 });
