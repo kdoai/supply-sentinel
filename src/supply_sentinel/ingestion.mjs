@@ -114,10 +114,17 @@ export async function loadSampleData(rootDir = process.cwd()) {
   // tool-calling; otherwise it degrades to the deterministic RSS collection.
   const liveEvidence = await runResearchAgent({ rootDir, materials });
 
+  const cloudMode = String(process.env.RUN_MODE || "").toLowerCase() === "cloud" ||
+    String(process.env.RUN_MODE || "").toLowerCase() === "azure";
+  const mergedNewsEvents = cloudMode
+    ? [...liveEvidence.newsEvents, ...newsEvents]
+    : [...newsEvents, ...liveEvidence.newsEvents];
+
   return {
-    // Keep deterministic demo sources first so the impact narrative remains
-    // stable, then append live public-web evidence as source-backed context.
-    newsEvents: [...newsEvents, ...liveEvidence.newsEvents],
+    // In cloud runs, put real public-web evidence first so the AI extractor and
+    // demo panels are visibly driven by the latest search result. Local demo
+    // builds keep deterministic files first for stable offline tests.
+    newsEvents: mergedNewsEvents,
     supplierNotices,
     inventory,
     bom,

@@ -1,6 +1,12 @@
 import { runSupplySentinel } from "./supply_sentinel/workflow.mjs";
 
-const result = await runSupplySentinel();
+const result = await runSupplySentinel({
+  trigger: {
+    type: process.env.SUPPLY_SENTINEL_AGENT_TRIGGER || "scheduled",
+    schedule: process.env.SUPPLY_SENTINEL_TIMER_CRON || "0 */6 * * *",
+    requested_at: new Date().toISOString(),
+  },
+});
 
 console.log("Supply Sentinel demo run completed.");
 console.log(`Output directory: ${result.outputDir}`);

@@ -15,6 +15,7 @@ export async function runSupplySentinel({
   rootDir = process.cwd(),
   outputDir = path.join(rootDir, "outputs", "latest"),
   stateStore,
+  trigger = { type: "scheduled", schedule: process.env.SUPPLY_SENTINEL_TIMER_CRON || "0 */6 * * *" },
 } = {}) {
   const data = await loadSampleData(rootDir);
   const riskEvent = await extractRiskEvent(data);
@@ -23,7 +24,7 @@ export async function runSupplySentinel({
   const teamsAlert = writeTeamsAlert(assessment);
   const managementReport = writeManagementReport(assessment);
   const dashboardHtml = writeDashboardHtml(assessment);
-  const dashboardData = buildDashboardModel({ riskEvent, assessment, routeIntel, materials: data.materials, data });
+  const dashboardData = buildDashboardModel({ riskEvent, assessment, routeIntel, materials: data.materials, data, trigger });
   const store = stateStore || createStateStore({ outputDir });
 
   await store.saveRun({
@@ -50,7 +51,7 @@ export async function runSupplySentinel({
 // Consolidated model consumed by the interactive map dashboard (web/).
 // `data` (loadSampleData() の戻り値) を受け取り、AIへの入力テキスト(meta.ai.inputs)を
 // 構築する。後方互換: data 省略時は meta.ai.inputs が空配列になるだけで既存挙動は不変。
-export function buildDashboardModel({ riskEvent, assessment, routeIntel, materials = [], data = {} }) {
+export function buildDashboardModel({ riskEvent, assessment, routeIntel, materials = [], data = {}, trigger = {} }) {
   const provenance = buildProvenance(data);
   const model = {
     meta: {
@@ -84,6 +85,11 @@ export function buildDashboardModel({ riskEvent, assessment, routeIntel, materia
           last_success_at: null,
         },
         watched_materials: materialWatchlist(materials),
+      },
+      agent_trigger: {
+        type: trigger.type || "scheduled",
+        requested_at: trigger.requested_at || null,
+        schedule: trigger.schedule || process.env.SUPPLY_SENTINEL_TIMER_CRON || "0 */6 * * *",
       },
     },
     risk_event: riskEvent,
@@ -133,7 +139,7 @@ function buildAiMeta(data = {}) {
 // 配列が空・未定義でも壊れないようガードする。
 function buildAiInputs(data = {}) {
   const inputs = [];
-  const newsEvents = Array.isArray(data.newsEvents) ? data.newsEvents : [];
+  const newsEvents = prioritizeNewsInputs(Array.isArray(data.newsEvents) ? data.newsEvents : []);
   const news = newsEvents[0] || null;
   const notice = Array.isArray(data.supplierNotices) ? data.supplierNotices[0] : null;
 
@@ -152,7 +158,7 @@ function buildAiInputs(data = {}) {
     });
   }
 
-  for (const liveNews of newsEvents.filter((item) => item && item.live).slice(0, 3)) {
+  for (const liveNews of newsEvents.filter((item, index) => item && item.live && index !== 0).slice(0, 4)) {
     inputs.push({
       type: "news",
       kind: "news",
@@ -181,6 +187,12 @@ function buildAiInputs(data = {}) {
   }
 
   return inputs;
+}
+
+function prioritizeNewsInputs(newsEvents) {
+  const accepted = newsEvents.filter((item) => item && item.status !== "rejected");
+  const live = accepted.filter((item) => item.live);
+  return [...live, ...accepted.filter((item) => !item.live)];
 }
 
 function buildProvenance(data = {}) {

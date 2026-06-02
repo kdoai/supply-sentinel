@@ -6,6 +6,7 @@ import { runSupplySentinel } from "./supply_sentinel/workflow.mjs";
 import { createStateStore } from "./supply_sentinel/stateStore.mjs";
 import { buildAgentRun } from "./supply_sentinel/agentTrace.mjs";
 import { agentAdvice } from "./function_app/httpAgentAdvice.mjs";
+import { httpRunAgent } from "./function_app/httpRunAgent.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
@@ -135,6 +136,32 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (pathname === "/api/run-agent") {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": process.env.AGENT_ADVICE_ALLOW_ORIGIN || "*",
+        "Access-Control-Allow-Methods": "POST,OPTIONS",
+        "Access-Control-Allow-Headers": "content-type,x-supply-sentinel-run-key,authorization",
+      });
+      res.end();
+      return;
+    }
+    try {
+      const response = await httpRunAgent(console, {
+        method: req.method,
+        url: req.url,
+        headers: req.headers,
+      });
+      sendRawJsonResponse(res, response);
+    } catch (err) {
+      sendJson(res, 500, {
+        error: "agent_run_failed",
+        message: err && err.message ? err.message : String(err),
+      });
+    }
+    return;
+  }
+
   if (req.method !== "GET" && req.method !== "HEAD") {
     sendStatus(res, 405, "Method Not Allowed");
     return;
@@ -196,6 +223,12 @@ function readRequestJson(req, maxBytes) {
     });
     req.on("error", reject);
   });
+}
+
+function sendRawJsonResponse(res, response) {
+  const headers = response.headers || {};
+  res.writeHead(response.status || 200, headers);
+  res.end(response.body || "");
 }
 
 function enrichCloudDashboard(dashboard, stateStoreKind) {

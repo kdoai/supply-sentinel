@@ -68,6 +68,7 @@ let agentContextKey = "";
 let agentChatBound = false;
 let agentConsoleInstance = null;
 let agentConsoleBound = false;
+let agentRunInFlight = false;
 
 function setLoaderText(message) {
   const el = document.getElementById("boot-loader-text");
@@ -105,6 +106,11 @@ function apiBaseUrl() {
 function agentAdviceUrl() {
   const base = apiBaseUrl();
   return base ? `${base}/api/agent-advice` : "/api/agent-advice";
+}
+
+function runAgentUrl() {
+  const base = apiBaseUrl();
+  return base ? `${base}/api/run-agent` : "/api/run-agent";
 }
 
 async function fetchDashboardData() {
@@ -1185,6 +1191,7 @@ function buildScenarioOverlayModel(baseModel) {
   const cloudSources = liveEvidenceSources(baseModel);
   const scenarioSources = activeSourcesForMonth(scenario, month);
   const sources = cloudSources.length ? cloudSources : scenarioSources.filter((source) => hasPublicUrl(source));
+  const liveDriven = cloudSources.length > 0 || baseModel?.meta?.agent_trigger?.type === "manual";
   // Evidence Verifier: external text is observation, not instruction. Any source
   // whose claim/excerpt reads like an injected command is dropped from the
   // *verified* evidence used for scoring/display (it still rides on
@@ -1204,6 +1211,52 @@ function buildScenarioOverlayModel(baseModel) {
   }));
 
   const overlay = cloneJson(baseModel);
+  if (liveDriven) {
+    overlay.meta = overlay.meta || {};
+    overlay.meta.scenario = "live-web-agent-run";
+    overlay.meta.ai = {
+      ...(overlay.meta.ai || {}),
+      inputs: asArray(overlay.meta.ai?.inputs).length ? overlay.meta.ai.inputs : buildAiInputsFromProvenance(trustedSources),
+    };
+    overlay.route_intel = {
+      ...(overlay.route_intel || {}),
+      map_nodes: buildMapNodesFromNetwork(scenario.network, propagation),
+      flow: buildFlowFromNetwork(scenario.network, propagation),
+    };
+    overlay.supply_network = {
+      focal_material: overlay.assessment?.material || scenario.material,
+      nodes: scenario.network.nodes,
+      edges: scenario.network.edges,
+      node_status: propagation.node_status,
+      edge_status: propagation.edge_status,
+    };
+    overlay.propagation = {
+      ...propagation,
+      metrics: {
+        ...(propagation.metrics || {}),
+        risk_score: overlay.assessment?.risk_score ?? propagation.metrics?.risk_score,
+        severity: overlay.assessment?.severity ?? propagation.metrics?.severity,
+        inventory_days_min: overlay.assessment?.inventory_days_min ?? propagation.metrics?.inventory_days_min,
+      },
+    };
+    overlay.provenance = trustedSources;
+    overlay.agent_run = buildAgentRun(overlay);
+    overlay.demo = {
+      ...(overlay.demo || {}),
+      title: "AIエージェント巡回完了",
+      detail: "公開Web検索、根拠検証、AI構造化、社内影響判定、初動起案を実行しました。",
+      time_label: formatDateTime(overlay.meta?.agent_trigger?.requested_at || overlay.meta?.cloud?.served_at || overlay.meta?.generated_at),
+      data_sources: trustedSources.map((source) => ({
+        name: source.label || source.source || "公開Web",
+        candidate: source.source || source.source_domain || "",
+        status: sourceKindLabel(source.kind),
+        freshness: source.published_at || source.fetched_at ? formatDateTime(source.published_at || source.fetched_at) : "取得時刻不明",
+        confidence: source.confidence || "-",
+        url: source.url || "",
+      })),
+    };
+    return overlay;
+  }
   overlay.meta = overlay.meta || {};
   overlay.meta.scenario = scenario.id;
   overlay.meta.generated_at = month.month ? `${month.month}-28T09:00:00+09:00` : overlay.meta.generated_at;
@@ -1346,6 +1399,9 @@ function updateFlow(model) {
 }
 
 function applyDemoStage(base, step) {
+  if (base?.meta?.agent_trigger?.type === "manual" || liveEvidenceSources(base).length > 0) {
+    return cloneJson(base);
+  }
   const stages = demoConfig.stages || [];
   const stageIndex = Math.max(0, Math.min(stages.length - 1, step));
   const stage = stages[stageIndex] || {};
@@ -1607,17 +1663,38 @@ function renderNetworkPanel(model) {
 
 function updateDemoControls() {
   const stage = (currentDashboardData && currentDashboardData.demo) || {};
+  const collection = currentDashboardData?.meta?.evidence_collection || {};
+  const trigger = currentDashboardData?.meta?.agent_trigger || {};
   const title = document.getElementById("demo-stage-title");
   const detail = document.getElementById("demo-stage-detail");
   const progress = document.getElementById("demo-progress-bar");
   const play = document.getElementById("demo-play");
-  if (title) title.textContent = stage.title || "巡回デモ待機中";
-  if (detail) detail.textContent = stage.detail || "外部シグナルと社内データを順に照合します。";
-  if (progress) {
-    const denom = Math.max(1, (stage.total_steps || 1) - 1);
-    progress.style.width = `${Math.round(((stage.step_index || 0) / denom) * 100)}%`;
+  if (title) {
+    title.textContent = agentRunInFlight
+      ? "AIエージェント巡回中"
+      : trigger.type === "manual"
+        ? "手動巡回が完了しました"
+        : "6時間ごとに自動巡回中";
   }
-  if (play) play.textContent = demoPlaying ? "巡回中..." : "巡回デモ開始";
+  if (detail) {
+    const accepted = collection.search_health?.accepted_count ?? collection.live_count ?? 0;
+    const provider = collection.search_health?.provider || collection.live_mode || "search";
+    detail.textContent = agentRunInFlight
+      ? "Web検索、根拠検証、AI構造化、BOM/在庫照合、初動起案をクラウドで実行しています。"
+      : `直近巡回: ${provider} / 採用根拠 ${accepted}件 / 次回は6時間周期で自動実行`;
+  }
+  if (progress) {
+    if (agentRunInFlight) {
+      progress.style.width = "78%";
+    } else {
+      const denom = Math.max(1, (stage.total_steps || 1) - 1);
+      progress.style.width = trigger.type === "manual" ? "100%" : `${Math.round(((stage.step_index || 0) / denom) * 100)}%`;
+    }
+  }
+  if (play) {
+    play.disabled = agentRunInFlight;
+    play.textContent = agentRunInFlight ? "AI巡回中..." : "AI巡回を今すぐ実行";
+  }
 }
 
 function renderCurrentDashboard() {
@@ -1632,6 +1709,61 @@ function renderCurrentDashboard() {
   ensureMap();
 }
 
+async function runCloudAgentOnce() {
+  const headers = { "content-type": "application/json" };
+  const storedKey = sessionStorage.getItem("supplySentinelRunKey") || "";
+  if (storedKey) headers["x-supply-sentinel-run-key"] = storedKey;
+
+  let response = await fetch(runAgentUrl(), {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ reason: "manual-demo-run" }),
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    const key = window.prompt("AI巡回を手動実行するためのオペレーターキーを入力してください。キーはこのブラウザセッションだけに保存されます。");
+    if (!key) {
+      throw new Error("AI巡回の実行キーが入力されていません。");
+    }
+    sessionStorage.setItem("supplySentinelRunKey", key);
+    response = await fetch(runAgentUrl(), {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-supply-sentinel-run-key": key,
+      },
+      body: JSON.stringify({ reason: "manual-demo-run" }),
+    });
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.message || payload.error || `run-agent HTTP ${response.status}`);
+  }
+  if (!payload.dashboard) {
+    throw new Error("巡回結果のダッシュボードが返ってきませんでした。");
+  }
+  payload.dashboard.meta = payload.dashboard.meta || {};
+  payload.dashboard.meta.cloud = {
+    ...(payload.dashboard.meta.cloud || {}),
+    served_at: payload.served_at || payload.dashboard.meta.cloud?.served_at || null,
+    state_store: payload.state_store || payload.dashboard.meta.cloud?.state_store || "api",
+    api_base: apiBaseUrl(),
+    persisted: payload.state_store === "cosmos" || Boolean(payload.dashboard.meta.cloud?.persisted),
+  };
+  return payload.dashboard;
+}
+
+function showRunError(error) {
+  const message = error && error.message ? error.message : String(error);
+  const title = document.getElementById("demo-stage-title");
+  const detail = document.getElementById("demo-stage-detail");
+  const progress = document.getElementById("demo-progress-bar");
+  if (title) title.textContent = "AI巡回に失敗しました";
+  if (detail) detail.textContent = message;
+  if (progress) progress.style.width = "0%";
+}
+
 function stopDemo() {
   if (demoTimer) {
     clearInterval(demoTimer);
@@ -1643,28 +1775,43 @@ function stopDemo() {
   updateDemoControls();
 }
 
-function startDemo() {
+async function startDemo() {
+  if (agentRunInFlight) return;
   stopDemo();
+  agentRunInFlight = true;
   demoPlaying = true;
-  demoStep = 0;
-  renderCurrentDashboard();
   setActiveView("ai");
+  updateDemoControls();
   ensureAgentConsole()?.play({ stepMs: 760 });
-  demoTimer = setInterval(() => {
-    if (demoStep >= (demoConfig.stages || []).length - 1) {
-      stopDemo();
-      renderCurrentDashboard();
-      return;
-    }
-    demoStep += 1;
+
+  try {
+    const dashboard = await runCloudAgentOnce();
+    dashboardData = dashboard;
+    demoStep = Math.max(0, (demoConfig.stages || []).length - 1);
+    agentMessages = [];
+    agentContextKey = "";
     renderCurrentDashboard();
-  }, demoConfig.interval_ms || 1800);
+    ensureAgentConsole()?.render(currentDashboardData);
+    ensureAgentConsole()?.play({ stepMs: 620 });
+  } catch (error) {
+    console.error("AI agent run failed", error);
+    showRunError(error);
+  } finally {
+    agentRunInFlight = false;
+    demoPlaying = false;
+    updateDemoControls();
+  }
 }
 
 function resetDemo() {
   stopDemo();
-  demoStep = 0;
-  renderCurrentDashboard();
+  fetchDashboardData()
+    .then((latest) => {
+      dashboardData = latest;
+      demoStep = Math.max(0, (demoConfig.stages || []).length - 1);
+      renderCurrentDashboard();
+    })
+    .catch((error) => showRunError(error));
 }
 
 function bindDemoControls() {

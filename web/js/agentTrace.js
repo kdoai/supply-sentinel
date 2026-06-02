@@ -92,6 +92,7 @@ export function buildAgentRun(model = {}, options = {}) {
   const kpis = (model.route_intel && model.route_intel.kpis) || {};
   const ai = (model.meta && model.meta.ai) || {};
   const cloud = (model.meta && model.meta.cloud) || {};
+  const evidenceCollection = (model.meta && model.meta.evidence_collection) || {};
 
   const riskScore = num(metrics.risk_score ?? assessment.risk_score, 0);
   const affectedRatio = num(metrics.affected_supply_ratio ?? kpis.affected_share_percent, 0);
@@ -151,6 +152,18 @@ export function buildAgentRun(model = {}, options = {}) {
   };
 
   tool("orchestrator", "start_run", `run_id ${runId} を開始 / 7エージェントを巡回`);
+  const liveQueries = asArray(evidenceCollection.live_queries || evidenceCollection.search_health?.queries).filter(Boolean);
+  if (evidenceCollection.live_enabled !== false) {
+    const provider = evidenceCollection.search_health?.provider || evidenceCollection.live_mode || "web_search";
+    const accepted = evidenceCollection.search_health?.accepted_count ?? evidenceCollection.live_count ?? 0;
+    tool(
+      "risk_scout",
+      "web_search",
+      liveQueries.length
+        ? `${provider}: ${liveQueries.slice(0, 3).join(" / ")} / 採用${accepted}件`
+        : `${provider}: 公開Webを巡回 / 採用${accepted}件`,
+    );
+  }
   tool("risk_scout", "fetch_signals", `${provenance.length}件の外部シグナルを取得`);
   tool("risk_scout", "azure_openai.extract", hasImpact
     ? `${material} / ${labelRiskType(riskType)} / 深刻度 ${severity}`
