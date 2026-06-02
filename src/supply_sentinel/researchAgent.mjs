@@ -562,8 +562,9 @@ async function buildAzureHeaders(config, api = "chat") {
 function azureResponsesUrl(config) {
   const endpoint = config.endpoint.replace(/\/$/, "");
   const base = `${endpoint}/openai/v1/responses`;
-  return config.apiVersion && config.apiVersion !== "v1"
-    ? `${base}?api-version=${encodeURIComponent(config.apiVersion)}`
+  const responsesApiVersion = process.env.AZURE_OPENAI_RESPONSES_API_VERSION || "";
+  return responsesApiVersion && responsesApiVersion !== "v1"
+    ? `${base}?api-version=${encodeURIComponent(responsesApiVersion)}`
     : base;
 }
 
