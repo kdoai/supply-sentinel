@@ -1212,6 +1212,26 @@ function buildScenarioOverlayModel(baseModel) {
 
   const overlay = cloneJson(baseModel);
   if (liveDriven) {
+    const liveFocal = {
+      material: overlay?.assessment?.material || scenario.material,
+      total_share: 100,
+      total_spend: totalSpend,
+      affected_share: affectedShare,
+      affected_spend: spendAtRisk,
+      route_count: routes.length,
+      affected_count: affectedRoutes.length,
+      routes: routes.map((route) => ({
+        route_id: route.route_id,
+        origin: route.origin?.name,
+        region: route.region,
+        supplier: route.supplier,
+        share_percent: route.share_percent,
+        monthly_spend_usd: route.monthly_spend_usd,
+        lead_time_days: route.lead_time_days,
+        status: route.status,
+        affected: route.affected,
+      })),
+    };
     overlay.meta = overlay.meta || {};
     overlay.meta.scenario = "live-web-agent-run";
     overlay.meta.ai = {
@@ -1220,7 +1240,17 @@ function buildScenarioOverlayModel(baseModel) {
     };
     overlay.route_intel = {
       ...(overlay.route_intel || {}),
+      routes,
       map_nodes: buildMapNodesFromNetwork(scenario.network, propagation),
+      sourcing: { focal: liveFocal, by_material: { [liveFocal.material]: liveFocal } },
+      kpis: {
+        focal_material: liveFocal.material,
+        total_routes: routes.length,
+        affected_routes: affectedRoutes.length,
+        affected_share_percent: affectedShare,
+        total_monthly_spend: totalSpend,
+        monthly_spend_at_risk: spendAtRisk,
+      },
       flow: buildFlowFromNetwork(scenario.network, propagation),
     };
     overlay.supply_network = {
