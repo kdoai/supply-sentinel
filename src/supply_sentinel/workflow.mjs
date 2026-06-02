@@ -90,6 +90,7 @@ export function buildDashboardModel({ riskEvent, assessment, routeIntel, materia
         type: trigger.type || "scheduled",
         requested_at: trigger.requested_at || null,
         schedule: trigger.schedule || process.env.SUPPLY_SENTINEL_TIMER_CRON || "0 */6 * * *",
+        quota: trigger.quota || null,
       },
     },
     risk_event: riskEvent,
